@@ -1,0 +1,256 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-card {
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.logo svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.login-header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #8c8c8c;
+  font-size: 14px;
+  margin: 0;
+}
+
+.login-form {
+  margin-top: 30px;
+}
+
+.login-form nz-form-item {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.login-form nz-form-label {
+  display: block;
+  text-align: left;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #262626;
+  font-size: 14px;
+}
+
+.login-form nz-form-control {
+  width: 100%;
+}
+
+/* Form actions row */
+.form-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Input styles */
+::ng-deep .login-form .ant-input-affix-wrapper {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+::ng-deep .login-form .ant-input-affix-wrapper:hover {
+  border-color: #40a9ff;
+}
+
+::ng-deep .login-form .ant-input-affix-wrapper-focused,
+::ng-deep .login-form .ant-input-affix-wrapper:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+::ng-deep .login-form .ant-input {
+  font-size: 14px;
+  width: 100%;
+}
+
+::ng-deep .login-form .ant-input-prefix {
+  color: #8c8c8c;
+  font-size: 16px;
+  margin-right: 12px;
+}
+
+::ng-deep .login-form .ant-input-group {
+  width: 100%;
+  display: block;
+}
+
+::ng-deep .login-form nz-input-group {
+  width: 100%;
+}
+
+.remember-row {
+  margin-bottom: 24px;
+}
+
+.remember-row nz-form-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-form-forgot {
+  color: #1890ff;
+  font-size: 14px;
+  transition: color 0.3s;
+}
+
+.login-form-forgot:hover {
+  color: #40a9ff;
+}
+
+.password-toggle {
+  cursor: pointer;
+  color: #8c8c8c;
+  transition: color 0.3s;
+}
+
+.password-toggle:hover {
+  color: #1890ff;
+}
+
+/* Google Login Button */
+.google-login-btn {
+  border: 1px solid #d9d9d9;
+  background: white;
+  color: #262626;
+  font-weight: 500;
+  transition: all 0.3s;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.google-login-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.google-login-btn span[nz-icon] {
+  margin-right: 8px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Register Link */
+.register-link {
+  text-align: center;
+  margin-top: 24px;
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.register-link a {
+  color: #1890ff;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.register-link a:hover {
+  color: #40a9ff;
+}
+
+/* Divider */
+::ng-deep .ant-divider-inner-text {
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+/* Form Labels */
+::ng-deep .ant-form-item-label > label {
+  font-weight: 500;
+  color: #262626;
+  height: auto;
+  width: 100%;
+}
+
+::ng-deep .ant-form-item-label {
+  text-align: left;
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+::ng-deep .login-form .ant-form-item {
+  display: block;
+  width: 100%;
+}
+
+::ng-deep .login-form .ant-form-item-control {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Input Focus */
+::ng-deep .ant-input-affix-wrapper:focus,
+::ng-deep .ant-input-affix-wrapper-focused {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+::ng-deep .ant-form-item-has-error .ant-input-affix-wrapper {
+  border-color: #ff4d4f;
+}
+
+::ng-deep .ant-form-item-has-error .ant-input-affix-wrapper:focus,
+::ng-deep .ant-form-item-has-error .ant-input-affix-wrapper-focused {
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
+}
+
+/* Button Hover */
+::ng-deep button[nz-button][nzType="primary"]:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  .login-card {
+    padding: 20px;
+  }
+
+  .login-header h1 {
+    font-size: 24px;
+  }
+}

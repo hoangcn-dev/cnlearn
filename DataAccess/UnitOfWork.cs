@@ -4,22 +4,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DataAccess
 {
-    public interface IUnitOfWork : IDisposable
-    {
-        IRepository<TEntity> Repository<TEntity>() where TEntity : class, IEntity;
-        Task<int> SaveChangesAsync();
-        Task BeginTransactionAsync();
-        Task CommitTransactionAsync();
-        Task RollbackTransactionAsync();
-    }
-
     public class UnitOfWork : IUnitOfWork
     {
         private readonly DbContext _context;
         private readonly Dictionary<Type, object> _repositories;
         private IDbContextTransaction? _transaction;
 
-        public UnitOfWork(DbContext context)
+        public UnitOfWork(AppDbContext context)
         {
             _context = context;
             _repositories = new Dictionary<Type, object>();

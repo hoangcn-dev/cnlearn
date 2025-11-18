@@ -1,11 +1,57 @@
 ﻿using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 
 namespace Core.Utilities
 {
     public class StringUtil
     {
+        public class ErrorMessages
+        {
+            public const string MaxDevice = "Số lượng thiết bị đăng nhập đã đạt tối đa";
+            public const string UserNotFound = "Người dùng không tồn tại";
+            public const string UserIsBanned = "Tài khoản đang bị khóa";
+            public const string PasswordNotSet = "Mật khẩu chưa được thiết lập, vui lòng đăng nhập bằng tài khoản liên kết";
+            public const string PasswordIncorrect = "Mật khẩu chưa chính xác";
+            public const string InvalidCredential = "Thông tin xác thực không hợp lệ";
+            public const string UnknownError = "Lỗi không xác định";
+            public const string DataInitialError = "Khởi tạo dữ liệu thất bại";
+        }
+
+
+        /// <summary>
+        /// Thêm các tham số query vào url
+        /// </summary>
+        public static string AppendParamsToUrl(string url, params (string Key, string Value)[] queryParams)
+        {
+            if (queryParams == null || !queryParams.Any())
+                return url;
+            var uriBuilder = new UriBuilder(url);
+            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+            foreach (var (k, v) in queryParams)
+            {
+                query[k] = v;
+            }
+            uriBuilder.Query = query.ToString();
+            return uriBuilder.ToString();
+        }
+
+
+
+        /// <summary>
+        /// Sinh một chuỗi ngẫu nhiên bất kì có độ dài cho trước
+        /// </summary>
+        public static string GetRandomString(int length)
+        {
+            byte[] bytes = new byte[length];
+            using var rand = RandomNumberGenerator.Create();
+            rand.GetBytes(bytes);
+            return Encoding.UTF8.GetString(bytes);
+        }
+
+
         /// <summary>
         /// Chuyển đổi chuỗi tiếng Việt thành in thường không dấu, cách nhau bằng dấu -
         /// </summary>
