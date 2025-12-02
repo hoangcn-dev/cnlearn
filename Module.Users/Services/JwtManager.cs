@@ -3,14 +3,14 @@ using Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Modules.Users.Entities;
-using Modules.Users.Models;
-using Modules.Users.Settings;
+using Module.Users.Entities;
+using Module.Users.Models;
+using Module.Users.Settings;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Modules.Users.Services
+namespace Module.Users.Services
 {
     public class JwtManager
     {

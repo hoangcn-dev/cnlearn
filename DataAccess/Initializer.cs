@@ -3,7 +3,7 @@ using Core.Interfaces;
 using Core.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Modules.Users.Entities;
+using Module.Users.Entities;
 
 namespace DataAccess
 {

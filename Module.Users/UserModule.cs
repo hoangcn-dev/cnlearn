@@ -1,4 +1,4 @@
-﻿namespace Modules.Users
+﻿namespace Module.Users
 {
     public class UserModule
     {

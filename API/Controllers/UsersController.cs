@@ -1,15 +1,17 @@
 ﻿using API.Models;
+using Asp.Versioning;
 using Core.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Modules.Users.Models;
-using Modules.Users.Services;
+using Module.Users.Models;
+using Module.Users.Services;
 
 namespace API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
     public class UsersController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -19,7 +21,7 @@ namespace API.Controllers
             _authService = authService;
         }
 
-        [HttpGet("login-info")]
+        [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetLoginInfo()
         {
@@ -89,7 +91,7 @@ namespace API.Controllers
         {
             Response.Cookies.Delete("aToken");
 
-            return Ok(ApiResponse.Success("Đăng nhập thành công"));
+            return Ok(ApiResponse.Success("Đăng xuất thành công"));
         }
     }
 }

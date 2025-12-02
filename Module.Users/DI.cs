@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Modules.Users.Services;
-using Modules.Users.Settings;
+using Module.Users.Services;
+using Module.Users.Settings;
 
-namespace Modules.Users
+namespace Module.Users
 {
     public static class DI
     {

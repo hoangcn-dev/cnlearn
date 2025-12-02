@@ -7,13 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" Version="6.0.0" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="6.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
-    <ProjectReference Include="..\Modules.Users\Modules.Users.csproj" />
+    <ProjectReference Include="..\Module.Users\Module.Users.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using Core.Interfaces;
 
-namespace Modules.Users.Entities
+namespace Module.Users.Entities
 {
     public class Roles
     {

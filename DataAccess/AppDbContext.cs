@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Modules.Users;
+using Module.Users;
 
 namespace DataAccess
 {

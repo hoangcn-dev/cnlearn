@@ -1,6 +1,7 @@
-using API.Middlewares;
+﻿using API.Middlewares;
+using Asp.Versioning;
 using DataAccess;
-using Modules.Users;
+using Module.Users;
 using System.Threading.Tasks;
 
 namespace API
@@ -18,6 +19,23 @@ namespace API
             services.AddControllers();
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
+
+            // Add API versioning
+            services.AddApiVersioning(options =>
+            {
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.DefaultApiVersion = new ApiVersion(1, 0);
+                options.ReportApiVersions = true;
+                options.ApiVersionReader = ApiVersionReader.Combine(
+                    new UrlSegmentApiVersionReader(),              // /api/v1/users
+                    new QueryStringApiVersionReader("api-version"),     // ?api-version=1.0
+                    new HeaderApiVersionReader("x-api-version")       // x-api-version: 1.0
+                );
+            }).AddApiExplorer(options =>
+            {
+                options.GroupNameFormat = "'v'VVV";
+                options.SubstituteApiVersionInUrl = true;
+            });
 
             // Custom
             services.AddTransient<ExceptionMiddleware>();
@@ -42,7 +60,20 @@ namespace API
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(options =>
+                {
+                    // Tự động tạo các endpoint cho từng version
+                    var versions = app.DescribeApiVersions();
+                    foreach (var version in versions)
+                    {
+                        var groupName = version.GroupName;
+                        options.SwaggerEndpoint(
+                            $"/swagger/{groupName}/swagger.json",
+                            $"API {groupName.ToUpperInvariant()}");
+                    }
+
+                    options.RoutePrefix = "swagger";
+                });
             }
             app.UseHttpsRedirection();
             app.UseCors("AllowLocal");

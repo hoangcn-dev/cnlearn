@@ -51,7 +51,7 @@ export class AuthService {
     }
 
     getLoginInfo(): Observable<LoginInfo> {
-        return this.api.get<ApiResponse<LoginInfo>>('users/login-info').pipe(
+        return this.api.get<ApiResponse<LoginInfo>>('users/me').pipe(
             map(response => {
                 if (response.errorMessage || !response.data) {
                     throw new Error(response.errorMessage || 'Không thể lấy thông tin user');

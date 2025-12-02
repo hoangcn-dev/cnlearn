@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Modules.Users
+namespace Module.Users
 {
     public class Consts
     {

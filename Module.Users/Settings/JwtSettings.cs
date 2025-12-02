@@ -1,4 +1,4 @@
-﻿namespace Modules.Users.Settings
+﻿namespace Module.Users.Settings
 {
     public class JwtSettings
     {

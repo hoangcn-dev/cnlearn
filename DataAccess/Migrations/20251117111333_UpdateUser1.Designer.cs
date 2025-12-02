@@ -24,7 +24,7 @@ namespace DataAccess.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Modules.Users.Entities.Role", b =>
+            modelBuilder.Entity("Module.Users.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -49,7 +49,7 @@ namespace DataAccess.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.Token", b =>
+            modelBuilder.Entity("Module.Users.Entities.Token", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -76,7 +76,7 @@ namespace DataAccess.Migrations
                     b.ToTable("Tokens", (string)null);
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.User", b =>
+            modelBuilder.Entity("Module.Users.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -139,9 +139,9 @@ namespace DataAccess.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.Token", b =>
+            modelBuilder.Entity("Module.Users.Entities.Token", b =>
                 {
-                    b.HasOne("Modules.Users.Entities.User", "User")
+                    b.HasOne("Module.Users.Entities.User", "User")
                         .WithMany("Tokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -150,9 +150,9 @@ namespace DataAccess.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.User", b =>
+            modelBuilder.Entity("Module.Users.Entities.User", b =>
                 {
-                    b.HasOne("Modules.Users.Entities.Role", "Role")
+                    b.HasOne("Module.Users.Entities.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -161,12 +161,12 @@ namespace DataAccess.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.Role", b =>
+            modelBuilder.Entity("Module.Users.Entities.Role", b =>
                 {
                     b.Navigation("Users");
                 });
 
-            modelBuilder.Entity("Modules.Users.Entities.User", b =>
+            modelBuilder.Entity("Module.Users.Entities.User", b =>
                 {
                     b.Navigation("Tokens");
                 });

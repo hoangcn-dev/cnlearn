@@ -2,11 +2,11 @@
 using Core.Interfaces;
 using Core.Utilities;
 using Microsoft.AspNetCore.Authentication;
-using Modules.Users.Entities;
-using Modules.Users.Models;
+using Module.Users.Entities;
+using Module.Users.Models;
 using System.Security.Claims;
 
-namespace Modules.Users.Services
+namespace Module.Users.Services
 {
     public interface IAuthService
     {
