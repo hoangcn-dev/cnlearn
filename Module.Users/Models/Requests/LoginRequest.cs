@@ -1,4 +1,4 @@
-﻿namespace Module.Users.Models
+﻿namespace Module.Users.Models.Requests
 {
     public class LoginRequest
     {

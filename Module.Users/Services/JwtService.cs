@@ -1,5 +1,4 @@
-﻿using Core.Exceptions;
-using Core.Utilities;
+﻿using Core.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -12,11 +11,11 @@ using System.Text;
 
 namespace Module.Users.Services
 {
-    public class JwtManager
+    public class JwtService
     {
-        private JwtSettings _settings;
+        private readonly JwtSettings _settings;
 
-        public JwtManager(IOptions<JwtSettings> settings)
+        public JwtService(IOptions<JwtSettings> settings)
         {
             _settings = settings.Value;
         }

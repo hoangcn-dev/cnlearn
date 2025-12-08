@@ -1,9 +1,11 @@
-﻿using Core.Exceptions;
+﻿using Core.Base;
+using Core.Exceptions;
 using Core.Interfaces;
 using Core.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Module.Users.Entities;
 using Module.Users.Models;
+using Module.Users.Models.Requests;
 using System.Security.Claims;
 
 namespace Module.Users.Services
@@ -15,15 +17,14 @@ namespace Module.Users.Services
         LoginInfo GetLoginInfo(ClaimsPrincipal claims);
     }
 
-    public class AuthService : IAuthService
+    public class AuthService : BaseService, IAuthService
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly JwtManager _jwtManager;
+        private readonly JwtService _jwtService;
 
-        public AuthService(IUnitOfWork unitOfWork, JwtManager jwtManager)
+        public AuthService(
+            IUnitOfWork unitOfWork, JwtService jwtService) : base(unitOfWork)
         {
-            _unitOfWork = unitOfWork;
-            _jwtManager = jwtManager;
+            _jwtService = jwtService;
         }
 
         public LoginInfo GetLoginInfo(ClaimsPrincipal claims)
@@ -43,18 +44,26 @@ namespace Module.Users.Services
                 .GetFirstAsync(u => u.Email.Equals(request.Email), includes: u => u.Role);
 
             if (user is null)
+            {
                 throw new NotFoundException(StringUtil.ErrorMessages.UserNotFound);
+            }
 
             if (!user.IsActived)
+            {
                 throw new ForbiddenException(StringUtil.ErrorMessages.UserIsBanned);
+            }
 
             if (user.Password is null)
+            {
                 throw new UnauthorizedException(StringUtil.ErrorMessages.PasswordNotSet);
+            }
 
             if (!PasswordHasher.VerifyPassword(request.Password, user.Password))
+            {
                 throw new UnauthorizedException(StringUtil.ErrorMessages.PasswordIncorrect);
+            }
 
-            var token = _jwtManager.IssueToken(user);
+            var token = _jwtService.IssueToken(user);
             user.LastLogin = DateTimeOffset.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();
@@ -67,12 +76,16 @@ namespace Module.Users.Services
             var claims = authenticateResult.Principal?.Claims;
 
             if (claims is null)
+            {
                 throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+            }
 
             var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
 
             if (email is null)
+            {
                 throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+            }
 
             var user = await _unitOfWork.Repository<User>()
                 .GetFirstAsync(u => u.Email.Equals(email), includes: u => u.Role);
@@ -85,13 +98,17 @@ namespace Module.Users.Services
                 var lastName = claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value;
 
                 if (avatarUrl is null || firstName is null || lastName is null)
+                {
                     throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+                }
 
                 var userRole = await _unitOfWork.Repository<Role>()
                     .GetFirstAsync(r => r.Name.Equals(Roles.USER));
 
                 if (userRole is null)
+                {
                     throw new ServerErrorException(StringUtil.ErrorMessages.UnknownError);
+                }
 
                 user = new User
                 {
@@ -110,9 +127,11 @@ namespace Module.Users.Services
             }
 
             if (!user.IsActived)
+            {
                 throw new ForbiddenException(StringUtil.ErrorMessages.UserIsBanned);
+            }
 
-            var token = _jwtManager.IssueToken(user);
+            var token = _jwtService.IssueToken(user);
             user.LastLogin = DateTimeOffset.UtcNow;
 
             await _unitOfWork.SaveChangesAsync();

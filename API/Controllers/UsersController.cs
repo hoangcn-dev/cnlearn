@@ -4,7 +4,7 @@ using Core.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Module.Users.Models;
+using Module.Users.Models.Requests;
 using Module.Users.Services;
 
 namespace API.Controllers

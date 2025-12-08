@@ -15,7 +15,7 @@ namespace Module.Users
         public static IServiceCollection AddUserModule(this IServiceCollection services, IConfiguration configuration)
         {
             services.Configure<JwtSettings>(configuration.GetSection(nameof(JwtSettings)));
-            services.AddSingleton<JwtManager, JwtManager>();
+            services.AddSingleton<JwtService>();
             services.AddTransient<IAuthService, AuthService>();
 
             // Google
@@ -26,7 +26,7 @@ namespace Module.Users
             })
             .AddJwtBearer(options =>
             {
-                options.TokenValidationParameters = JwtManager.GetApiValidationTokenParams(configuration);
+                options.TokenValidationParameters = JwtService.GetApiValidationTokenParams(configuration);
             })
             .AddCookie(options =>
             {
