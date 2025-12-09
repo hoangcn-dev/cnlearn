@@ -4,7 +4,6 @@ import { Observable, BehaviorSubject, tap, catchError, throwError, map, switchMa
 import { ApiService } from '../../../core/services/api.service';
 import { ApiResponse } from '../../../core/models/api-response.model';
 import { LoginInfo, LoginRequest } from '../models/user.model';
-import { HttpParams } from '@angular/common/http';
 import { LoadingService } from '../../../core/services/loading.service';
 
 const USER_KEY = 'current_user';
@@ -19,18 +18,17 @@ export class AuthService {
     private loadingService = inject(LoadingService);
 
     private currentUserSubject = new BehaviorSubject<LoginInfo | null>(this.getUserFromStorage());
-    public currentUser$ = this.currentUserSubject.asObservable();
-    
     private isAuthenticatedSubject = new BehaviorSubject<boolean>(!!this.getUserFromStorage());
-    public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
-
-    public isLoading = signal(false);
+    
+    currentUser$ = this.currentUserSubject.asObservable();
+    isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+    isLoading = signal(false);
 
     login(request: LoginRequest): Observable<LoginInfo> {
         this.isLoading.set(true);
         this.loadingService.show('Đang đăng nhập...');
         
-        return this.api.post<ApiResponse<void>>('users/login', request).pipe(
+        return this.api.post<ApiResponse>('users/login', request).pipe(
             map(response => {
                 return response;
             }),
@@ -53,10 +51,10 @@ export class AuthService {
     getLoginInfo(): Observable<LoginInfo> {
         return this.api.get<ApiResponse<LoginInfo>>('users/me').pipe(
             map(response => {
-                if (response.errorMessage || !response.data) {
+                if (!response.success) {
                     throw new Error(response.errorMessage || 'Không thể lấy thông tin user');
                 }
-                return response.data;
+                return response.data!;
             }),
             tap(loginInfo => {
                 this.setUser(loginInfo);

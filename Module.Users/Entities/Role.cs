@@ -8,7 +8,7 @@ namespace Module.Users.Entities
         public const string ADMIN = "admin";
     }
 
-    public class Role : IEntity
+    public class Role : IChangableEntity
     {
         public Guid Id { get; set; }
         public string Name { get; set; }

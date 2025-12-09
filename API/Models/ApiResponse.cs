@@ -1,4 +1,6 @@
-﻿namespace API.Models
+﻿using Core.Utilities;
+
+namespace API.Models
 {
     public class ApiResponse
     {
@@ -26,6 +28,30 @@
             {
                 Message = null,
                 Data = data
+            };
+        }
+
+        public static SuccessResponse UpdateSuccess(object id)
+        {
+            return new SuccessResponse
+            {
+                Message = StringUtil.ApiMessages.Updated,
+                Data = new UpdatedResponse
+                {
+                    UpdatedId = id
+                }
+            };
+        }
+
+        public static SuccessResponse DeleteSuccess(object id)
+        {
+            return new SuccessResponse
+            {
+                Message = StringUtil.ApiMessages.Deleted,
+                Data = new DeletedResponse
+                {
+                    DeletedId = id
+                }
             };
         }
 

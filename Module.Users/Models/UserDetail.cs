@@ -1,27 +1,27 @@
-﻿using Module.Users.Entities;
+using System.Data.Common;
+using Module.Users.Entities;
 
 namespace Module.Users.Models
 {
-    public class UserListItem
+    public class UserDetail : UserListItem
     {
-        public Guid Id { get; set; }
-        public string Email { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public bool IsOnline { get; set; }
-        public string? PhoneNumber { get; set; }
-        public bool IsActived { get; set; }
-        public DateTimeOffset LastLogin { get; set; }
-        public RoleListItem Role { get; set; }
+        public string AvatarUrl { get; set; }
+        public string? Note { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
 
-        public static UserListItem ConvertFromUserToItem(User user)
+        public static UserDetail ConvertFromUserToDetail(User user)
         {
-            return new UserListItem
+            return new UserDetail
             {
                 Id = user.Id,
                 Email = user.Email,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
+                AvatarUrl = user.AvatarUrl,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                Note = user.Note,
                 PhoneNumber = user.PhoneNumber,
                 IsActived = user.IsActived,
                 IsOnline = user.IsOnline,

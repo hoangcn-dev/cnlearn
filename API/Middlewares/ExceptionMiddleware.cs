@@ -21,6 +21,11 @@ namespace API.Middlewares
             {
                 await next(context);
             }
+            catch (BadRequestException ex)
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await WriteResponseAsync(context, ApiResponse.Error(ex.Message));
+            }
             catch (NotFoundException ex)
             {
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -45,7 +50,7 @@ namespace API.Middlewares
             {
                 _logger.LogError("Unknown error: " + ex.Message);
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                await WriteResponseAsync(context, ApiResponse.Error(StringUtil.ErrorMessages.UnknownError));
+                await WriteResponseAsync(context, ApiResponse.Error(StringUtil.ApiMessages.UnknownError));
             }
         }
 

@@ -17,6 +17,7 @@ namespace Module.Users
             services.Configure<JwtSettings>(configuration.GetSection(nameof(JwtSettings)));
             services.AddSingleton<JwtService>();
             services.AddTransient<IAuthService, AuthService>();
+            services.AddTransient<IUserService, UserService>();
 
             // Google
             services.AddAuthentication(options =>

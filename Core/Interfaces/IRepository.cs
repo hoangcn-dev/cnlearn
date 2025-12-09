@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using Core.Models;
 
 namespace Core.Interfaces
 {
@@ -27,6 +28,14 @@ namespace Core.Interfaces
             int? pageSize = null,
             Expression<Func<TEntity, object>>? orderBy = null,
             bool? asc = null);
+
+        Task<Paginated<TResult>> GetPagingAsync<TResult>(
+            Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TResult>> selector,
+            int pageIndex,
+            int pageSize,
+            Expression<Func<TEntity, object>> orderBy,
+            bool asc);
 
         Task<bool> ExistsAsync(
             Expression<Func<TEntity, bool>> predicate);

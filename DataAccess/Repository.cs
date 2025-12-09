@@ -1,4 +1,5 @@
 ﻿using Core.Interfaces;
+using Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -106,6 +107,39 @@ namespace DataAccess
             }
 
             return await query.ToListAsync();
+        }
+
+        public async Task<Paginated<TResult>> GetPagingAsync<TResult>(
+            Expression<Func<TEntity, bool>> predicate, 
+            Expression<Func<TEntity, TResult>> selector, 
+            int pageIndex, 
+            int pageSize, 
+            Expression<Func<TEntity, object>> orderBy, 
+            bool asc)
+        {
+            IQueryable<TEntity> query = _dbSet.Where(predicate);
+
+            // Sắp xếp
+            if (asc)
+            {
+                query = query.OrderBy(orderBy);
+            }
+            else
+            {
+                query = query.OrderByDescending(orderBy);
+            }
+
+            // Phân trang
+            var total = await query.CountAsync();
+            query = query.Skip((pageIndex - 1) * pageSize).Take(pageSize);
+
+            return new Paginated<TResult>
+            {
+                Items = await query.Select(selector).ToListAsync(),
+                PageIndex = pageIndex,
+                PageSize = pageSize,
+                TotalItems = total
+            };
         }
 
         public async Task<TResult?> GetFirstAsync<TResult>(

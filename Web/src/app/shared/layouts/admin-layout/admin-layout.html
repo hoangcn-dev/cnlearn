@@ -1,0 +1,14 @@
+<div class="admin-layout vh-100">
+    <aside class="admin-sidebar border-1 border-end">
+        <h6 class="fw-bold text-center">Quản lý hệ thống</h6>
+        <hr class="my-0 mb-2">
+        <nav class="d-flex flex-column mb-2">
+            <a routerLink="/admin/dashboard" routerLinkActive="active">Dashboard</a>
+            <a routerLink="/admin/users" routerLinkActive="active">Người dùng</a>
+            <a class="text-danger">Đăng xuất</a>
+        </nav>
+    </aside>
+    <main class="flex-fill p-3 overflow-scroll" style="background-color: var(--bg-color);">
+        <router-outlet />
+    </main>
+</div>

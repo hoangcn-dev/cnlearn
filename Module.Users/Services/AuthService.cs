@@ -14,6 +14,7 @@ namespace Module.Users.Services
     {
         Task<SessionToken> LoginAsync(LoginRequest request);
         Task<SessionToken> LoginWithGoogleAsync(AuthenticateResult authenticateResult);
+        Task LogoutAsync(string accessToken);
         LoginInfo GetLoginInfo(ClaimsPrincipal claims);
     }
 
@@ -45,27 +46,29 @@ namespace Module.Users.Services
 
             if (user is null)
             {
-                throw new NotFoundException(StringUtil.ErrorMessages.UserNotFound);
+                throw new NotFoundException(StringUtil.ApiMessages.UserNotFound);
             }
 
             if (!user.IsActived)
             {
-                throw new ForbiddenException(StringUtil.ErrorMessages.UserIsBanned);
+                throw new ForbiddenException(StringUtil.ApiMessages.UserIsBanned);
             }
 
             if (user.Password is null)
             {
-                throw new UnauthorizedException(StringUtil.ErrorMessages.PasswordNotSet);
+                throw new UnauthorizedException(StringUtil.ApiMessages.PasswordNotSet);
             }
 
             if (!PasswordHasher.VerifyPassword(request.Password, user.Password))
             {
-                throw new UnauthorizedException(StringUtil.ErrorMessages.PasswordIncorrect);
+                throw new UnauthorizedException(StringUtil.ApiMessages.PasswordIncorrect);
             }
 
             var token = _jwtService.IssueToken(user);
             user.LastLogin = DateTimeOffset.UtcNow;
+            user.AddLog(StringUtil.LogMessages.UserLoggedIn);
 
+            await _unitOfWork.Repository<User>().UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
             return token;
@@ -77,14 +80,14 @@ namespace Module.Users.Services
 
             if (claims is null)
             {
-                throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+                throw new UnauthorizedException(StringUtil.ApiMessages.InvalidCredential);
             }
 
             var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
 
             if (email is null)
             {
-                throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+                throw new UnauthorizedException(StringUtil.ApiMessages.InvalidCredential);
             }
 
             var user = await _unitOfWork.Repository<User>()
@@ -99,7 +102,7 @@ namespace Module.Users.Services
 
                 if (avatarUrl is null || firstName is null || lastName is null)
                 {
-                    throw new UnauthorizedException(StringUtil.ErrorMessages.InvalidCredential);
+                    throw new UnauthorizedException(StringUtil.ApiMessages.InvalidCredential);
                 }
 
                 var userRole = await _unitOfWork.Repository<Role>()
@@ -107,7 +110,7 @@ namespace Module.Users.Services
 
                 if (userRole is null)
                 {
-                    throw new ServerErrorException(StringUtil.ErrorMessages.UnknownError);
+                    throw new ServerErrorException(StringUtil.ApiMessages.UnknownError);
                 }
 
                 user = new User
@@ -124,19 +127,44 @@ namespace Module.Users.Services
                     Role = userRole,
                     IsActived = true
                 };
+
+                user.AddLog(StringUtil.LogMessages.UserCreatedFromGoogleAccount);
             }
 
             if (!user.IsActived)
             {
-                throw new ForbiddenException(StringUtil.ErrorMessages.UserIsBanned);
+                throw new ForbiddenException(StringUtil.ApiMessages.UserIsBanned);
             }
 
             var token = _jwtService.IssueToken(user);
             user.LastLogin = DateTimeOffset.UtcNow;
+            user.AddLog(StringUtil.LogMessages.UserLoggedIn);
 
+            await _unitOfWork.Repository<User>().UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
             return token;
+        }
+
+        public async Task LogoutAsync(string accessToken)
+        {
+            var (valid, claims) = _jwtService.ValidateAToken(accessToken);
+            if (valid && claims!.HasClaim(c => c.Type == ClaimTypes.NameIdentifier))
+            {
+                var userId = claims.FindFirstValue(ClaimTypes.NameIdentifier);
+                var user = await _unitOfWork.Repository<User>().GetFirstAsync(
+                    predicate: u => u.Id.ToString() == userId
+                );
+
+                if (user is not null)
+                {
+                    user.IsOnline = false;
+                    user.AddLog(StringUtil.LogMessages.UserLoggedOut);
+
+                    await _unitOfWork.Repository<User>().UpdateAsync(user);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
         }
     }
 }

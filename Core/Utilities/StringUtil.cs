@@ -8,7 +8,12 @@ namespace Core.Utilities
 {
     public class StringUtil
     {
-        public class ErrorMessages
+        public class PolicyNames
+        {
+            public const string OnlyAdmin = nameof(OnlyAdmin);
+        }
+
+        public class ApiMessages
         {
             public const string MaxDevice = "Số lượng thiết bị đăng nhập đã đạt tối đa";
             public const string UserNotFound = "Người dùng không tồn tại";
@@ -18,6 +23,18 @@ namespace Core.Utilities
             public const string InvalidCredential = "Thông tin xác thực không hợp lệ";
             public const string UnknownError = "Lỗi không xác định";
             public const string DataInitialError = "Khởi tạo dữ liệu thất bại";
+            public const string LockReasonNotSet = "Vui lòng cung cấp lí do khóa tài khoản";
+            public const string Updated = "Cập nhật thành công";
+            public const string Deleted = "Đã xóa thành công";
+        }
+
+        public class LogMessages
+        {
+            public const string UserCreatedFromGoogleAccount = "Tạo tài khoản từ Google Account";
+            public const string UserLoggedIn = "Đã đăng nhập";
+            public const string UserLoggedOut = "Đã đăng xuất";
+            public static Func<string, string> UserIsLocked = reason => "Bị khóa tài khoản: " + reason;
+            public const string UserIsUnlocked = "Đã mở khóa tài khoản";
         }
 
 

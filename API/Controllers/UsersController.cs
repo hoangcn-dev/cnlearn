@@ -15,11 +15,19 @@ namespace API.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public UsersController(IAuthService authService)
+        public UsersController(
+            IAuthService authService, 
+            IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
+
+
+
+        #region For users
 
         [HttpGet("me")]
         [Authorize]
@@ -28,6 +36,10 @@ namespace API.Controllers
             var info = _authService.GetLoginInfo(User);
             return Ok(ApiResponse.Success(info));
         }
+
+        #endregion
+
+        #region Auth
 
         [HttpGet("google-login")]
         public async Task<IActionResult> LoginWithGoolge([FromQuery] string returnUrl)
@@ -93,5 +105,43 @@ namespace API.Controllers
 
             return Ok(ApiResponse.Success("Đăng xuất thành công"));
         }
+        
+        #endregion
+
+        #region Manage users
+
+        [HttpGet]
+        [Authorize(Policy = StringUtil.PolicyNames.OnlyAdmin)]
+        public async Task<IActionResult> GetAllUsers([FromQuery] SearchUserRequest request)
+        {
+            var users = await _userService.GetAllUsers(request);
+            return Ok(ApiResponse.Success(users));
+        }
+
+        [HttpGet("{id}/detail")]
+        [Authorize(Policy = StringUtil.PolicyNames.OnlyAdmin)]
+        public async Task<IActionResult> GetUserDetail(string id)
+        {
+            var user = await _userService.GetUserDetail(Guid.Parse(id));
+            return Ok(ApiResponse.Success(user));
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Policy = StringUtil.PolicyNames.OnlyAdmin)]
+        public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserRequest request)
+        {
+            var updatedUserId = await _userService.UpdateUser(Guid.Parse(id), request);
+            return Ok(ApiResponse.UpdateSuccess(updatedUserId));
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Policy = StringUtil.PolicyNames.OnlyAdmin)]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            var deletedUserId = await _userService.DeleteUser(Guid.Parse(id));
+            return Ok(ApiResponse.DeleteSuccess(deletedUserId));
+        }
+
+        #endregion
     }
 }
