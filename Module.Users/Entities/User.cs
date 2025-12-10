@@ -21,7 +21,7 @@ namespace Module.Users.Entities
         public Role Role { get; set; }
         public Guid RoleId { get; set; }
 
-        public List<UserLog> Logs { get; set; } = [];
+        public List<UserLog> Logs { get; set; } = new ();
 
         public void AddLog(string log, bool isSystemAction = false)
         {
@@ -30,6 +30,7 @@ namespace Module.Users.Entities
                 IsSystemAction = isSystemAction,
                 Log = log,
                 Timestamp = DateTimeOffset.UtcNow,
+                User = this
             });
         }
     }

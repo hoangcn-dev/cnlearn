@@ -1,7 +1,10 @@
 ﻿using API.Middlewares;
 using Asp.Versioning;
+using Core.Utilities;
 using DataAccess;
 using Module.Users;
+using Module.Users.Entities;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace API
@@ -14,6 +17,15 @@ namespace API
 
             var configuration = builder.Configuration;
             var services = builder.Services;
+
+            // Authorize
+            services.AddAuthorization(options =>
+            {
+               options.AddPolicy(StringUtil.PolicyNames.OnlyAdmin, p =>
+               {
+                  p.RequireClaim(ClaimTypes.Role, Roles.ADMIN); 
+               });
+            });
 
             // Default
             services.AddControllers();

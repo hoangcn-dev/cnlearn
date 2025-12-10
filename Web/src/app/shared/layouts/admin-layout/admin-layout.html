@@ -3,9 +3,15 @@
         <h6 class="fw-bold text-center">Quản lý hệ thống</h6>
         <hr class="my-0 mb-2">
         <nav class="d-flex flex-column mb-2">
-            <a routerLink="/admin/dashboard" routerLinkActive="active">Dashboard</a>
-            <a routerLink="/admin/users" routerLinkActive="active">Người dùng</a>
-            <a class="text-danger">Đăng xuất</a>
+
+            <nz-divider nzText="Chức năng" nzOrientation="left" class="text-secondary fst-italic" style="font-size: 12px;"></nz-divider>
+            <a [routerLink]="urls.getManageDashboardPath()" routerLinkActive="active"><nz-icon nzType="bar-chart" nzTheme="outline" /> Dashboard</a>
+            <a [routerLink]="urls.getManageUsersPath()" routerLinkActive="active"><nz-icon nzType="user" nzTheme="outline" /> Người dùng</a>
+
+            <nz-divider nzText="Hành động" nzOrientation="left" class="text-secondary fst-italic" style="font-size: 12px;"></nz-divider>
+            <a [routerLink]="urls.getHomePath()"><nz-icon nzType="home" nzTheme="outline" /> Về trang chủ</a>
+            <a class="text-danger" (click)="logout()"><nz-icon nzType="logout" nzTheme="outline" /> Đăng xuất</a>
+
         </nav>
     </aside>
     <main class="flex-fill p-3 overflow-scroll" style="background-color: var(--bg-color);">

@@ -1,1 +1,1 @@
-dotnet run --project API/API.csproj
+dotnet run --project API/API.csproj --configuration Debug

@@ -1,10 +1,24 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './features/auth/pages/login/login.component';
 
+export const paths = {
+  getHomePath: () => "/",
+
+  authRoutes: 'xac-thuc',
+  authLogin: 'dang-nhap',
+  authCallback: 'callback',
+  getAuthLoginPath: () => '/' + paths.authRoutes + '/' + paths.authLogin,
+  getAuthCallbackPath: () => '/' + paths.authRoutes + '/' + paths.authCallback,
+
+  manageRoutes: 'admin',
+  manageUsers: 'users',
+  manageDashboard: 'dashboard',
+  getManageUsersPath: () => '/' + paths.manageRoutes + '/' + paths.manageUsers,
+  getManageDashboardPath: () => '/' + paths.manageRoutes + '/' + paths.manageDashboard,
+}
 
 export const routes: Routes = [
-  { path: 'dang-nhap', component: LoginComponent },
-  { path: 'admin', loadChildren: () => import('./features/admin/admin.routes').then(m => m.adminRoutes) },
+  { path: paths.authRoutes, loadChildren: () => import("./features/auth/auth.routes").then(m => m.authRoutes) },
+  { path: paths.manageRoutes, loadChildren: () => import('./features/admin/admin.routes').then(m => m.adminRoutes) },
   {
     path: '',
     loadComponent: () => import('./shared/layouts/user-layout/user-layout').then(m => m.UserLayout),

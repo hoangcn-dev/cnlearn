@@ -11,7 +11,6 @@ namespace API.Middlewares
                 Console.WriteLine("Cookie: " + token);
                 context.Request.Headers.Authorization = "Bearer " + token;
             }
-            Console.WriteLine("Authorization: " + token);
             await next(context);
         }
     }

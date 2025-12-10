@@ -26,11 +26,11 @@ namespace Module.Users.Models
                 IsActived = user.IsActived,
                 IsOnline = user.IsOnline,
                 LastLogin = user.LastLogin,
-                Role = new RoleListItem
-                {
-                    Id = user.Role.Id,
-                    Name = user.Role.Name
-                }
+                // Role = new RoleListItem
+                // {
+                //     Id = user.Role.Id,
+                //     Name = user.Role.Name
+                // }
             };
         }
     }

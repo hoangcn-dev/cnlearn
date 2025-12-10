@@ -15,6 +15,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { LoginRequest } from '../../models/user.model';
+import { paths } from '../../../../app.routes';
 
 @Component({
   selector: 'app-login',
@@ -90,7 +91,7 @@ export class LoginComponent implements OnInit {
   }
 
   loginWithGoogle(): void {
-    const callbackUrl = `/dang-nhap/callback?returnUrl=${this.returnUrl}`;
+    const callbackUrl = `${paths.getAuthCallbackPath()}?returnUrl=${this.returnUrl}`;
     this.authService.loginWithGoogle(callbackUrl);
   }
 

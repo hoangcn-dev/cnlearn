@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, BehaviorSubject, tap, catchError, throwError, map, switchMap, finalize } from 'rxjs';
-import { ApiService } from '../../../core/services/api.service';
+import { ApiService, endpoints } from '../../../core/services/api.service';
 import { ApiResponse } from '../../../core/models/api-response.model';
 import { LoginInfo, LoginRequest } from '../models/user.model';
 import { LoadingService } from '../../../core/services/loading.service';
@@ -28,7 +28,7 @@ export class AuthService {
         this.isLoading.set(true);
         this.loadingService.show('Đang đăng nhập...');
         
-        return this.api.post<ApiResponse>('users/login', request).pipe(
+        return this.api.post(endpoints.auth.login, request).pipe(
             map(response => {
                 return response;
             }),
@@ -49,7 +49,7 @@ export class AuthService {
     }
 
     getLoginInfo(): Observable<LoginInfo> {
-        return this.api.get<ApiResponse<LoginInfo>>('users/me').pipe(
+        return this.api.get<LoginInfo>(endpoints.auth.loginInfo).pipe(
             map(response => {
                 if (!response.success) {
                     throw new Error(response.errorMessage || 'Không thể lấy thông tin user');
@@ -75,24 +75,20 @@ export class AuthService {
     loginWithGoogle(returnUrl: string): void {
         if (!this.isBrowser) return;
         const fullReturnUrl = window.location.origin + returnUrl;
-        const url = `${this.api.apiUrl}/users/google-login?returnUrl=${encodeURIComponent(fullReturnUrl)}`;
-        window.location.href = url;
+        // const url = `${this.api.apiUrl}/users/google-login?returnUrl=${encodeURIComponent(fullReturnUrl)}`;
+        window.location.href = endpoints.auth.loginWithGoogle(fullReturnUrl);
     }
 
     logout(): Observable<void> {
         this.loadingService.show('Đang đăng xuất...');
         
-        return this.api.post<ApiResponse<void>>('users/logout', {}).pipe(
+        return this.api.post(endpoints.auth.logout, {}).pipe(
             tap(() => {
-                this.clearStorage();
-                this.currentUserSubject.next(null);
-                this.isAuthenticatedSubject.next(false);
+                this.endSession();
             }),
             map(() => void 0),
             catchError(error => {
-                this.clearStorage();
-                this.currentUserSubject.next(null);
-                this.isAuthenticatedSubject.next(false);
+                this.endSession();
                 return throwError(() => error);
             }),
             finalize(() => this.loadingService.hide())
@@ -106,6 +102,12 @@ export class AuthService {
     getCurrentUser(): LoginInfo | null {
         const user = this.currentUserSubject.value;
         return user;
+    }
+
+    endSession() {
+        this.clearStorage();
+        this.currentUserSubject.next(null);
+        this.isAuthenticatedSubject.next(false);
     }
 
     private setUser(user: LoginInfo): void {

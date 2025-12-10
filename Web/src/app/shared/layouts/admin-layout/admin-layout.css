@@ -17,6 +17,10 @@
     border-radius: 10px;
 }
 
+.admin-sidebar a nz-icon {
+    padding-right: 10px;
+}
+
 .admin-sidebar a:hover {
     cursor: pointer;
     background-color: rgb(228, 224, 224);

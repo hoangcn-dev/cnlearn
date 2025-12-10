@@ -4,10 +4,6 @@ import { NzNotificationService } from 'ng-zorro-antd/notification';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
-/**
- * Toast Service - Reusable notification service
- * Sử dụng NG-ZORRO message và notification components
- */
 @Injectable({
   providedIn: 'root'
 })

@@ -40,7 +40,23 @@ namespace Module.Users.Services
                 pageSize: request.PageSize,
                 orderBy: u => u.FirstName,
                 asc: true,
-                selector: u => UserListItem.ConvertFromUserToItem(u));
+                selector: u => new UserListItem
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    PhoneNumber = u.PhoneNumber,
+                    IsActived = u.IsActived,
+                    IsOnline = u.IsOnline,
+                    LastLogin = u.LastLogin,
+                    Role = new RoleListItem
+                    {
+                        Id = u.Role.Id,
+                        Name = u.Role.Name
+                    }
+                }
+            );
 
             return users;
         }

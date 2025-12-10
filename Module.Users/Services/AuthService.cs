@@ -128,6 +128,9 @@ namespace Module.Users.Services
                     IsActived = true
                 };
 
+                await _unitOfWork.Repository<User>().AddAsync(user);
+                await _unitOfWork.SaveChangesAsync();
+
                 user.AddLog(StringUtil.LogMessages.UserCreatedFromGoogleAccount);
             }
 

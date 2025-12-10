@@ -1,16 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NzButtonComponent } from "ng-zorro-antd/button";
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzIconModule } from "ng-zorro-antd/icon";
 import { FormsModule } from '@angular/forms';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { SearchUserRequest, UserListItem } from '../../models/user.model';
+import { Paginated } from '../../../../core/models/paging.model';
+import { UUID } from 'crypto';
+import { UserService } from '../../services/user.service';
+import { map, tap } from 'rxjs';
+import { ToastService } from '../../../../core/services/toast.service';
+import { error } from 'console';
+import { LoadingService } from '../../../../core/services/loading.service';
 
-interface ItemData {
-	id: number;
-	name: string;
-	age: number;
-	address: string;
-}
 
 @Component({
 	selector: 'app-user-management',
@@ -20,35 +22,38 @@ interface ItemData {
 	styleUrl: './user-management.component.css',
 })
 export class UserManagementComponent {
-	listOfSelection = [
-		{
-			text: 'Select All Row',
-			onSelect: () => {
-				this.onAllChecked(true);
-			}
-		},
-		{
-			text: 'Select Odd Row',
-			onSelect: () => {
-				this.listOfCurrentPageData.forEach((data, index) => this.updateCheckedSet(data.id, index % 2 !== 0));
-				this.refreshCheckedStatus();
-			}
-		},
-		{
-			text: 'Select Even Row',
-			onSelect: () => {
-				this.listOfCurrentPageData.forEach((data, index) => this.updateCheckedSet(data.id, index % 2 === 0));
-				this.refreshCheckedStatus();
-			}
-		}
-	];
+	api = inject(UserService);
+	loading = inject(LoadingService);
+	toast = inject(ToastService);
+
+	searchData: SearchUserRequest = {
+		email: null,
+		isAsc: true,
+		orderBy: null,
+		pageIndex: 1,
+		pageSize: 20
+	};
+	defaultData : Paginated<UserListItem> = {
+		items: [],
+		pageIndex: 1,
+		pageSize: 20,
+		totalItems: 0,
+		totalPages: 1
+	};
+	data: Paginated<UserListItem> = this.defaultData;
 	checked = false;
 	indeterminate = false;
-	listOfCurrentPageData: readonly ItemData[] = [];
-	listOfData: readonly ItemData[] = [];
-	setOfCheckedId = new Set<number>();
+	setOfCheckedId = new Set<UUID>();
 
-	updateCheckedSet(id: number, checked: boolean): void {
+	ngOnInit(): void {
+		this.api.getAllUsers(this.searchData).subscribe({
+			next: response => {
+				this.data = response.data!;
+			}
+		});
+	}
+
+	updateCheckedSet(id: UUID, checked: boolean): void {
 		if (checked) {
 			this.setOfCheckedId.add(id);
 		} else {
@@ -56,33 +61,23 @@ export class UserManagementComponent {
 		}
 	}
 
-	onItemChecked(id: number, checked: boolean): void {
+	onItemChecked(id: UUID, checked: boolean): void {
 		this.updateCheckedSet(id, checked);
 		this.refreshCheckedStatus();
 	}
 
 	onAllChecked(value: boolean): void {
-		this.listOfCurrentPageData.forEach(item => this.updateCheckedSet(item.id, value));
+		this.data.items.forEach(item => this.updateCheckedSet(item.id, value));
 		this.refreshCheckedStatus();
 	}
 
-	onCurrentPageDataChange($event: readonly ItemData[]): void {
-		this.listOfCurrentPageData = $event;
-		this.refreshCheckedStatus();
+	onCurrentPageDataChange($event: readonly UserListItem[]): void {
+		// this.listOfCurrentPageData = $event;
+		// this.refreshCheckedStatus();
 	}
 
 	refreshCheckedStatus(): void {
-		this.checked = this.listOfCurrentPageData.every(item => this.setOfCheckedId.has(item.id));
-		this.indeterminate = this.listOfCurrentPageData.some(item => this.setOfCheckedId.has(item.id)) && !this.checked;
+		this.checked = this.data.items.every(item => this.setOfCheckedId.has(item.id));
+		this.indeterminate = this.data.items.some(item => this.setOfCheckedId.has(item.id)) && !this.checked;
 	}
-
-	ngOnInit(): void {
-		this.listOfData = new Array(200).fill(0).map((_, index) => ({
-			id: index,
-			name: `Edward King ${index}`,
-			age: 32,
-			address: `London, Park Lane no. ${index}`
-		}));
-	}
-
 }

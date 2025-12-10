@@ -101,6 +101,10 @@ namespace API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
+            if (Request.Cookies.TryGetValue("aToken", out string? aToken)) {
+                await _authService.LogoutAsync(aToken);
+            }
+
             Response.Cookies.Delete("aToken");
 
             return Ok(ApiResponse.Success("Đăng xuất thành công"));

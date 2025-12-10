@@ -1,11 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDropdownMenuComponent, NzDropDownModule } from "ng-zorro-antd/dropdown";
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../features/auth/services/auth.service';
+import { UtilService } from '../../../core/services/util.service';
+import { LoginComponent } from '../../../features/auth/pages/login/login.component';
+import { ModalService } from '../../../core/services/modal.service';
+import { DashboardOverviewComponent } from '../../../features/admin/pages/dashboard-overview/dashboard-overview.component';
+import { log } from 'console';
+import { paths } from '../../../app.routes';
 
 @Component({
 	selector: 'app-user-layout',
@@ -14,20 +20,26 @@ import { AuthService } from '../../../features/auth/services/auth.service';
 	styleUrl: './user-layout.css',
 })
 export class UserLayout {
-	protected readonly title = signal('HoangCN');
-  protected authService = inject(AuthService);
-  protected router = inject(Router);
-  private toastService = inject(ToastService);
+  
+  authService = inject(AuthService);
+  router = inject(Router);
+  toastService = inject(ToastService);
+  util = inject(UtilService);
+  modalService = inject(ModalService);
+
+  urls = paths
 
   logout(): void {
-    this.authService.logout().subscribe({
-      next: () => {
-        this.toastService.success('Đăng xuất thành công!');
-        this.router.navigate(['/dang-nhap']);
-      },
-      error: (error) => {
-        this.toastService.error(error.message || 'Đăng xuất thất bại!');
+    this.modalService.showConfirm(
+      "Đăng xuất khỏi hệ thống?",
+      () => {
+        this.authService.logout().subscribe({
+          complete: () => {
+            this.toastService.success("Đăng xuất thành công!");
+            this.router.navigateByUrl(paths.getHomePath());
+          }
+        });
       }
-    });
+    );
   }
 }

@@ -6,30 +6,32 @@
             </a>
         </div>
         <div class="nav-links">
-            <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-            <a routerLink="/users" routerLinkActive="active">Users</a>
+            @if (authService.getCurrentUser()?.role == 'admin') {
+                <a [routerLink]="urls.getManageDashboardPath()" routerLinkActive="active">Quản lý</a>
+            }
+
 
             @if (authService.isAuthenticated$ | async) {
-            <div class="user-menu" nz-dropdown [nzDropdownMenu]="menu">
-                <div class="user-info">
-                    <nz-avatar nzPlacement="bottomRight" [nzSrc]="(authService.currentUser$ | async)?.avatarUrl"
-                        [nzText]="(authService.currentUser$ | async)?.fullName?.charAt(0)" nzSize="small"
-                        class="user-avatar">
-                    </nz-avatar>
-                    <span class="user-name">{{ (authService.currentUser$ | async)?.fullName }}</span>
-                    <span nz-icon nzType="down" nzTheme="outline" class="dropdown-icon"></span>
+                <div class="user-menu" nz-dropdown [nzDropdownMenu]="menu">
+                    <div class="user-info">
+                        <nz-avatar nzPlacement="bottomRight" [nzSrc]="(authService.currentUser$ | async)?.avatarUrl"
+                            [nzText]="(authService.currentUser$ | async)?.fullName?.charAt(0)" nzSize="small"
+                            class="user-avatar">
+                        </nz-avatar>
+                        <span class="user-name">{{ (authService.currentUser$ | async)?.fullName }}</span>
+                        <span nz-icon nzType="down" nzTheme="outline" class="dropdown-icon"></span>
+                    </div>
                 </div>
-            </div>
-            <nz-dropdown-menu #menu="nzDropdownMenu">
-                <ul nz-menu>
-                    <li nz-menu-item (click)="logout()">
-                        <span nz-icon nzType="logout" nzTheme="outline"></span>
-                        <span class="ms-2">Đăng xuất</span>
-                    </li>
-                </ul>
-            </nz-dropdown-menu>
+                <nz-dropdown-menu #menu="nzDropdownMenu">
+                    <ul nz-menu>
+                        <li nz-menu-item (click)="logout()">
+                            <span nz-icon nzType="logout" nzTheme="outline"></span>
+                            <span class="ms-2">Đăng xuất</span>
+                        </li>
+                    </ul>
+                </nz-dropdown-menu>
             } @else {
-            <a routerLink="/dang-nhap" routerLinkActive="active">Đăng nhập</a>
+                <a [routerLink]="urls.getAuthLoginPath()" routerLinkActive="active">Đăng nhập</a>
             }
         </div>
     </nav>
@@ -44,106 +46,3 @@
         <span>&copy; 2025 HoangCN. All rights reserved.</span>
     </div>
 </footer>
-
-<style>
-    :host {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    .header {
-        background: white;
-        border-bottom: 1px solid #e0e0e0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .navbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 2rem;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-
-    .nav-brand h2 {
-        margin: 0;
-        color: #3498db;
-        font-size: 1.25rem;
-    }
-
-    .nav-links {
-        display: flex;
-        gap: 1.5rem;
-    }
-
-    .nav-links a {
-        text-decoration: none;
-        color: #666;
-        font-weight: 500;
-        padding: 0.25rem 0;
-        transition: color 0.3s;
-    }
-
-    .nav-links a:hover {
-        color: #3498db;
-    }
-
-    .nav-links a.active {
-        color: #3498db;
-    }
-
-    .user-menu {
-        cursor: pointer;
-    }
-
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        transition: background-color 0.3s;
-    }
-
-    .user-info:hover {
-        background-color: #f5f5f5;
-    }
-
-    .user-avatar {
-        border: 2px solid #3498db;
-    }
-
-    .user-name {
-        color: #333;
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-
-    .dropdown-icon {
-        color: #999;
-        font-size: 0.75rem;
-    }
-
-    .main-content {
-        flex: 1;
-        overflow-y: auto;
-        background-color: #f5f5f5;
-    }
-
-    .footer {
-        background: white;
-        border-top: 1px solid #e0e0e0;
-        padding: 1rem 2rem;
-    }
-
-    .footer-content {
-        max-width: 1400px;
-        margin: 0 auto;
-        text-align: center;
-        color: #666;
-        font-size: 0.875rem;
-    }
-</style>

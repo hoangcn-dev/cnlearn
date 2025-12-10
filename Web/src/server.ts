@@ -36,7 +36,7 @@ app.use(
 );
 
 /**
- * Handle all other requests by rendering the Angular application.
+ * SSR
  */
 app.use((req, res, next) => {
   angularApp
@@ -46,6 +46,13 @@ app.use((req, res, next) => {
     )
     .catch(next);
 });
+
+/**
+ * SPA
+ */
+// app.use((req, res, next) => {
+//   res.sendFile(join(browserDistFolder, 'index.html'));
+// });
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
