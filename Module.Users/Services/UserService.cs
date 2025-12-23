@@ -31,7 +31,7 @@ namespace Module.Users.Services
             var filter = PredicateBuilder.New<User>(true);
             if (!string.IsNullOrEmpty(request.Email))
             {
-                filter.And(u => u.Email == request.Email);
+                filter.And(u => u.Email.Contains(request.Email));
             }
 
             var users = await _unitOfWork.Repository<User>().GetPagingAsync(
@@ -65,7 +65,26 @@ namespace Module.Users.Services
         {
             var user = await _unitOfWork.Repository<User>().GetFirstAsync(
                 predicate: u => u.Id == userId,
-                selector: u => UserDetail.ConvertFromUserToDetail(u)
+                selector: u => new UserDetail
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    AvatarUrl = u.AvatarUrl,
+                    CreatedAt = u.CreatedAt,
+                    UpdatedAt = u.UpdatedAt,
+                    Note = u.Note,
+                    PhoneNumber = u.PhoneNumber,
+                    IsActived = u.IsActived,
+                    IsOnline = u.IsOnline,
+                    LastLogin = u.LastLogin,
+                    Role = new RoleListItem
+                    {
+                        Id = u.Role.Id,
+                        Name = u.Role.Name
+                    }
+                }
             );
 
             if (user is null)

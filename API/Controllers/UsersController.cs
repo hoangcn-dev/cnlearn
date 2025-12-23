@@ -57,24 +57,33 @@ namespace API.Controllers
         [HttpGet("google-login-callback")]
         public async Task<IActionResult> LoginWithGoolgeCallback([FromQuery] string returnUrl)
         {
-            var authenticateResult = await HttpContext.AuthenticateAsync("Google");
-            if (authenticateResult is null)
+            try
             {
-                return Redirect(StringUtil.AppendParamsToUrl(returnUrl, 
-                    ("success", "false"),
-                    ("message", "Đăng nhập thất bại")));
+                var authenticateResult = await HttpContext.AuthenticateAsync("Google");
+                if (authenticateResult is null)
+                {
+                    return Redirect(StringUtil.AppendParamsToUrl(returnUrl, 
+                        ("success", "false"),
+                        ("message", "Đăng nhập thất bại")));
+                }
+
+                var token = await _authService.LoginWithGoogleAsync(authenticateResult);
+
+                Response.Cookies.Append("aToken", token.AccessToken, new CookieOptions
+                {
+                    Path = "/",
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.None,
+                    Secure = true,
+                    MaxAge = TimeSpan.FromMinutes(token.AccessTokenExpiryMin)
+                });
+            } 
+            catch (Exception ex)
+            {
+                return Redirect(StringUtil.AppendParamsToUrl(returnUrl,
+                        ("success", "false"),
+                        ("message", ex.Message)));
             }
-
-            var token = await _authService.LoginWithGoogleAsync(authenticateResult);
-
-            Response.Cookies.Append("aToken", token.AccessToken, new CookieOptions
-            {
-                Path = "/",
-                HttpOnly = true,
-                SameSite = SameSiteMode.None,
-                Secure = true,
-                MaxAge = TimeSpan.FromMinutes(token.AccessTokenExpiryMin)
-            });
 
             return Redirect(StringUtil.AppendParamsToUrl(returnUrl,
                     ("success", "true"),

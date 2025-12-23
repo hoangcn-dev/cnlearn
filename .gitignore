@@ -2,3 +2,7 @@
 **/obj
 .vs
 .vscode
+
+*.tar
+**/appsettings.Production.json
+docker-compose.yaml

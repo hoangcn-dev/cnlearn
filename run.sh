@@ -1,1 +1,4 @@
-dotnet run --project API/API.csproj --configuration Debug
+docker-compose down
+docker rmi api
+docker load -i new.tar 
+docker-compose up -d

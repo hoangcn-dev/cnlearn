@@ -26,6 +26,11 @@ namespace Core.Utilities
             public const string LockReasonNotSet = "Vui lòng cung cấp lí do khóa tài khoản";
             public const string Updated = "Cập nhật thành công";
             public const string Deleted = "Đã xóa thành công";
+
+            public const string FileNotExist = "File không tồn tại";
+            public const string DownloadProgressNotExist = "Tiến trình tải không tồn tại";
+            public const string ProgressNotCompleted = "Tiến trình tải chưa hoàn thành";
+            public const string RequiredFormatId = "Vui lòng cùng cấp format ID cho video/audio";
         }
 
         public class LogMessages

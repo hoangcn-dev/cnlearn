@@ -4,8 +4,12 @@ using Core.Utilities;
 using DataAccess;
 using Module.Users;
 using Module.Users.Entities;
+using Module.MediaDownloader;
+using Storage;
 using System.Security.Claims;
-using System.Threading.Tasks;
+using SystemTracking;
+using BackgroundTask;
+using Realtime;
 
 namespace API
 {
@@ -61,12 +65,25 @@ namespace API
                         .AllowCredentials()
                         .AllowAnyMethod()
                         .AllowAnyHeader());
+                options.AddPolicy("AllowTool",
+                    builder => builder
+                        .WithOrigins("https://tool.hoangcn.com")
+                        .AllowCredentials()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
             });
             services.AddPostgreSQL();
             services.AddRepository();
+            services.AddSystemService(configuration);
+            services.AddStorage();
+            services.AddBackgroundTask();
+            services.AddRealtimeService();
+
             services.AddUserModule(configuration);
+            services.AddMediaDownloadModule(configuration);
 
             var app = builder.Build();
+
             app.UseMiddleware<ExceptionMiddleware>();
             app.UseMiddleware<TokenMiddleware>();
             if (app.Environment.IsDevelopment())
@@ -89,11 +106,17 @@ namespace API
             }
             app.UseHttpsRedirection();
             app.UseCors("AllowLocal");
+            app.UseCors("AllowTool");
+
+            app.UseBackgroundTask();
+            app.UseMediaDownloadModule();
+
             app.UseAuthentication();
             app.UseRouting();
             app.UseAuthorization();
             app.MapControllers();
             await app.InitializeDatabaseAsync();
+            app.RunMediaDownloaderBackgroundTask();
             app.Run();
         }
     }
