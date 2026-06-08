@@ -1,0 +1,48 @@
+[
+  {
+    "Slug": "su-khac-biet-giua-ienumerable-va-iqueryable",
+    "StringContent": "Điểm khác biệt lớn nhất giữa IEnumerable và IQueryable là gì?",
+    "Explaination": "IEnumerable thực hiện lọc dữ liệu trên Client (In-Memory), còn IQueryable thực hiện lọc phía Server (Database).",
+    "Level": 1,
+    "Type": 0,
+    "AccessType": 0,
+    "CategoryIds": [
+      "d9b23f2f-1a2c-47bb-8c3b-55c88b901a01"
+    ],
+    "Answers": [
+      {
+        "StringContent": "IEnumerable lọc ở Client, IQueryable lọc ở Server Database",
+        "IsCorrectAnswer": true
+      },
+      {
+        "StringContent": "IEnumerable lọc ở Server, IQueryable lọc ở Client",
+        "IsCorrectAnswer": false
+      }
+    ]
+  },
+  {
+    "Slug": "",
+    "StringContent": "Cú pháp khai báo biến hằng trong C# là gì?",
+    "Explaination": "Biến hằng trong C# được khai báo bằng từ khóa const đứng trước kiểu dữ liệu.",
+    "Level": 0,
+    "Type": 0,
+    "AccessType": 0,
+    "CategoryIds": [
+      "d9b23f2f-1a2c-47bb-8c3b-55c88b901a01"
+    ],
+    "Answers": [
+      {
+        "StringContent": "const <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;",
+        "IsCorrectAnswer": true
+      },
+      {
+        "StringContent": "readonly <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;",
+        "IsCorrectAnswer": false
+      },
+      {
+        "StringContent": "static <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;",
+        "IsCorrectAnswer": false
+      }
+    ]
+  }
+]
