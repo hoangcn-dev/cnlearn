@@ -4,6 +4,7 @@ using HoangCN.Common.Utils;
 using HoangCN.UserManagement.Enums;
 using HoangCN.UserManagement.Utils;
 using HoangCN.MainSystem.Utils;
+using HoangCN.LearnMS.Utils;
 
 namespace HoangCN.API
 {
@@ -27,6 +28,7 @@ namespace HoangCN.API
             builder.Services.AddBL(builder.Configuration);
             builder.Services.AddUserManagement(builder.Configuration);
             builder.Services.AddMainSystem(builder.Configuration);
+            builder.Services.AddLearnMS(builder.Configuration);
 
             // Đăng ký Policy phân quyền Admin
             builder.Services.AddAuthorization(options =>

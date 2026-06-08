@@ -35,6 +35,9 @@ namespace HoangCN.MainSystem.Utils
             // Đăng ký dịch vụ quản lý Email Template
             services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
+            // Đăng ký dịch vụ IFileService chuyên quản lý file tài nguyên
+            services.AddScoped<IFileService, FileService>();
+
             // Đăng ký dịch vụ IRedisService dưới dạng Singleton để chia sẻ kết nối tối ưu
             services.AddSingleton<IRedisService, RedisService>();
 
