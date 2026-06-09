@@ -9,6 +9,7 @@ import {
 import type { User } from '@/model/user/User';
 import type { Role } from '@/model/user/Role';
 import { getAllRoles, getAllUsers, deleteUsers } from '@/api/user';
+import { getErrorMessage } from '@/api/config/axios';
 
 const router = useRouter();
 const loading = ref(false);
@@ -85,11 +86,11 @@ const loadUsers = async () => {
     if (res && res.isSuccess && res.data && res.data.items) {
       users.value = res.data.items;
     } else {
-      message.error(res.data?.UserMsg || 'Không thể tải danh sách người dùng.');
+      message.error(getErrorMessage(res, 'Không thể tải danh sách người dùng.'));
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading users:', error);
-    message.error('Có lỗi xảy ra khi kết nối máy chủ.');
+    message.error(getErrorMessage(error, 'Có lỗi xảy ra khi kết nối máy chủ.'));
   } finally {
     loading.value = false;
   }
@@ -103,11 +104,11 @@ const handleDelete = async (userId: string) => {
       message.success('Xóa tài khoản người dùng thành công!');
       await loadUsers();
     } else {
-      message.error(res.data?.UserMsg || 'Xóa người dùng thất bại.');
+      message.error(getErrorMessage(res, 'Xóa người dùng thất bại.'));
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting user:', error);
-    message.error('Lỗi hệ thống khi xóa tài khoản.');
+    message.error(getErrorMessage(error, 'Lỗi hệ thống khi xóa tài khoản.'));
   }
 };
 

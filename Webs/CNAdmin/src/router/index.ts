@@ -77,11 +77,34 @@ router.beforeEach((to, from, next) => {
   const isLoggedIn = authStore.isLoggedIn
 
   if (!isPublicRoute && !isLoggedIn) {
+    const idUrl = import.meta.env.VITE_ID_URL;
+    if (!idUrl) {
+      throw new Error("VITE_ID_URL is not configured.");
+    }
+    const currentOrigin = window.location.origin;
+
+    if (currentOrigin !== idUrl) {
+      // Chuyển hướng sang ID Server để đăng nhập, truyền kèm return_url để quay lại đúng trang hiện tại
+      const callbackUrl = `${currentOrigin}/auth-callback?return_url=${encodeURIComponent(to.fullPath)}`;
+      window.location.href = `${idUrl}/login?return_url=${encodeURIComponent(callbackUrl)}`;
+      return;
+    }
+
     next({ name: 'login' })
     return
   }
 
   if (isLoggedIn) {
+    const systemUrl = import.meta.env.VITE_SYSTEM_URL;
+    const currentOrigin = window.location.origin;
+
+    if (systemUrl && currentOrigin !== systemUrl) {
+      // Đã đăng nhập nhưng đang ở ID Server -> chuyển hướng sang System Server
+      const callbackUrl = `${systemUrl}/auth-callback?return_url=${encodeURIComponent(to.fullPath)}`;
+      window.location.href = callbackUrl;
+      return;
+    }
+
     // Chỉ Admin mới được phép vào hệ thống quản lý
     const isAdmin = authStore.user?.roleName === 'Admin'
     

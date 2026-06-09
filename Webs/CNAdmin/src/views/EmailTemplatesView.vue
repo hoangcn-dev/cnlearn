@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { EditOutlined, ReloadOutlined, AppstoreOutlined, TableOutlined } from '@ant-design/icons-vue';
 import { getAllTemplates, type EmailTemplate } from '@/api/emailTemplate';
+import { getErrorMessage } from '@/api/config/axios';
 
 const router = useRouter();
 const loading = ref(false);
@@ -23,10 +24,11 @@ const loadTemplates = async () => {
     if (res.isSuccess) {
       templatesList.value = res.data || [];
     } else {
-      message.error(res.data?.UserMsg || 'Không thể tải danh sách mẫu email.');
+      message.error(getErrorMessage(res, 'Không thể tải danh sách mẫu email.'));
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading templates:', error);
+    message.error(getErrorMessage(error, 'Có lỗi xảy ra khi kết nối máy chủ.'));
   } finally {
     loading.value = false;
   }
