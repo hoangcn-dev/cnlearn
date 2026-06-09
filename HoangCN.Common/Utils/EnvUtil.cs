@@ -1,4 +1,4 @@
-﻿namespace ZLearn.Application.Common.Utils
+namespace ZLearn.Application.Common.Utils
 {
     public abstract class EnvUtil
     {

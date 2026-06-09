@@ -24,3 +24,8 @@
 Dockerfile
 *.dockerignore
 docker-compose.*
+
+# Webs / Node.js (Không cần thiết cho build backend)
+**/node_modules/
+**/dist/
+Webs/

@@ -13,10 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BackgroundTask\BackgroundTask.csproj" />
-    <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Realtime\Realtime.csproj" />
-    <ProjectReference Include="..\Storage\Storage.csproj" />
   </ItemGroup>
 
 	<ItemGroup>
