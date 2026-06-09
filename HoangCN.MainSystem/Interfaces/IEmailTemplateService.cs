@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using HoangCN.Common.Model.Entities;
-using HoangCN.BL.Interfaces;
+using HoangCN.MainSystem.Entities;
+using HoangCN.Core.BL.Interfaces;
 
 namespace HoangCN.MainSystem.Interfaces
 {

@@ -1,4 +1,4 @@
-using HoangCN.Common.Model.Entities;
+using HoangCN.MainSystem.Entities;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Threading.Tasks;
