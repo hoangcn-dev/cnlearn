@@ -1,0 +1,17 @@
+@import './base.css';
+
+.hover-pointer:hover {
+  opacity: 80%;
+  cursor: pointer;
+}
+
+select,
+.ant-select,
+.ant-select-selector,
+.ant-select-selection-item,
+.ant-select-selection-search {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}

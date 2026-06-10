@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
 import {
@@ -20,42 +20,77 @@ const roles = ref<Role[]>([]);
 // Real Users Data loaded from CSDL
 const users = ref<User[]>([]);
 
-const columns = [
+// Pagination, sorting and filtering state
+const sortBy = ref<string>('');
+const isAsc = ref<boolean>(true);
+const activeFilters = ref<Record<string, any>>({});
+
+const pagination = ref({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+  pageSizeOptions: ['10', '20', '50', '100']
+});
+
+const mapFieldToPascalCase = (field: string) => {
+  if (!field) return '';
+  if (field === 'roleId') return 'RoleId';
+  if (field === 'userCode') return 'UserCode';
+  if (field === 'displayName') return 'DisplayName';
+  if (field === 'userName') return 'UserName';
+  if (field === 'email') return 'Email';
+  if (field === 'isActive') return 'IsActive';
+  return field.charAt(0).toUpperCase() + field.slice(1);
+};
+
+const columns = computed(() => [
   {
     title: 'Mã nhân viên',
     dataIndex: 'userCode',
     key: 'userCode',
     width: '130px',
+    sorter: true,
   },
   {
     title: 'Tên hiển thị',
     dataIndex: 'displayName',
     key: 'displayName',
     width: '220px',
+    sorter: true,
   },
   {
     title: 'Tên đăng nhập',
     dataIndex: 'userName',
     key: 'userName',
     width: '140px',
+    sorter: true,
   },
   {
     title: 'Email',
     dataIndex: 'email',
     key: 'email',
     width: '200px',
+    sorter: true,
   },
   {
     title: 'Vai Trò',
     dataIndex: 'roleId',
     key: 'roleId',
     width: '140px',
+    filters: roles.value.map(r => ({ text: r.roleName, value: r.roleId })),
+    filterMultiple: false,
   },
   {
     title: 'Trạng Thái',
     dataIndex: 'isActive',
     key: 'isActive',
     width: '120px',
+    filters: [
+      { text: 'Hoạt động', value: 'true' },
+      { text: 'Đang khóa', value: 'false' }
+    ],
+    filterMultiple: false,
   },
   {
     title: 'Thao Tác',
@@ -63,28 +98,65 @@ const columns = [
     fixed: 'right',
     width: '80px',
   }
-];
+]);
 
 const searchText = ref('');
 
 const filteredUsers = computed(() => {
-  if (!searchText.value) return users.value;
-  const q = searchText.value.toLowerCase().trim();
-  return users.value.filter(u => 
-    (u.userCode && u.userCode.toLowerCase().includes(q)) ||
-    (u.displayName && u.displayName.toLowerCase().includes(q)) ||
-    (u.userName && u.userName.toLowerCase().includes(q)) ||
-    (u.email && u.email.toLowerCase().includes(q))
-  );
+  return users.value;
 });
 
-// Load real users from database
+// Watch searchText with 400ms debounce to prevent request flooding
+let searchTimeout: any = null;
+watch(searchText, () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    pagination.value.current = 1;
+    loadUsers();
+  }, 400);
+});
+
+// Load real users from database using backend paging
 const loadUsers = async () => {
   loading.value = true;
   try {
-    const res = await getAllUsers();
+    const filtersList: any[] = [];
+
+    // Filter roleId
+    if (activeFilters.value.roleId && activeFilters.value.roleId.length > 0) {
+      filtersList.push({
+        Property: 'RoleId',
+        Operator: 0, // Equal
+        Value: activeFilters.value.roleId[0],
+        Type: 'String'
+      });
+    }
+
+    // Filter isActive
+    if (activeFilters.value.isActive && activeFilters.value.isActive.length > 0) {
+      filtersList.push({
+        Property: 'IsActive',
+        Operator: 0, // Equal
+        Value: activeFilters.value.isActive[0] === 'true',
+        Type: 'Bool'
+      });
+    }
+
+    const requestData = {
+      page: pagination.value.current,
+      size: pagination.value.pageSize,
+      sortBy: sortBy.value ? mapFieldToPascalCase(sortBy.value) : undefined,
+      isAsc: sortBy.value ? isAsc.value : undefined,
+      isPaging: true,
+      key: searchText.value.trim() || undefined,
+      filters: filtersList,
+      filterGroupType: 0 // And = 0
+    };
+
+    const res = await getUserPaging(requestData);
     if (res && res.isSuccess && res.data && res.data.items) {
       users.value = res.data.items;
+      pagination.value.total = res.data.total || 0;
     } else {
       message.error(getErrorMessage(res, 'Không thể tải danh sách người dùng.'));
     }
@@ -94,6 +166,23 @@ const loadUsers = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// Handle table page, size, sorting, and filter changes
+const handleTableChange = (pag: any, filters: any, sorter: any) => {
+  pagination.value.current = pag.current;
+  pagination.value.pageSize = pag.pageSize;
+  activeFilters.value = filters;
+
+  if (sorter && sorter.field && sorter.order) {
+    sortBy.value = sorter.field;
+    isAsc.value = sorter.order === 'ascend';
+  } else {
+    sortBy.value = '';
+    isAsc.value = true;
+  }
+
+  loadUsers();
 };
 
 // Delete user using real API
@@ -148,7 +237,9 @@ onMounted(async () => {
   </div>
   <a-table :columns="columns" :data-source="filteredUsers" size="small" class="bg-white rounded-2 shadow-sm"
     :scroll="{ x: 1200, y: 'calc(100vh - 240px)' }"
-    :pagination="{ defaultPageSize: 50, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] }">
+    :pagination="pagination"
+    :loading="loading"
+    @change="handleTableChange">
     <template #bodyCell="{ column, record, text }">
       <template v-if="column.key === 'action'">
         <div class="d-flex align-items-center">
