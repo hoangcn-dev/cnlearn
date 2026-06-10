@@ -1,4 +1,4 @@
-using HoangCN.Common.Utils;
+using HoangCN.Core.Common.Utils;
 using HoangCN.MainSystem.Enums;
 using HoangCN.MainSystem.Utils;
 using HoangCN.Core.DL;
@@ -65,3 +65,4 @@ namespace HoangCN.MainSystem
         }
     }
 }
+

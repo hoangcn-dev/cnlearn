@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace HoangCN.Common.Resources {
+namespace HoangCN.Core.Common.Resources {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace HoangCN.Common.Resources {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("HoangCN.Common.Resources.ExceptionMsgRes", typeof(ExceptionMsgRes).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("HoangCN.Core.Common.Resources.ExceptionMsgRes", typeof(ExceptionMsgRes).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -61,3 +61,4 @@ namespace HoangCN.Common.Resources {
         }
     }
 }
+

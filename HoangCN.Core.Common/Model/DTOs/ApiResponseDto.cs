@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Model.DTOs
+﻿namespace HoangCN.Core.Common.Model.DTOs
 {
     /// <summary>
     /// Lớp wrapper cho phản hồi từ API
@@ -40,3 +40,4 @@
         }
     }
 }
+

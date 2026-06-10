@@ -1,4 +1,4 @@
-namespace HoangCN.Common.Enums
+﻿namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Loại câu hỏi trắc nghiệm
@@ -16,3 +16,4 @@ namespace HoangCN.Common.Enums
         MultipleChoice = 1
     }
 }
+

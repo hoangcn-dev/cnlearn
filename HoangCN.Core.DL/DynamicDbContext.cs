@@ -1,4 +1,4 @@
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Base;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -17,7 +17,7 @@ namespace HoangCN.Core.DL
             IEntityAssemblyProvider? assemblyProvider = null)
             : base(options)
         {
-            // Lấy danh sách Assembly từ Provider được tiêm vào hoặc mặc định là HoangCN.Common
+            // Lấy danh sách Assembly từ Provider được tiêm vào hoặc mặc định là HoangCN.Core.Common
             _scanAssemblies = assemblyProvider?.GetAssemblies() 
                 ?? new[] { typeof(BaseEntity).Assembly };
         }
@@ -40,3 +40,4 @@ namespace HoangCN.Core.DL
         }
     }
 }
+

@@ -1,12 +1,12 @@
-using HoangCN.BL.Base;
-using HoangCN.BL.Interfaces;
-using HoangCN.BL.Utils;
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
-using HoangCN.Common.Exceptions;
-using HoangCN.Common.Model.Entities;
-using HoangCN.Common.Utils;
-using HoangCN.DL.Interfaces;
+using HoangCN.Core.BL.Base;
+using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Utils;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.LearnMS.Entities;
+using HoangCN.Core.Common.Utils;
+using HoangCN.Core.DL.Interfaces;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.DTOs;
 using Microsoft.Extensions.Logging;
@@ -27,9 +27,10 @@ namespace HoangCN.LearnMS.Services
         private readonly ILogger<QuestionService> _logger;
 
         public QuestionService(
-            IBaseDL baseDL, 
+            IBaseReadDL baseReadDL, 
+            IBaseWriteDL baseWriteDL,
             IBaseBL<QuestionCategory> categoryService, 
-            ILogger<QuestionService> logger) : base(baseDL)
+            ILogger<QuestionService> logger) : base(baseReadDL, baseWriteDL)
         {
             _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -102,8 +103,8 @@ namespace HoangCN.LearnMS.Services
             var relationsToInsert = new List<QuestionInCategory>();
             var answersToInsert = new List<QuestionAnswer>();
 
-            // Bắt đầu một Transaction duy nhất thông qua _baseDL
-            await _baseDL.StartTransaction();
+            // Bắt đầu một Transaction duy nhất thông qua _baseWriteDL
+            await _baseWriteDL.BeginTransactionAsync();
             try
             {
                 foreach (var qDto in questionsDto)
@@ -222,27 +223,24 @@ namespace HoangCN.LearnMS.Services
                 // 4. Lưu tất cả các danh sách trong transaction
                 if (questionsToInsert.Count > 0)
                 {
-                    var sql = BuildSQLUtil.BuildQueryStringInsertOrUpdate(questionsToInsert, out var param);
-                    await _baseDL.ExecuteCommandText(sql, param);
+                    await _baseWriteDL.SaveEntitiesAsync(questionsToInsert);
                 }
 
                 if (relationsToInsert.Count > 0)
                 {
-                    var sql = BuildSQLUtil.BuildQueryStringInsertOrUpdate(relationsToInsert, out var param);
-                    await _baseDL.ExecuteCommandText(sql, param);
+                    await _baseWriteDL.SaveEntitiesAsync(relationsToInsert);
                 }
 
                 if (answersToInsert.Count > 0)
                 {
-                    var sql = BuildSQLUtil.BuildQueryStringInsertOrUpdate(answersToInsert, out var param);
-                    await _baseDL.ExecuteCommandText(sql, param);
+                    await _baseWriteDL.SaveEntitiesAsync(answersToInsert);
                 }
 
-                await _baseDL.CommitTransaction();
+                await _baseWriteDL.CommitTransactionAsync();
             }
             catch (Exception ex)
             {
-                await _baseDL.RollbackTransaction();
+                await _baseWriteDL.RollbackTransactionAsync();
                 _logger.LogError(ex, "Thất bại khi thực thi ImportBulkFromJson. Đã rollback.");
                 throw;
             }
@@ -251,3 +249,5 @@ namespace HoangCN.LearnMS.Services
         }
     }
 }
+
+

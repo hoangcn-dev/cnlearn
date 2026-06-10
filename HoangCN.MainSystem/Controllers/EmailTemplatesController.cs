@@ -1,4 +1,4 @@
-using HoangCN.Common.Model.DTOs;
+﻿using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Enums;
@@ -54,3 +54,4 @@ namespace HoangCN.MainSystem.Controllers
         }
     }
 }
+

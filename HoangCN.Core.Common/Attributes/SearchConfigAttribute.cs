@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Attributes
+﻿namespace HoangCN.Core.Common.Attributes
 {
     /// <summary>
     /// Thuộc tính cấu hình cho tìm kiếm thực thế
@@ -17,3 +17,4 @@
         public bool DefaultIsAsc { get; set; }
     }
 }
+

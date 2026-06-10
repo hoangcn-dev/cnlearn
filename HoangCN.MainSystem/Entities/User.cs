@@ -1,5 +1,5 @@
-using HoangCN.Common.Attributes;
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Attributes;
+using HoangCN.Core.Common.Base;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -100,3 +100,4 @@ namespace HoangCN.MainSystem.Entities
         public virtual Role Role { get; set; }
     }
 }
+

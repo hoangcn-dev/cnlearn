@@ -1,7 +1,8 @@
-﻿namespace HoangCN.Common.Exceptions
+﻿namespace HoangCN.Core.Common.Exceptions
 {
     public class ForbiddenException : Exception
     {
         public ForbiddenException(string message) : base(message) { }
     }
 }
+

@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace HoangCN.Common.Middlewares
+namespace HoangCN.Core.Common.Middlewares
 {
     /// <summary>
     /// Middleware trích xuất aToken từ Cookie và đưa vào Authorization Header dưới dạng Bearer Token
@@ -34,3 +34,4 @@ namespace HoangCN.Common.Middlewares
         }
     }
 }
+

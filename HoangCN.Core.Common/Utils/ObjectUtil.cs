@@ -1,7 +1,7 @@
-﻿using HoangCN.Common.Exceptions;
+﻿using HoangCN.Core.Common.Exceptions;
 using System.Collections;
 
-namespace HoangCN.Common.Utils
+namespace HoangCN.Core.Common.Utils
 {
     public static class ObjectUtil
     {
@@ -75,3 +75,4 @@ namespace HoangCN.Common.Utils
         }
     }
 }
+

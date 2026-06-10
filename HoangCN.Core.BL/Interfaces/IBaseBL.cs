@@ -1,6 +1,6 @@
-using HoangCN.Common.Base;
-using HoangCN.Common.Model.DTOs;
-using HoangCN.Common.Model.Requests;
+﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Model.DTOs;
+using HoangCN.Core.Common.Model.Requests;
 using System.Linq.Expressions;
 
 namespace HoangCN.Core.BL.Interfaces
@@ -36,3 +36,4 @@ namespace HoangCN.Core.BL.Interfaces
         Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
     }
 }
+

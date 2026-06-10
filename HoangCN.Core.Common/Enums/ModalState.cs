@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Enums
+﻿namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Quản lý trạng thái của entity
@@ -26,3 +26,4 @@
         Delete = 3,
     }
 }
+

@@ -1,4 +1,4 @@
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Base;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -26,3 +26,4 @@ namespace HoangCN.MainSystem.Entities
         public string RoleName { get; set; }
     }
 }
+

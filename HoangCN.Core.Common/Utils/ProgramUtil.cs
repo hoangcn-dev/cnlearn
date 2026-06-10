@@ -1,4 +1,4 @@
-using HoangCN.Common.Middlewares;
+﻿using HoangCN.Core.Common.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,7 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace HoangCN.Common.Utils
+namespace HoangCN.Core.Common.Utils
 {
     public class ConfigCommonOptions
     {
@@ -206,3 +206,4 @@ namespace HoangCN.Common.Utils
         }
     }
 }
+

@@ -1,4 +1,4 @@
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Base;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel;
@@ -42,3 +42,4 @@ namespace HoangCN.MainSystem.Entities
         public string Content { get; set; } = string.Empty;
     }
 }
+

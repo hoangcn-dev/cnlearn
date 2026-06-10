@@ -1,11 +1,14 @@
-﻿using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace HoangCN.MainSystem.Controllers
+namespace HoangCN.LearnMS.Controllers
 {
     [ApiController]
     public class BaseController<TEntity> : ControllerBase where TEntity : BaseEntity
@@ -57,4 +60,3 @@ namespace HoangCN.MainSystem.Controllers
         }
     }
 }
-

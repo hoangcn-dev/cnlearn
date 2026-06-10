@@ -1,9 +1,9 @@
-using HoangCN.BL.Base;
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
-using HoangCN.Common.Model.Entities;
-using HoangCN.Common.Utils;
-using HoangCN.DL.Interfaces;
+using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.LearnMS.Entities;
+using HoangCN.Core.Common.Utils;
+using HoangCN.Core.DL.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -14,7 +14,7 @@ namespace HoangCN.LearnMS.Services
     /// </summary>
     public class QuestionCategoryService : BaseBL<QuestionCategory>
     {
-        public QuestionCategoryService(IBaseDL baseDL) : base(baseDL)
+        public QuestionCategoryService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL) : base(baseReadDL, baseWriteDL)
         {
         }
 
@@ -40,3 +40,5 @@ namespace HoangCN.LearnMS.Services
         }
     }
 }
+
+

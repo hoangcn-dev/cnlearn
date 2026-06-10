@@ -1,8 +1,8 @@
-using HoangCN.Common.Base;
-using HoangCN.Common.Exceptions;
+﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Exceptions;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace HoangCN.Common.Utils
+namespace HoangCN.Core.Common.Utils
 {
     public static class TypeUtil
     {
@@ -41,3 +41,4 @@ namespace HoangCN.Common.Utils
         }
     }
 }
+

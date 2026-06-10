@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace HoangCN.LearnMS.DTOs
 {
@@ -18,3 +18,4 @@ namespace HoangCN.LearnMS.DTOs
         public bool IsCorrectAnswer { get; set; }
     }
 }
+

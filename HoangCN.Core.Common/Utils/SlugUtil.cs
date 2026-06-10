@@ -1,6 +1,6 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
-namespace HoangCN.Common.Utils
+namespace HoangCN.Core.Common.Utils
 {
     /// <summary>
     /// Tiện ích hỗ trợ tạo chuỗi slug thân thiện cho SEO từ văn bản tiếng Việt
@@ -44,3 +44,4 @@ namespace HoangCN.Common.Utils
         }
     }
 }
+

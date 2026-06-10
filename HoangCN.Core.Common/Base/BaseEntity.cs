@@ -1,10 +1,10 @@
-﻿using HoangCN.Common.Enums;
+﻿using HoangCN.Core.Common.Enums;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace HoangCN.Common.Base
+namespace HoangCN.Core.Common.Base
 {
     /// <summary>
     /// Lớp cơ sở cho các entity, gồm các thuộc tính chung
@@ -53,3 +53,4 @@ namespace HoangCN.Common.Base
         public bool IsDeleted { get; set; } = false;
     }
 }
+

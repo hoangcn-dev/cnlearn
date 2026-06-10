@@ -1,6 +1,6 @@
-using HoangCN.MainSystem.Entities;
-using HoangCN.Common.Model.Requests;
-using HoangCN.Common.Model.DTOs;
+﻿using HoangCN.MainSystem.Entities;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Requests;
 using HoangCN.MainSystem.Enums;
@@ -102,3 +102,4 @@ namespace HoangCN.MainSystem.Controllers
         #endregion
     }
 }
+

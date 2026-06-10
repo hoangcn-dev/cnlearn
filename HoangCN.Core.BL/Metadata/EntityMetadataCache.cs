@@ -1,5 +1,5 @@
-using HoangCN.Common.Attributes;
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Attributes;
+using HoangCN.Core.Common.Base;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -107,3 +107,4 @@ namespace HoangCN.Core.BL.Metadata
         }
     }
 }
+

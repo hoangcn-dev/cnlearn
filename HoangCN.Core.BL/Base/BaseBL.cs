@@ -1,10 +1,10 @@
-using Dapper;
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
-using HoangCN.Common.Exceptions;
-using HoangCN.Common.Model.DTOs;
-using HoangCN.Common.Model.Requests;
-using HoangCN.Common.Utils;
+﻿using Dapper;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.DTOs;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.BL.Metadata;
@@ -375,3 +375,4 @@ namespace HoangCN.Core.BL.Base
         }
     }
 }
+

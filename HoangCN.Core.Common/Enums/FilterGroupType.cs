@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Enums
+﻿namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Loại gộp các filters
@@ -16,3 +16,4 @@
         Or = 1,
     }
 }
+

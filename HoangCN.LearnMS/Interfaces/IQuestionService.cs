@@ -1,5 +1,5 @@
-using HoangCN.BL.Interfaces;
-using HoangCN.Common.Model.Entities;
+using HoangCN.Core.BL.Interfaces;
+using HoangCN.LearnMS.Entities;
 using System;
 using System.Threading.Tasks;
 
@@ -19,3 +19,5 @@ namespace HoangCN.LearnMS.Interfaces
         Task<int> ImportBulkFromJsonAsync(string jsonContent, Guid currentUserId);
     }
 }
+
+

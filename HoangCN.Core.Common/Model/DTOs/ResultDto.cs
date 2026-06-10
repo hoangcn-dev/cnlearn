@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Model.DTOs
+﻿namespace HoangCN.Core.Common.Model.DTOs
 {
     /// <summary>
     /// Lớp Wrapper cho danh sách đã phân trang
@@ -31,3 +31,4 @@
         public List<TItem> Items { get; set; } = [];
     }
 }
+

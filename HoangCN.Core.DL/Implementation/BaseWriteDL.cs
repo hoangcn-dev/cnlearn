@@ -1,5 +1,5 @@
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
+﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -104,3 +104,4 @@ namespace HoangCN.Core.DL.Implementation
         }
     }
 }
+

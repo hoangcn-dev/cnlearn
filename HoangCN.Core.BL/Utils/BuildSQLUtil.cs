@@ -1,9 +1,9 @@
-using Dapper;
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
-using HoangCN.Common.Exceptions;
-using HoangCN.Common.Model.Requests;
-using HoangCN.Common.Utils;
+﻿using Dapper;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Utils;
 using HoangCN.Core.BL.Metadata;
 using System.Linq.Expressions;
 using System.Text;
@@ -287,3 +287,4 @@ namespace HoangCN.Core.BL.Utils
         }
     }
 }
+

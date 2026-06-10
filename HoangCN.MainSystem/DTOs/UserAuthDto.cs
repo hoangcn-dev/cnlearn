@@ -1,4 +1,4 @@
-using HoangCN.Common.Attributes;
+﻿using HoangCN.Core.Common.Attributes;
 using HoangCN.MainSystem.Entities;
 
 namespace HoangCN.MainSystem.DTOs
@@ -9,3 +9,4 @@ namespace HoangCN.MainSystem.DTOs
         public string RoleName { get; set; }
     }
 }
+

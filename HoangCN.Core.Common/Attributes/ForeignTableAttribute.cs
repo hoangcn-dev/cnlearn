@@ -1,4 +1,4 @@
-namespace HoangCN.Common.Attributes
+﻿namespace HoangCN.Core.Common.Attributes
 {
     /// <summary>
     /// Đánh dấu thuộc tính này là đến từ bảng ngoại
@@ -17,3 +17,4 @@ namespace HoangCN.Common.Attributes
         public string? ColumnName { get; set; }
     }
 }
+

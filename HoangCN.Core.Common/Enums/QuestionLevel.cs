@@ -1,4 +1,4 @@
-namespace HoangCN.Common.Enums
+﻿namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Mức độ khó của câu hỏi trắc nghiệm
@@ -21,3 +21,4 @@ namespace HoangCN.Common.Enums
         Hard = 2
     }
 }
+

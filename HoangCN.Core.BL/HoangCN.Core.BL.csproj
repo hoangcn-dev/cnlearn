@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -12,8 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HoangCN.Common\HoangCN.Common.csproj" />
+    <ProjectReference Include="..\HoangCN.Core.Common\HoangCN.Core.Common.csproj" />
     <ProjectReference Include="..\HoangCN.Core.DL\HoangCN.Core.DL.csproj" />
   </ItemGroup>
 
 </Project>
+

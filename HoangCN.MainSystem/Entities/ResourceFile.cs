@@ -1,4 +1,4 @@
-using HoangCN.Common.Base;
+﻿using HoangCN.Core.Common.Base;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -48,3 +48,4 @@ namespace HoangCN.MainSystem.Entities
         public string Url { get; set; }
     }
 }
+

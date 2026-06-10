@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Model.DTOs
+﻿namespace HoangCN.Core.Common.Model.DTOs
 {
     /// <summary>
     /// Lớp wrapper thông tin lỗi trả về khi xảy ra ngoại lệ
@@ -31,3 +31,4 @@
         public string ErrorCode { get; set; }
     }
 }
+

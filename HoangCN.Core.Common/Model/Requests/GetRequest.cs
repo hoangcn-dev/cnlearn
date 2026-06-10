@@ -1,7 +1,7 @@
-﻿using HoangCN.Common.Enums;
+﻿using HoangCN.Core.Common.Enums;
 using System.Text.Json.Serialization;
 
-namespace HoangCN.Common.Model.Requests
+namespace HoangCN.Core.Common.Model.Requests
 {
     /// <summary>
     /// Request tìm kiếm
@@ -100,3 +100,4 @@ namespace HoangCN.Common.Model.Requests
         public FilterType Type { get; set; }
     }
 }
+

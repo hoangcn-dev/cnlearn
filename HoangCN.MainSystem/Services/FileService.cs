@@ -1,7 +1,7 @@
-using HoangCN.Core.BL.Base;
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
-using HoangCN.Common.Exceptions;
+﻿using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
 using HoangCN.MainSystem.Entities;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Interfaces;
@@ -160,3 +160,4 @@ namespace HoangCN.MainSystem.Services
         }
     }
 }
+

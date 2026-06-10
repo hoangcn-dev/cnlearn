@@ -1,5 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-using HoangCN.Common.Base;
+﻿using Microsoft.EntityFrameworkCore;
+using HoangCN.Core.Common.Base;
 
 namespace HoangCN.Core.DL.Interfaces
 {
@@ -39,3 +39,4 @@ namespace HoangCN.Core.DL.Interfaces
         Task SaveEntitiesAsync<TEntity>(List<TEntity> entities) where TEntity : BaseEntity;
     }
 }
+

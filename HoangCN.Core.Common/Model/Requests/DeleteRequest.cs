@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Model.Requests
+﻿namespace HoangCN.Core.Common.Model.Requests
 {
     /// <summary>
     /// Yêu cầu xóa chung
@@ -11,3 +11,4 @@
         public List<Guid> Ids { get; set; }
     }
 }
+

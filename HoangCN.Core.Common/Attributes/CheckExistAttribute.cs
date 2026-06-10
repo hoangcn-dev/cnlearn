@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Attributes
+﻿namespace HoangCN.Core.Common.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class CheckExistAttribute : Attribute
@@ -12,3 +12,4 @@
         public Type? TargetEntity { get; set; }
     }
 }
+

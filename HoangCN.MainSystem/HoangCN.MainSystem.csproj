@@ -18,9 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HoangCN.Common\HoangCN.Common.csproj" />
+    <ProjectReference Include="..\HoangCN.Core.Common\HoangCN.Core.Common.csproj" />
     <ProjectReference Include="..\HoangCN.Core.DL\HoangCN.Core.DL.csproj" />
     <ProjectReference Include="..\HoangCN.Core.BL\HoangCN.Core.BL.csproj" />
   </ItemGroup>
 
 </Project>
+

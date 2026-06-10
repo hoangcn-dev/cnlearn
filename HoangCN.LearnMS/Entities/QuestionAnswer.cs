@@ -1,9 +1,9 @@
-using HoangCN.Common.Base;
+using HoangCN.Core.Common.Base;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace HoangCN.Common.Model.Entities
+namespace HoangCN.LearnMS.Entities
 {
     /// <summary>
     /// Bảng quản lý các phương án trả lời cho câu hỏi trắc nghiệm

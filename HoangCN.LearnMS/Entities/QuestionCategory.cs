@@ -1,9 +1,9 @@
-using HoangCN.Common.Base;
+using HoangCN.Core.Common.Base;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace HoangCN.Common.Model.Entities
+namespace HoangCN.LearnMS.Entities
 {
     /// <summary>
     /// Bảng quản lý danh mục câu hỏi trắc nghiệm
@@ -29,6 +29,12 @@ namespace HoangCN.Common.Model.Entities
         [DisplayName("Tên danh mục")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Mã danh mục cha (để phân cấp danh mục)
+        /// </summary>
+        [DisplayName("Danh mục cha")]
+        public Guid? ParentId { get; set; }
     }
 }

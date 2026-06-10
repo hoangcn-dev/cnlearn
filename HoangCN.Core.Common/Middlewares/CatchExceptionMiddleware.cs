@@ -1,10 +1,10 @@
-using HoangCN.Common.Exceptions;
-using HoangCN.Common.Model.DTOs;
+﻿using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
-namespace HoangCN.Common.Middlewares
+namespace HoangCN.Core.Common.Middlewares
 {
     public class CatchExceptionMiddleware : IMiddleware
     {
@@ -59,3 +59,4 @@ namespace HoangCN.Common.Middlewares
         }
     }
 }
+

@@ -1,5 +1,5 @@
-using HoangCN.BL.Interfaces;
-using HoangCN.Common.Model.Entities;
+using HoangCN.Core.BL.Interfaces;
+using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.Services;
 using Microsoft.Extensions.Configuration;
@@ -27,3 +27,5 @@ namespace HoangCN.LearnMS.Utils
         }
     }
 }
+
+

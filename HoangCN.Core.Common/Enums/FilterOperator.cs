@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Common.Enums
+﻿namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Toán tử để lọc
@@ -127,3 +127,4 @@
         }
     }
 }
+

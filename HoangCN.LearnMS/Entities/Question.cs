@@ -1,10 +1,10 @@
-using HoangCN.Common.Base;
-using HoangCN.Common.Enums;
+using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace HoangCN.Common.Model.Entities
+namespace HoangCN.LearnMS.Entities
 {
     /// <summary>
     /// Bảng quản lý thông tin câu hỏi trắc nghiệm
