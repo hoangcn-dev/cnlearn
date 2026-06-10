@@ -6,3 +6,8 @@
 *.tar
 **/appsettings.Production.json
 docker-compose.yaml
+**/examples
+**/node_modules
+**/dist
+
+.env.production

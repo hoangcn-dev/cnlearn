@@ -1,9 +1,9 @@
-using HoangCN.BL.Base;
+using HoangCN.Core.BL.Base;
 using HoangCN.Common.Base;
 using HoangCN.Common.Enums;
 using HoangCN.Common.Exceptions;
-using HoangCN.Common.Model.Entities;
-using HoangCN.DL.Interfaces;
+using HoangCN.MainSystem.Entities;
+using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -24,7 +24,11 @@ namespace HoangCN.MainSystem.Services
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<FileService> _logger;
 
-        public FileService(IBaseDL baseDL, IWebHostEnvironment webHostEnvironment, ILogger<FileService> logger) : base(baseDL)
+        public FileService(
+            IBaseReadDL baseReadDL, 
+            IBaseWriteDL baseWriteDL, 
+            IWebHostEnvironment webHostEnvironment, 
+            ILogger<FileService> logger) : base(baseReadDL, baseWriteDL)
         {
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -35,13 +39,11 @@ namespace HoangCN.MainSystem.Services
         /// </summary>
         public async Task<ResourceFile> SaveFileAsync(IFormFile file)
         {
-            // Thực thi kiểm tra đầu vào theo quy tắc Rule 1
             if (file == null || file.Length == 0)
             {
                 throw new BadRequestException("Dữ liệu file tải lên không hợp lệ hoặc rỗng.");
             }
 
-            // 1. Xác định thư mục upload
             var webRoot = _webHostEnvironment.WebRootPath;
             if (string.IsNullOrEmpty(webRoot))
             {
@@ -53,20 +55,17 @@ namespace HoangCN.MainSystem.Services
                 Directory.CreateDirectory(uploadDir);
             }
 
-            // 2. Sinh định danh duy nhất (Guid) để đặt tên file tránh trùng lặp
             var fileId = Guid.NewGuid();
             var originName = file.FileName;
             var extension = Path.GetExtension(originName);
             var uniqueFileName = $"{fileId}{extension}";
             var physicalPath = Path.Combine(uploadDir, uniqueFileName);
 
-            // 3. Lưu file vật lý xuống đĩa
             using (var stream = new FileStream(physicalPath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
-            // 4. Khởi tạo đối tượng ResourceFile và thêm mới vào CSDL
             var resourceFile = new ResourceFile
             {
                 ResourceFileId = fileId,
@@ -120,7 +119,6 @@ namespace HoangCN.MainSystem.Services
                 return;
             }
 
-            // 1. Xóa file vật lý khỏi thư mục wwwroot/upload
             var webRoot = _webHostEnvironment.WebRootPath;
             if (string.IsNullOrEmpty(webRoot))
             {
@@ -142,7 +140,6 @@ namespace HoangCN.MainSystem.Services
                 _logger.LogError(ex, "Lỗi xảy ra khi xóa file vật lý tại: {Path}", physicalPath);
             }
 
-            // 2. Thực hiện xóa đối tượng bằng cơ chế Dapper/UnitOfWork kế thừa từ BaseBL
             file.State = ModelState.Delete;
             await Save(new List<ResourceFile> { file });
             _logger.LogInformation("Đã xóa bản ghi ResourceFile khỏi CSDL cho FileId: {FileId}", fileId);

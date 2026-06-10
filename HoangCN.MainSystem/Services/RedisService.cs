@@ -41,6 +41,7 @@ namespace HoangCN.MainSystem.Services
                 
                 var multiplexer = ConnectionMultiplexer.Connect(options);
                 _database = multiplexer.GetDatabase();
+                _logger.LogInformation("Đang kết nối Redis với ConnectionString: {ConnectionString}, Ssl: {Ssl}", _connectionString, options.Ssl);
             }
             catch (Exception ex)
             {
