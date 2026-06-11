@@ -19,7 +19,7 @@
           v-if="question"
           class="btn px-4 py-2 rounded-pill fw-semibold shadow-sm d-flex align-items-center gap-2"
           :class="isQuestionSaved ? 'btn-warning text-white border-warning' : 'btn-outline-warning'"
-          @click="toggleSaveQuestion"
+          @click="toggleSaveQuestionStatus"
         >
           <span>{{ isQuestionSaved ? '★ Đã lưu câu hỏi' : '☆ Lưu câu hỏi' }}</span>
         </button>
@@ -112,6 +112,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
+import { getQuestionDetails, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,24 +120,33 @@ const questionId = route.params.id as string
 
 const isQuestionSaved = ref(false)
 
-const checkQuestionSavedStatus = () => {
-  const saved = localStorage.getItem('cn_saved_questions')
-  const savedIds = saved ? JSON.parse(saved) : []
-  isQuestionSaved.value = savedIds.includes(questionId)
+const checkQuestionSavedStatus = async () => {
+  try {
+    const res = await getSavedQuestionIds()
+    if (res && res.isSuccess && res.data) {
+      isQuestionSaved.value = res.data.includes(questionId)
+    }
+  } catch (e) {
+    console.error('Lỗi khi kiểm tra trạng thái lưu câu hỏi:', e)
+  }
 }
 
-const toggleSaveQuestion = () => {
-  const saved = localStorage.getItem('cn_saved_questions')
-  let savedIds = saved ? JSON.parse(saved) : []
-  if (savedIds.includes(questionId)) {
-    savedIds = savedIds.filter((id: string) => id !== questionId)
-    message.success('Đã bỏ lưu câu hỏi!')
-  } else {
-    savedIds.push(questionId)
-    message.success('Đã lưu câu hỏi thành công!')
+const toggleSaveQuestionStatus = async () => {
+  try {
+    const res = await toggleSaveQuestion(questionId)
+    if (res && res.isSuccess) {
+      isQuestionSaved.value = res.data
+      if (isQuestionSaved.value) {
+        message.success('Đã lưu câu hỏi thành công!')
+      } else {
+        message.success('Đã bỏ lưu câu hỏi!')
+      }
+    } else {
+      message.error(res.errorMessage || 'Lỗi khi lưu câu hỏi!')
+    }
+  } catch (e) {
+    message.error('Không thể thực hiện tác vụ lưu câu hỏi.')
   }
-  localStorage.setItem('cn_saved_questions', JSON.stringify(savedIds))
-  isQuestionSaved.value = savedIds.includes(questionId)
 }
 
 interface Answer {
@@ -199,30 +209,16 @@ const MOCK_QUESTIONS: Question[] = [
 const loadQuestion = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`http://localhost:5000/api/questions/${questionId}`)
-    if (res.data && res.data.isSuccess && res.data.data) {
-      const qData = res.data.data
-      
-      let answersList: Answer[] = []
-      try {
-        const ansRes = await axios.get(`http://localhost:5000/api/questionsanswers/question/${questionId}`)
-        if (ansRes.data && ansRes.data.isSuccess) {
-          answersList = ansRes.data.data || []
-        }
-      } catch (e) {
-        console.warn('Fallback to API error mock answers')
-      }
-      
+    const res = await getQuestionDetails(questionId)
+    if (res && res.isSuccess && res.data) {
+      const qData = res.data
       question.value = {
-        questionId: qData.questionId,
+        questionId: qData.id,
         stringContent: qData.stringContent || 'Nội dung câu hỏi',
-        explaination: qData.explaination || 'Chưa có giải thích chi tiết',
+        explaination: qData.explanation || 'Chưa có giải thích chi tiết',
         level: qData.level || 0,
         createdDate: qData.createdDate ? new Date(qData.createdDate) : new Date(),
-        answers: answersList.length > 0 ? answersList : [
-          { questionAnswerId: `${qData.questionId}_a1`, stringContent: 'Đáp án đúng mẫu', isCorrectAnswer: true },
-          { questionAnswerId: `${qData.questionId}_a2`, stringContent: 'Đáp án sai mẫu', isCorrectAnswer: false }
-        ]
+        answers: qData.answers || []
       }
     } else {
       throw new Error()

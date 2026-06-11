@@ -62,7 +62,9 @@ const forgotPasswordState = reactive({
 watch(
   () => route.query.mode,
   (newMode) => {
-    if (newMode === 'register' || newMode === 'changepass' || newMode === 'forgotpass') {
+    if (newMode === 'register' || newMode === 'regis') {
+      currentMode.value = 'register';
+    } else if (newMode === 'changepass' || newMode === 'forgotpass') {
       currentMode.value = newMode;
       if (newMode === 'changepass' && authStore.user) {
         changePasswordState.username = authStore.user.userName || authStore.user.email || '';

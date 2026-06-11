@@ -1,3 +1,4 @@
+using HoangCN.Core.BL;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
@@ -17,11 +18,17 @@ namespace HoangCN.LearnMS.Utils
         /// </summary>
         public static IServiceCollection AddLearnMS(this IServiceCollection services, IConfiguration configuration)
         {
+            // Đăng ký dịch vụ nghiệp vụ lõi Core.BL (BaseBL)
+            services.AddCoreBL();
+
             // Đăng ký QuestionService với giao diện tùy chỉnh IQuestionService (vì có thêm phương thức Bulk import ngoài CRUD)
             services.AddScoped<IQuestionService, QuestionService>();
 
             // Đăng ký QuestionCategoryService tùy chỉnh để hỗ trợ tự sinh SEO Slug khi tạo mới danh mục câu hỏi
             services.AddScoped<IBaseBL<QuestionCategory>, QuestionCategoryService>();
+
+            // Đăng ký LearnMsUserService để xử lý nghiệp vụ thông tin người dùng riêng biệt
+            services.AddScoped<ILearnMsUserService, LearnMsUserService>();
 
             return services;
         }

@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons-vue';
 import type { User } from '@/model/user/User';
 import type { Role } from '@/model/user/Role';
-import { getAllRoles, getAllUsers, deleteUsers } from '@/api/user';
+import { getAllRoles, getAllUsers, deleteUsers, getUserPaging } from '@/api/user';
 import { getErrorMessage } from '@/api/config/axios';
 
 const router = useRouter();

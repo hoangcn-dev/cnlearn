@@ -70,9 +70,9 @@ onMounted(async () => {
       if (idUrl && currentOrigin !== idUrl) {
         // Trả ngược về trang Login của ID Server
         const fallbackUrl = `${currentOrigin}/auth-callback?return_url=${encodeURIComponent(route.query.return_url as string || '/dashboard')}`;
-        window.location.href = `${idUrl}/login?return_url=${encodeURIComponent(fallbackUrl)}`;
+        window.location.href = `${idUrl}/auth?return_url=${encodeURIComponent(fallbackUrl)}`;
       } else {
-        router.push('/login');
+        router.push('/auth');
       }
     }, 1500);
   }

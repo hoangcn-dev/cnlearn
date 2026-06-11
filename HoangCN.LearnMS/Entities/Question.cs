@@ -69,5 +69,11 @@ namespace HoangCN.LearnMS.Entities
         [DisplayName("Quyền truy cập")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         public QuestionAccessType AccessType { get; set; } = QuestionAccessType.Public;
+
+        /// <summary>
+        /// Cho biết câu hỏi này đã được đưa vào ngân hàng câu hỏi chung/cá nhân hay chưa
+        /// </summary>
+        [DisplayName("Đã đưa vào ngân hàng")]
+        public bool IsInBank { get; set; } = false;
     }
 }

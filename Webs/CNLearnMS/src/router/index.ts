@@ -78,6 +78,11 @@ const router = createRouter({
           component: () => import('@/views/personal/PersonalProfileView.vue')
         },
         {
+          path: 'activity',
+          name: 'personal-activity',
+          component: () => import('@/views/personal/ActivityHistoryView.vue')
+        },
+        {
           path: 'questions',
           name: 'personal-questions',
           component: () => import('@/views/personal/QuestionBankView.vue')

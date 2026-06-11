@@ -4,6 +4,7 @@
     <nav aria-label="breadcrumb" class="mb-4">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><router-link to="/">Trang chủ</router-link></li>
+        <li class="breadcrumb-item"><router-link to="/practice">Luyện tập</router-link></li>
         <li class="breadcrumb-item active" aria-current="page">Tìm kiếm tổng hợp</li>
       </ol>
     </nav>
@@ -18,45 +19,42 @@
       <div class="row g-3">
         <!-- 1. Từ khóa -->
         <div class="col-lg-4 col-md-6">
-          <label class="form-label fw-semibold text-dark-blue small">Từ khóa tìm kiếm</label>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted">🔍</span>
-            <input 
-              type="text" 
-              v-model="filters.q" 
-              class="form-control bg-light border-start-0 py-2" 
-              placeholder="Nhập từ khóa cần tìm..." 
-              @input="handleFilterChange"
-            />
-          </div>
+          <label class="form-label fw-semibold text-dark-blue small d-block mb-2">Từ khóa tìm kiếm</label>
+          <a-input 
+            v-model:value="filters.q" 
+            placeholder="Nhập từ khóa cần tìm..." 
+            allow-clear
+            @input="handleSearchInput"
+            class="w-100"
+          >
+            <template #prefix>
+              <span class="text-muted me-1">🔍</span>
+            </template>
+          </a-input>
         </div>
 
         <!-- 2. Lọc theo danh mục -->
         <div class="col-lg-4 col-md-6">
-          <label class="form-label fw-semibold text-dark-blue small d-block">Lọc theo danh mục đề</label>
+          <label class="form-label fw-semibold text-dark-blue small d-block mb-2">Lọc theo danh mục đề</label>
           <CategorySelect 
             v-model:value="filters.category" 
             :categories="availableCategories"
             placeholder="Tất cả danh mục..."
             class="w-100"
+            show-all-option
             @change="handleFilterChange"
           />
         </div>
 
         <!-- 3. Tiêu chí sắp xếp -->
         <div class="col-lg-4 col-md-12">
-          <label class="form-label fw-semibold text-dark-blue small">Sắp xếp theo tiêu chí</label>
-          <select 
-            v-model="filters.sortBy" 
-            class="form-select bg-light py-2" 
+          <label class="form-label fw-semibold text-dark-blue small d-block mb-2">Sắp xếp theo tiêu chí</label>
+          <BaseSelect 
+            v-model:value="filters.sortBy" 
+            :options="sortByOptions"
+            class="w-100"
             @change="handleFilterChange"
-          >
-            <option value="newest">Mới nhất (Ngày đăng tải)</option>
-            <option value="duration-asc">Thời gian: Tăng dần ⏱️</option>
-            <option value="duration-desc">Thời gian: Giảm dần ⏱️</option>
-            <option value="questions-asc">Câu hỏi: Tăng dần ❓</option>
-            <option value="questions-desc">Câu hỏi: Giảm dần ❓</option>
-          </select>
+          />
         </div>
       </div>
       
@@ -232,6 +230,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
 import { CategorySelect, getRecursiveChildIds, type QuestionCategory } from '@/components/category'
+import BaseSelect, { type SelectOption } from '@/components/BaseSelect.vue'
+import { getAllCate } from '@/api/categories'
+import { getQuestionsPaging } from '@/api/questions'
 
 const route = useRoute()
 const router = useRouter()
@@ -280,14 +281,22 @@ const filters = reactive({
   sortBy: 'newest'
 })
 
+const sortByOptions: SelectOption[] = [
+  { value: 'newest', label: 'Mới nhất (Ngày đăng tải)', icon: '📅' },
+  { value: 'duration-asc', label: 'Thời gian: Tăng dần', icon: '⏱️' },
+  { value: 'duration-desc', label: 'Thời gian: Giảm dần', icon: '⏱️' },
+  { value: 'questions-asc', label: 'Câu hỏi: Tăng dần', icon: '❓' },
+  { value: 'questions-desc', label: 'Câu hỏi: Giảm dần', icon: '❓' }
+]
+
 // Mock categories
 const MOCK_CATEGORIES: QuestionCategory[] = [
-  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc", name: "Toán Học" },
-  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly", name: "Vật Lý" },
-  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
+  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc", name: "Toán Học" },
+  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
+  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "vat-ly", name: "Vật Lý" },
+  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
+  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
+  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
 ]
 
 // Mock questions for Tab 3
@@ -413,14 +422,9 @@ const getAttemptsCount = (id: string) => {
 // Load Categories
 const loadCategories = async () => {
   try {
-    const response = await axios.post('http://localhost:5000/api/questioncategories/paging', {
-      page: 1,
-      size: 100,
-      search: "",
-      filters: []
-    })
-    if (response.data && response.data.isSuccess && response.data.data) {
-      availableCategories.value = response.data.data.items || []
+    const res = await getAllCate()
+    if (res.isSuccess && res.data) {
+      availableCategories.value = res.data.items || []
     } else {
       throw new Error()
     }
@@ -432,45 +436,39 @@ const loadCategories = async () => {
 // Load Questions from Backend API or fall back to mock data
 const loadQuestions = async () => {
   try {
-    const response = await axios.post('http://localhost:5000/api/questions/paging', {
+    const apiFilters = []
+    if (filters.category) {
+      apiFilters.push({
+        property: 'CategoryId',
+        operator: 'Equal',
+        value: filters.category,
+        type: 'Guid'
+      })
+    }
+
+    const res = await getQuestionsPaging({
       page: 1,
       size: 100,
-      search: filters.q,
-      filters: []
+      key: filters.q || undefined,
+      filters: apiFilters,
+      isPaging: true
     })
     
-    if (response.data && response.data.isSuccess && response.data.data && response.data.data.items) {
-      const items = response.data.data.items
-      const list: Question[] = []
-      for (const item of items) {
-        let answersList: Answer[] = []
-        try {
-          const ansResponse = await axios.get(`http://localhost:5000/api/questionsanswers/question/${item.questionId}`)
-          if (ansResponse.data && ansResponse.data.isSuccess) {
-            answersList = ansResponse.data.data || []
-          }
-        } catch {
-          answersList = [
-            { questionAnswerId: `${item.questionId}_a1`, stringContent: 'Đáp án mẫu A (Đúng)', isCorrectAnswer: true },
-            { questionAnswerId: `${item.questionId}_a2`, stringContent: 'Đáp án mẫu B (Sai)', isCorrectAnswer: false }
-          ]
-        }
-
-        list.push({
-          questionId: item.questionId,
-          stringContent: item.stringContent || 'Câu hỏi trắc nghiệm ôn tập',
-          explaination: item.explaination || 'Chưa có giải thích chi tiết cho câu hỏi này.',
-          level: item.level || 0,
-          createdDate: item.createdDate ? new Date(item.createdDate) : new Date(),
-          answers: answersList
-        })
-      }
-      
-      allQuestions.value = list
+    if (res && res.isSuccess && res.data && res.data.items) {
+      const items = res.data.items
+      allQuestions.value = items.map((item: any) => ({
+        questionId: item.id,
+        stringContent: item.stringContent || 'Câu hỏi trắc nghiệm ôn tập',
+        explaination: item.explanation || 'Chưa có giải thích chi tiết cho câu hỏi này.',
+        level: item.level || 0,
+        createdDate: item.createdDate ? new Date(item.createdDate) : new Date(),
+        answers: item.answers || []
+      }))
     } else {
       throw new Error()
     }
-  } catch {
+  } catch (error) {
+    console.error('Lỗi tải câu hỏi từ API:', error)
     allQuestions.value = MOCK_QUESTIONS
   }
 }
@@ -558,6 +556,24 @@ const filteredQuestions = computed(() => {
   }
   return result
 })
+
+let debounceTimer: any = null
+const debounce = (fn: Function, delay: number) => {
+  return (...args: any[]) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      fn(...args)
+    }, delay)
+  }
+}
+
+const debouncedLoadQuestions = debounce(() => {
+  loadQuestions()
+}, 300)
+
+const handleSearchInput = () => {
+  debouncedLoadQuestions()
+}
 
 const handleFilterChange = () => {
   loadQuestions()

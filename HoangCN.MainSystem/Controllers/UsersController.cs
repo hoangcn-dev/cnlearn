@@ -1,4 +1,4 @@
-﻿using HoangCN.MainSystem.Entities;
+using HoangCN.MainSystem.Entities;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
@@ -38,6 +38,7 @@ namespace HoangCN.MainSystem.Controllers
             return Ok(ApiResponseDto.Success("Đăng nhập thành công."));
         }
 
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -52,6 +53,14 @@ namespace HoangCN.MainSystem.Controllers
             var userId = await _userService.CheckAuth(User);
             var info = await _userService.GetLoginSessionInfo(userId);
             return Ok(ApiResponseDto.Success(info));
+        }
+
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SignOut()
+        {
+            await _userService.SignOut();
+            return Ok(ApiResponseDto.Success("Đăng xuất thành công."));
         }
 
         [HttpPost("change-password")]

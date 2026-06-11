@@ -6,8 +6,8 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/login',
-      name: 'login',
+      path: '/auth',
+      name: 'auth',
       component: () => import("@/views/static/LoginView.vue")
     },
     {
@@ -63,7 +63,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  const isPublicRoute = to.name === 'login' || to.name === 'auth-callback' || to.name === 'forbidden'
+  const isPublicRoute = to.name === 'auth' || to.name === 'auth-callback' || to.name === 'forbidden'
 
   // Mặc định khi mới vào web admin, sẽ vào trang callback để lấy login info
   if (!authStore.isInitialized && !isPublicRoute) {
@@ -82,25 +82,37 @@ router.beforeEach((to, from, next) => {
       throw new Error("VITE_ID_URL is not configured.");
     }
     const currentOrigin = window.location.origin;
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.hostname.startsWith('192.168.') || 
+                    window.location.hostname.startsWith('10.') || 
+                    window.location.hostname === '[::1]';
+    const effectiveIdUrl = isLocal ? currentOrigin : idUrl;
 
-    if (currentOrigin !== idUrl) {
+    if (currentOrigin !== effectiveIdUrl) {
       // Chuyển hướng sang ID Server để đăng nhập, truyền kèm return_url để quay lại đúng trang hiện tại
       const callbackUrl = `${currentOrigin}/auth-callback?return_url=${encodeURIComponent(to.fullPath)}`;
-      window.location.href = `${idUrl}/login?return_url=${encodeURIComponent(callbackUrl)}`;
+      window.location.href = `${effectiveIdUrl}/auth?return_url=${encodeURIComponent(callbackUrl)}`;
       return;
     }
 
-    next({ name: 'login' })
+    next({ name: 'auth' })
     return
   }
 
   if (isLoggedIn) {
     const systemUrl = import.meta.env.VITE_SYSTEM_URL;
     const currentOrigin = window.location.origin;
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.hostname.startsWith('192.168.') || 
+                    window.location.hostname.startsWith('10.') || 
+                    window.location.hostname === '[::1]';
+    const effectiveSystemUrl = isLocal ? currentOrigin : systemUrl;
 
-    if (systemUrl && currentOrigin !== systemUrl) {
+    if (effectiveSystemUrl && currentOrigin !== effectiveSystemUrl) {
       // Đã đăng nhập nhưng đang ở ID Server -> chuyển hướng sang System Server
-      const callbackUrl = `${systemUrl}/auth-callback?return_url=${encodeURIComponent(to.fullPath)}`;
+      const callbackUrl = `${effectiveSystemUrl}/auth-callback?return_url=${encodeURIComponent(to.fullPath)}`;
       window.location.href = callbackUrl;
       return;
     }
@@ -114,9 +126,9 @@ router.beforeEach((to, from, next) => {
       return
     }
     
-    if (to.name === 'login' || to.name === 'forbidden') {
+    if (to.name === 'auth' || to.name === 'forbidden') {
       if (isAdmin) {
-        if (to.name === 'login' && to.query.mode === 'changepass') {
+        if (to.name === 'auth' && to.query.mode === 'changepass') {
           next();
           return;
         }

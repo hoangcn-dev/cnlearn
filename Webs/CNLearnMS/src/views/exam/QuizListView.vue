@@ -153,6 +153,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
 import { getDirectChildren, type QuestionCategory, CategoryChildGrid } from '@/components/category'
+import { getAllCate } from '@/api/categories'
 
 const route = useRoute()
 const router = useRouter()
@@ -182,9 +183,9 @@ const currentCategory = ref<QuestionCategory | null>(null)
 const loadCategories = async () => {
   loadingCategories.value = true
   try {
-    const response = await axios.get('http://localhost:5000/api/questioncategories')
-    if (response.data && response.data.isSuccess && response.data.data) {
-      flatCategories.value = response.data.data.items || []
+    const res = await getAllCate()
+    if (res.isSuccess && res.data) {
+      flatCategories.value = res.data.items || []
     } else {
       throw new Error()
     }
@@ -194,12 +195,12 @@ const loadCategories = async () => {
       flatCategories.value = JSON.parse(savedOffline)
     } else {
       flatCategories.value = [
-        { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc", name: "Toán Học" },
-        { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-        { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly", name: "Vật Lý" },
-        { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
-        { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-        { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
+        { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc", name: "Toán Học" },
+        { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
+        { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "vat-ly", name: "Vật Lý" },
+        { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
+        { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
+        { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
       ]
     }
   } finally {
@@ -212,12 +213,14 @@ const loadCategories = async () => {
     currentCategory.value = found
     categoryName.value = found.name
   } else {
+    const defaultName = (route.query.name as string) || 'Danh Mục Đề Thi'
     currentCategory.value = {
       questionCategoryId: categoryId.value,
-      name: (route.query.name as string) || 'Danh Mục Đề Thi',
+      parentId: null,
+      name: defaultName,
       slug: ''
     }
-    categoryName.value = currentCategory.value.name
+    categoryName.value = defaultName
   }
 }
 
@@ -257,7 +260,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
     
     list.push({
       name: partName,
-      id: match ? match.questionCategoryId : null,
+      id: match ? match.parentId : null,
       fullName: accumulatedName
     })
   }

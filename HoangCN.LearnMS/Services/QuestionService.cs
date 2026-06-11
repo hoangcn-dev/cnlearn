@@ -4,12 +4,17 @@ using HoangCN.Core.BL.Utils;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.LearnMS.Entities;
 using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.DTOs;
+using HoangCN.LearnMS.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -246,6 +251,494 @@ namespace HoangCN.LearnMS.Services
             }
 
             return questionsToInsert.Count;
+        }
+
+        /// <summary>
+        /// Tiền xử lý xóa - thực hiện xóa mềm/cascade các thực thể liên quan
+        /// </summary>
+        protected override void BeforeDelete(List<Question> entities)
+        {
+            var dbContext = ((HoangCN.Core.DL.Implementation.BaseWriteDL)_baseWriteDL).Context;
+            var questionIds = entities.Select(q => q.QuestionId).ToList();
+
+            // 1. Xóa mềm đáp án
+            var answers = dbContext.Set<QuestionAnswer>()
+                .Where(a => questionIds.Contains(a.QuestionId) && !a.IsDeleted)
+                .ToList();
+            foreach (var a in answers)
+            {
+                a.IsDeleted = true;
+                a.State = ModelState.Delete;
+                dbContext.Entry(a).State = EntityState.Modified;
+            }
+
+            // 2. Xóa mềm liên kết danh mục
+            var relations = dbContext.Set<QuestionInCategory>()
+                .Where(r => questionIds.Contains(r.QuestionId) && !r.IsDeleted)
+                .ToList();
+            foreach (var r in relations)
+            {
+                r.IsDeleted = true;
+                r.State = ModelState.Delete;
+                dbContext.Entry(r).State = EntityState.Modified;
+            }
+
+            base.BeforeDelete(entities);
+        }
+
+        /// <summary>
+        /// Lấy danh sách câu hỏi phân trang kèm chi tiết đáp án và danh mục
+        /// </summary>
+        public async Task<ResultDto<QuestionDetailsDto>> GetQuestionDetailsPagingAsync(GetRequest request, Guid currentUserId)
+        {
+            request ??= new GetRequest();
+            request.Filters ??= new List<Filter>();
+            request.Ids ??= new List<Guid>();
+
+            var result = new ResultDto<QuestionDetailsDto>
+            {
+                Page = request.Page ?? 1,
+                Size = request.Size ?? 10,
+                Total = 0,
+                Items = new List<QuestionDetailsDto>()
+            };
+
+            // Xử lý bộ lọc UserId "mine"
+            var userIdFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "UserId", StringComparison.OrdinalIgnoreCase));
+            if (userIdFilter != null && userIdFilter.Value?.ToString() == "mine")
+            {
+                userIdFilter.Value = currentUserId.ToString();
+            }
+
+            // Xử lý bộ lọc IsSaved
+            var savedFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsSaved", StringComparison.OrdinalIgnoreCase));
+            if (savedFilter != null)
+            {
+                request.Filters.Remove(savedFilter);
+
+                var savedSql = QuestionSqlUtil.BuildQuerySavedQuestionIds(currentUserId, out var savedParams);
+                var savedQuestionIds = await _baseReadDL.ExecuteQueryText<Guid>(savedSql, savedParams);
+                var savedQuestionIdsList = (savedQuestionIds ?? Enumerable.Empty<Guid>()).ToList();
+
+                if (savedQuestionIdsList.Count == 0)
+                {
+                    return result; // Trả về danh sách rỗng nếu không có câu hỏi nào được lưu
+                }
+
+                if (request.Ids.Count > 0)
+                {
+                    request.Ids = request.Ids.Intersect(savedQuestionIdsList).ToList();
+                }
+                else
+                {
+                    request.Ids = savedQuestionIdsList;
+                }
+
+                if (request.Ids.Count == 0)
+                {
+                    return result; // Trả về danh sách rỗng sau khi giao nhau
+                }
+            }
+
+            // Xử lý bộ lọc IsDone
+            var doneFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsDone", StringComparison.OrdinalIgnoreCase));
+            if (doneFilter != null)
+            {
+                request.Filters.Remove(doneFilter);
+
+                var doneSql = QuestionSqlUtil.BuildQueryDoneQuestionIds(currentUserId, out var doneParams);
+                var doneQuestionIds = await _baseReadDL.ExecuteQueryText<Guid>(doneSql, doneParams);
+                var doneQuestionIdsList = (doneQuestionIds ?? Enumerable.Empty<Guid>()).ToList();
+
+                if (doneQuestionIdsList.Count == 0)
+                {
+                    return result; // Trả về danh sách rỗng nếu không có câu hỏi nào được làm
+                }
+
+                if (request.Ids.Count > 0)
+                {
+                    request.Ids = request.Ids.Intersect(doneQuestionIdsList).ToList();
+                }
+                else
+                {
+                    request.Ids = doneQuestionIdsList;
+                }
+
+                if (request.Ids.Count == 0)
+                {
+                    return result; // Trả về danh sách rỗng sau khi giao nhau
+                }
+            }
+
+            // Xử lý bộ lọc CategoryId
+            var categoryFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "CategoryId", StringComparison.OrdinalIgnoreCase));
+            if (categoryFilter != null)
+            {
+                request.Filters.Remove(categoryFilter);
+
+                if (Guid.TryParse(categoryFilter.Value?.ToString(), out Guid catId))
+                {
+                    var sql = QuestionSqlUtil.BuildQueryQuestionIdsByCategory(catId, out var catParams);
+                    var relationsForCategory = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(sql, catParams);
+                    var questionIdsForCategory = (relationsForCategory ?? Enumerable.Empty<QuestionInCategory>())
+                        .Where(r => r != null)
+                        .Select(r => r.QuestionId)
+                        .ToList();
+
+                    if (questionIdsForCategory.Count == 0)
+                    {
+                        return result; // Trả về danh sách rỗng nếu không có câu hỏi nào trong danh mục này
+                    }
+
+                    if (request.Ids.Count > 0)
+                    {
+                        request.Ids = request.Ids.Intersect(questionIdsForCategory).ToList();
+                    }
+                    else
+                    {
+                        request.Ids = questionIdsForCategory;
+                    }
+
+                    if (request.Ids.Count == 0)
+                    {
+                        return result; // Trả về danh sách rỗng sau khi giao nhau
+                    }
+                }
+            }
+
+            var questionsResult = await Get<Question>(request);
+            if (questionsResult == null)
+            {
+                return result;
+            }
+
+            result.Page = questionsResult.Page;
+            result.Size = questionsResult.Size;
+            result.Total = questionsResult.Total;
+
+            if (questionsResult.Items == null || questionsResult.Items.Count == 0)
+            {
+                return result;
+            }
+
+            var questionIds = questionsResult.Items
+                .Where(q => q != null)
+                .Select(q => q.QuestionId)
+                .ToList();
+
+            if (questionIds.Count == 0)
+            {
+                return result;
+            }
+
+            // Lấy danh sách đáp án qua raw SQL tập trung
+            var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
+            var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
+
+            // Lấy danh sách liên kết danh mục qua raw SQL tập trung
+            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionIds(questionIds, out var relParams);
+            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
+
+            var answerGroup = (answers ?? Enumerable.Empty<QuestionAnswer>())
+                .Where(a => a != null)
+                .GroupBy(a => a.QuestionId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(a => a.OrderInList).ToList());
+
+            var relationGroup = (relations ?? Enumerable.Empty<QuestionInCategory>())
+                .Where(r => r != null)
+                .GroupBy(r => r.QuestionId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.OrderInList).Select(r => r.QuestionCategoryId).ToList());
+
+            foreach (var q in questionsResult.Items)
+            {
+                if (q == null) continue;
+
+                answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
+                relationGroup.TryGetValue(q.QuestionId, out var qCategoryIds);
+
+                result.Items.Add(new QuestionDetailsDto
+                {
+                    Id = q.QuestionId,
+                    Slug = q.Slug,
+                    StringContent = q.StringContent,
+                    Explanation = q.Explaination,
+                    Level = (int)q.Level,
+                    Type = (int)q.Type,
+                    AccessType = (int)q.AccessType,
+                    IsMyCreated = q.UserId == currentUserId,
+                    CategoryIds = qCategoryIds ?? new List<Guid>(),
+                    Answers = qAnswers?.Select(a => new AnswerDetailsDto
+                    {
+                        QuestionAnswerId = a.QuestionAnswerId,
+                        StringContent = a.StringContent,
+                        IsCorrectAnswer = a.IsCorrectAnswer
+                    }).ToList() ?? new List<AnswerDetailsDto>()
+                });
+            }
+
+            return result;
+        }
+
+
+        /// <summary>
+        /// Lấy chi tiết câu hỏi theo ID
+        /// </summary>
+        public async Task<QuestionDetailsDto?> GetQuestionDetailsByIdAsync(Guid id, Guid currentUserId)
+        {
+            var q = await GetById<Question>(id);
+            if (q == null) return null;
+
+            // Lấy danh sách đáp án qua raw SQL tập trung
+            var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionId(id, out var ansParams);
+            var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
+
+            // Lấy danh sách liên kết danh mục qua raw SQL tập trung
+            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionId(id, out var relParams);
+            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
+
+            return new QuestionDetailsDto
+            {
+                Id = q.QuestionId,
+                Slug = q.Slug,
+                StringContent = q.StringContent,
+                Explanation = q.Explaination,
+                Level = (int)q.Level,
+                Type = (int)q.Type,
+                AccessType = (int)q.AccessType,
+                IsMyCreated = q.UserId == currentUserId,
+                CategoryIds = relations.Select(r => r.QuestionCategoryId).ToList(),
+                Answers = answers.Select(a => new AnswerDetailsDto
+                {
+                    QuestionAnswerId = a.QuestionAnswerId,
+                    StringContent = a.StringContent,
+                    IsCorrectAnswer = a.IsCorrectAnswer
+                }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật) kèm đáp án và danh mục
+        /// </summary>
+        public async Task SaveQuestionDetailsAsync(List<QuestionDetailsDto> questionsDto, Guid currentUserId)
+        {
+            if (questionsDto == null || questionsDto.Count == 0)
+            {
+                throw new BadRequestException("Dữ liệu trống hoặc sai định dạng");
+            }
+
+            var questionsToSave = new List<Question>();
+            var answersToSave = new List<QuestionAnswer>();
+            var relationsToSave = new List<QuestionInCategory>();
+
+            var dbContext = ((HoangCN.Core.DL.Implementation.BaseWriteDL)_baseWriteDL).Context;
+
+            foreach (var qDto in questionsDto)
+            {
+                var isNew = qDto.Id == Guid.Empty;
+                var questionId = isNew ? Guid.NewGuid() : qDto.Id;
+                
+                if (string.IsNullOrWhiteSpace(qDto.StringContent))
+                {
+                    throw new BadRequestException("Nội dung câu hỏi không được phép để trống.");
+                }
+
+                var slug = string.IsNullOrWhiteSpace(qDto.Slug) 
+                    ? SlugUtil.GenerateSlug(qDto.StringContent) 
+                    : SlugUtil.GenerateSlug(qDto.Slug);
+
+                Question q;
+                if (isNew)
+                {
+                    q = new Question
+                    {
+                        QuestionId = questionId,
+                        UserId = currentUserId,
+                        State = ModelState.Insert
+                    };
+                }
+                else
+                {
+                    var existingList = await GetByCondition<Question>(x => x.QuestionId == questionId);
+                    q = existingList.FirstOrDefault();
+                    if (q == null)
+                    {
+                        q = new Question
+                        {
+                            QuestionId = questionId,
+                            UserId = currentUserId,
+                            State = ModelState.Insert
+                        };
+                    }
+                    else
+                    {
+                        q.State = ModelState.Update;
+                    }
+                }
+
+                q.Slug = slug;
+                q.StringContent = qDto.StringContent?.Trim();
+                q.Explaination = qDto.Explanation?.Trim();
+                q.Level = (QuestionLevel)qDto.Level;
+                q.Type = (QuestionType)qDto.Type;
+                q.AccessType = (QuestionAccessType)qDto.AccessType;
+                questionsToSave.Add(q);
+
+                // Load answers hiện tại
+                var existingAnswers = new List<QuestionAnswer>();
+                if (!isNew)
+                {
+                    existingAnswers = dbContext.Set<QuestionAnswer>()
+                        .Where(a => a.QuestionId == questionId && !a.IsDeleted)
+                        .ToList();
+                }
+
+                // Xóa mềm đáp án cũ không còn trong danh sách mới
+                var inputAnswerIds = qDto.Answers.Select(a => a.QuestionAnswerId).Where(id => id != Guid.Empty).ToList();
+                foreach (var ea in existingAnswers)
+                {
+                    if (!inputAnswerIds.Contains(ea.QuestionAnswerId))
+                    {
+                        ea.IsDeleted = true;
+                        ea.State = ModelState.Delete;
+                        answersToSave.Add(ea);
+                    }
+                }
+
+                // Thêm hoặc cập nhật đáp án hiện tại
+                for (int i = 0; i < qDto.Answers.Count; i++)
+                {
+                    var ansDto = qDto.Answers[i];
+                    var isNewAns = ansDto.QuestionAnswerId == Guid.Empty;
+                    QuestionAnswer ans;
+                    if (isNewAns)
+                    {
+                        ans = new QuestionAnswer
+                        {
+                            QuestionAnswerId = Guid.NewGuid(),
+                            QuestionId = questionId,
+                            State = ModelState.Insert
+                        };
+                    }
+                    else
+                    {
+                        ans = existingAnswers.FirstOrDefault(a => a.QuestionAnswerId == ansDto.QuestionAnswerId);
+                        if (ans == null)
+                        {
+                            ans = new QuestionAnswer
+                            {
+                                QuestionAnswerId = ansDto.QuestionAnswerId,
+                                QuestionId = questionId,
+                                State = ModelState.Insert
+                            };
+                        }
+                        else
+                        {
+                            ans.State = ModelState.Update;
+                        }
+                    }
+
+                    ans.StringContent = ansDto.StringContent?.Trim();
+                    ans.IsCorrectAnswer = ansDto.IsCorrectAnswer;
+                    ans.OrderInList = i + 1;
+                    answersToSave.Add(ans);
+                }
+
+                // Load danh mục hiện tại của câu hỏi
+                var existingRelations = new List<QuestionInCategory>();
+                if (!isNew)
+                {
+                    existingRelations = dbContext.Set<QuestionInCategory>()
+                        .Where(r => r.QuestionId == questionId && !r.IsDeleted)
+                        .ToList();
+                }
+
+                // Xóa các liên kết cũ không dùng nữa
+                foreach (var er in existingRelations)
+                {
+                    if (!qDto.CategoryIds.Contains(er.QuestionCategoryId))
+                    {
+                        er.IsDeleted = true;
+                        er.State = ModelState.Delete;
+                        relationsToSave.Add(er);
+                    }
+                }
+
+                // Thêm hoặc cập nhật liên kết mới
+                for (int i = 0; i < qDto.CategoryIds.Count; i++)
+                {
+                    var catId = qDto.CategoryIds[i];
+                    var rel = existingRelations.FirstOrDefault(r => r.QuestionCategoryId == catId);
+                    if (rel == null)
+                    {
+                        rel = new QuestionInCategory
+                        {
+                            QuestionId = questionId,
+                            QuestionCategoryId = catId,
+                            OrderInList = i + 1,
+                            State = ModelState.Insert
+                        };
+                        relationsToSave.Add(rel);
+                    }
+                    else
+                    {
+                        rel.State = ModelState.Update;
+                        rel.OrderInList = i + 1;
+                        relationsToSave.Add(rel);
+                    }
+                }
+            }
+
+            // Ghi nhận thay đổi trong Transaction
+            await _baseWriteDL.BeginTransactionAsync();
+            try
+            {
+                var now = DateTime.Now;
+
+                // Điền thông tin Audit
+                foreach (var q in questionsToSave)
+                {
+                    if (q.State == ModelState.Insert)
+                    {
+                        q.CreatedBy = "Hoàng Cao Nguyên";
+                        q.CreatedDate = now;
+                    }
+                    q.ModifiedBy = "Hoàng Cao Nguyên";
+                    q.ModifiedDate = now;
+                }
+                await _baseWriteDL.SaveEntitiesAsync(questionsToSave);
+
+                foreach (var ans in answersToSave)
+                {
+                    if (ans.State == ModelState.Insert)
+                    {
+                        ans.CreatedBy = "Hoàng Cao Nguyên";
+                        ans.CreatedDate = now;
+                    }
+                    ans.ModifiedBy = "Hoàng Cao Nguyên";
+                    ans.ModifiedDate = now;
+                }
+                await _baseWriteDL.SaveEntitiesAsync(answersToSave);
+
+                foreach (var rel in relationsToSave)
+                {
+                    if (rel.State == ModelState.Insert)
+                    {
+                        rel.CreatedBy = "Hoàng Cao Nguyên";
+                        rel.CreatedDate = now;
+                    }
+                    rel.ModifiedBy = "Hoàng Cao Nguyên";
+                    rel.ModifiedDate = now;
+                }
+                await _baseWriteDL.SaveEntitiesAsync(relationsToSave);
+
+                await _baseWriteDL.CommitTransactionAsync();
+            }
+            catch (Exception ex)
+            {
+                await _baseWriteDL.RollbackTransactionAsync();
+                _logger.LogError(ex, "Thất bại khi thực thi SaveQuestionDetails. Đã rollback.");
+                throw;
+            }
         }
     }
 }

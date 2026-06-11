@@ -14,5 +14,6 @@ namespace HoangCN.MainSystem.Interfaces
         Task<Guid> CheckAuth(ClaimsPrincipal claimsPrincipal);
         Task ForgotPassword(ForgotPasswordRequest request);
         Task ChangePassword(Guid userId, ChangePasswordRequest request);
+        Task SignOut();
     }
 }

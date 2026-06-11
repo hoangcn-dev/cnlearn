@@ -1,5 +1,6 @@
 <template>
   <a-select
+    v-bind="$attrs"
     v-model:value="computedValue"
     :placeholder="placeholder"
     :allow-clear="allowClear"
@@ -8,6 +9,9 @@
     option-label-prop="label"
     class="category-select"
   >
+    <a-select-option v-if="showAllOption" value="" label="Tất cả danh mục">
+      <span class="fw-bold text-dark">📂 Tất cả danh mục</span>
+    </a-select-option>
     <a-select-option 
       v-for="opt in options" 
       :key="opt.value" 
@@ -33,9 +37,11 @@ const props = withDefaults(defineProps<{
   categories: QuestionCategory[]
   placeholder?: string
   allowClear?: boolean
+  showAllOption?: boolean
 }>(), {
   placeholder: 'Chọn danh mục...',
-  allowClear: true
+  allowClear: true,
+  showAllOption: false
 })
 
 const emit = defineEmits<{

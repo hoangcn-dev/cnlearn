@@ -24,6 +24,14 @@
               </router-link>
             </li>
             <li class="nav-item">
+              <router-link to="/personal/activity" class="nav-link px-3 py-2 rounded-3 d-flex align-items-center gap-2 sidebar-item" active-class="active-item">
+                <span class="d-flex align-items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </span>
+                <span class="label fw-semibold">Lịch sử hoạt động</span>
+              </router-link>
+            </li>
+            <li class="nav-item">
               <router-link to="/personal/questions" class="nav-link px-3 py-2 rounded-3 d-flex align-items-center gap-2 sidebar-item" active-class="active-item">
                 <span class="d-flex align-items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-icon"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>

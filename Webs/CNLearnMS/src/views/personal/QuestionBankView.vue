@@ -45,10 +45,9 @@
     </div>
 
     <!-- Separate Table Card -->
-    <div class="card bg-white mb-5 p-3">
+    <div class="card bg-white mb-5 p-3 pt-0">
       <!-- List Tabs -->
       <a-tabs v-model:activeKey="listTab" class="custom-list-tabs mb-2">
-        <a-tab-pane key="bank" tab="Ngân hàng" />
         <a-tab-pane key="mine" tab="Của tôi" />
         <a-tab-pane key="saved" tab="Đã lưu" />
         <a-tab-pane key="done" tab="Đã làm" />
@@ -58,9 +57,17 @@
       <div class="table-responsive py-1">
         <a-table 
           :columns="columns" 
-          :data-source="filteredQuestions" 
+          :data-source="questions" 
           row-key="id"
-          :pagination="{ pageSize: 8 }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: totalItems,
+            showSizeChanger: false,
+            size: 'small'
+          }"
+          :loading="loading"
+          @change="handleTableChange"
           class="custom-table"
         >
           <template #bodyCell="{ column, record }">
@@ -91,15 +98,31 @@
                   </button>
                   <template #overlay>
                     <a-menu>
+                      <a-menu-item key="view" @click="viewQuestionDetail(record.id)">
+                        <span class="d-flex align-items-center gap-2 text-secondary small">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                          Xem chi tiết
+                        </span>
+                      </a-menu-item>
+                      <a-menu-item key="save-toggle" @click="handleToggleSave(record.id)">
+                        <span v-if="listTab === 'saved' || savedQuestionIdsList.includes(record.id)" class="d-flex align-items-center gap-2 text-secondary small">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                          Bỏ lưu câu hỏi
+                        </span>
+                        <span v-else class="d-flex align-items-center gap-2 text-secondary small">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                          Lưu câu hỏi
+                        </span>
+                      </a-menu-item>
                       <a-menu-item key="edit" @click="goToEditPage(record.id)">
-                        <span class="d-flex align-items-center gap-2 text-indigo small">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
+                        <span class="d-flex align-items-center gap-2 text-secondary small">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
                           Chỉnh sửa
                         </span>
                       </a-menu-item>
                       <a-menu-item key="delete" @click="confirmDelete(record.id)">
-                        <span class="d-flex align-items-center gap-2 text-danger small">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <span class="d-flex align-items-center gap-2 text-secondary small">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                           Xóa câu hỏi
                         </span>
                       </a-menu-item>
@@ -125,7 +148,7 @@
         <div class="mb-3">
           <label class="form-label small fw-semibold">Danh mục môn học:</label>
           <a-select v-model:value="filters.categoryId" style="width: 100%" placeholder="Tất cả môn học" allow-clear>
-            <a-select-option v-for="cat in categories" :key="cat.id" :value="cat.id">
+            <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId">
               {{ cat.name }}
             </a-select-option>
           </a-select>
@@ -162,9 +185,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { getAllCate } from '@/api/categories'
+import { getQuestionsPaging, deleteQuestions, getSavedQuestionsPaging, getDoneQuestionsPaging, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
 
 const router = useRouter()
 
@@ -178,107 +203,31 @@ interface Question {
   slug: string
   stringContent: string
   explanation: string
-  level: number // 0: Easy, 1: Medium, 2: Hard
-  type: number // 0: Single Choice
-  accessType: number // 0: Personal, 1: Public
+  level: number
+  type: number
+  accessType: number
   categoryIds: string[]
   answers: Answer[]
   isMyCreated?: boolean
 }
 
 interface Category {
-  id: string
+  questionCategoryId: string
   name: string
 }
 
-// Categories list matching Home/Category views
-const categories = ref<Category[]>([
-  { id: "c01a92a2-a69f-4143-8589-da11688d7d01", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { id: "c02a92a2-a69f-4143-8589-da11688d7d02", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { id: "c03a92a2-a69f-4143-8589-da11688d7d03", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { id: "c04a92a2-a69f-4143-8589-da11688d7d04", name: "Tiếng Anh - IELTS Reading Academic" },
-  { id: "c05a92a2-a69f-4143-8589-da11688d7d05", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
-  { id: "c06a92a2-a69f-4143-8589-da11688d7d06", name: "Sinh Học - Di Truyền Học & Biến Dị" },
-  { id: "c07a92a2-a69f-4143-8589-da11688d7d07", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
-  { id: "c08a92a2-a69f-4143-8589-da11688d7d08", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
-  { id: "c09a92a2-a69f-4143-8589-da11688d7d09", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
-])
-
-// Seed initial questions
-const INITIAL_QUESTIONS: Question[] = [
-  {
-    id: "q001",
-    slug: "su-khac-biet-giua-ienumerable-va-iqueryable",
-    stringContent: "Điểm khác biệt lớn nhất giữa IEnumerable và IQueryable là gì?",
-    explanation: "IEnumerable thực hiện lọc dữ liệu trên Client (In-Memory), còn IQueryable thực hiện lọc phía Server (Database).",
-    level: 1,
-    type: 0,
-    accessType: 1,
-    categoryIds: ["c07a92a2-a69f-4143-8589-da11688d7d07"],
-    answers: [
-      { stringContent: "IEnumerable lọc ở Client, IQueryable lọc ở Server Database", isCorrectAnswer: true },
-      { stringContent: "IEnumerable lọc ở Server, IQueryable lọc ở Client", isCorrectAnswer: false },
-      { stringContent: "IEnumerable thuộc .NET Framework cũ, IQueryable thuộc .NET Core", isCorrectAnswer: false }
-    ],
-    isMyCreated: false
-  },
-  {
-    id: "q002",
-    slug: "cu-phap-khai-bao-bien-hang-csharp",
-    stringContent: "Cú pháp khai báo biến hằng trong C# là gì?",
-    explanation: "Biến hằng trong C# được khai báo bằng từ khóa const đứng trước kiểu dữ liệu.",
-    level: 0,
-    type: 0,
-    accessType: 1,
-    categoryIds: ["c07a92a2-a69f-4143-8589-da11688d7d07"],
-    answers: [
-      { stringContent: "const <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: true },
-      { stringContent: "readonly <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false },
-      { stringContent: "static <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false }
-    ],
-    isMyCreated: false
-  },
-  {
-    id: "q003",
-    slug: "tinh-chat-vat-ly-cua-song-am",
-    stringContent: "Một sóng âm truyền từ không khí vào nước thì:",
-    explanation: "Khi truyền qua các môi trường khác nhau, tần số của sóng âm không đổi, nhưng vận tốc truyền sóng đổi dẫn đến bước sóng đổi.",
-    level: 1,
-    type: 0,
-    accessType: 1,
-    categoryIds: ["c02a92a2-a69f-4143-8589-da11688d7d02"],
-    answers: [
-      { stringContent: "tần số không đổi, bước sóng tăng.", isCorrectAnswer: true },
-      { stringContent: "chu kỳ tăng, vận tốc giảm.", isCorrectAnswer: false },
-      { stringContent: "bước sóng không đổi, chu kỳ giảm.", isCorrectAnswer: false },
-      { stringContent: "tần số tăng, bước sóng giảm.", isCorrectAnswer: false }
-    ],
-    isMyCreated: false
-  },
-  {
-    id: "q004",
-    slug: "khao-sat-su-bien-thien-ham-so",
-    stringContent: "Tìm khoảng đồng biến của hàm số y = -x^3 + 3x^2 + 1.",
-    explanation: "Đạo hàm y' = -3x^2 + 6x. Cho y' > 0 <=> 0 < x < 2. Vậy hàm số đồng biến trên khoảng (0; 2).",
-    level: 0,
-    type: 0,
-    accessType: 0,
-    categoryIds: ["c01a92a2-a69f-4143-8589-da11688d7d01"],
-    answers: [
-      { stringContent: "Khoảng (0; 2)", isCorrectAnswer: true },
-      { stringContent: "Khoảng (-vô cùng; 0)", isCorrectAnswer: false },
-      { stringContent: "Khoảng (2; +vô cùng)", isCorrectAnswer: false }
-    ],
-    isMyCreated: false
-  }
-]
-
+// Categories list loaded from API
+const categories = ref<Category[]>([])
 const questions = ref<Question[]>([])
 
-const listTab = ref('bank')
+const listTab = ref('mine')
 const filterModalOpen = ref(false)
-const savedQuestionIds = ref<string[]>([])
-const doneQuestionIds = ref<string[]>([])
+
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(8)
+const totalItems = ref(0)
+const loading = ref(false)
 
 // Filters state
 const filters = reactive({
@@ -315,47 +264,9 @@ const columns = [
   { title: 'Thao tác', key: 'actions', width: '90px' }
 ]
 
-// Filter logic
-const filteredQuestions = computed(() => {
-  return questions.value.filter(q => {
-    // Tab filtering
-    if (listTab.value === 'mine' && !q.isMyCreated) {
-      return false
-    }
-    if (listTab.value === 'saved' && !savedQuestionIds.value.includes(q.id)) {
-      return false
-    }
-    if (listTab.value === 'done' && !doneQuestionIds.value.includes(q.id)) {
-      return false
-    }
-
-    // Search
-    if (filters.search && !q.stringContent.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false
-    }
-    // Category
-    if (filters.categoryId && !q.categoryIds.includes(filters.categoryId)) {
-      return false
-    }
-    // Level
-    if (filters.level !== undefined && q.level !== filters.level) {
-      return false
-    }
-    // Scope (accessType)
-    if (filters.accessType !== undefined && q.accessType !== filters.accessType) {
-      return false
-    }
-    // Scope (Mine / All)
-    if (filters.scope === 'mine' && !q.isMyCreated) {
-      return false
-    }
-    return true
-  })
-})
-
 const getCategoryName = (catId?: string) => {
   if (!catId) return 'Chuyên đề chung'
-  const found = categories.value.find(c => c.id === catId)
+  const found = categories.value.find(c => c.questionCategoryId === catId)
   return found ? found.name : 'Chuyên đề chung'
 }
 
@@ -366,10 +277,124 @@ const getLevelText = (lvl: number) => {
 }
 
 const getLevelBadgeClass = (lvl: number) => {
-  if (lvl === 2) return 'badge bg-danger text-white fs-8'
-  if (lvl === 1) return 'badge bg-warning text-dark fs-8'
-  return 'badge bg-success text-white fs-8'
+  if (lvl === 2) return 'badge bg-danger text-white fs-9 fw-normal'
+  if (lvl === 1) return 'badge bg-warning text-dark fs-9 fw-normal'
+  return 'badge bg-success text-white fs-9 fw-normal'
 }
+
+// API fetch questions
+const fetchQuestions = async () => {
+  loading.value = true
+  try {
+    const apiFilters: any[] = []
+    let fetchFunc = getQuestionsPaging
+
+    // 1. Tab filtering
+    if (listTab.value === 'mine') {
+      apiFilters.push({
+        property: 'UserId',
+        operator: 'Equal',
+        value: 'mine',
+        type: 'String'
+      })
+    } else if (listTab.value === 'saved') {
+      fetchFunc = getSavedQuestionsPaging
+    } else if (listTab.value === 'done') {
+      fetchFunc = getDoneQuestionsPaging
+    }
+
+    // 2. Extra Filters from modal
+    if (filters.categoryId) {
+      apiFilters.push({
+        property: 'CategoryId',
+        operator: 'Equal',
+        value: filters.categoryId,
+        type: 'String'
+      })
+    }
+    if (filters.level !== undefined) {
+      apiFilters.push({
+        property: 'Level',
+        operator: 'Equal',
+        value: filters.level,
+        type: 'Number'
+      })
+    }
+    if (filters.accessType !== undefined) {
+      apiFilters.push({
+        property: 'AccessType',
+        operator: 'Equal',
+        value: filters.accessType,
+        type: 'Number'
+      })
+    }
+    if (filters.scope === 'mine') {
+      apiFilters.push({
+        property: 'UserId',
+        operator: 'Equal',
+        value: 'mine',
+        type: 'String'
+      })
+    }
+
+    const payload = {
+      page: currentPage.value,
+      size: pageSize.value,
+      key: filters.search || undefined,
+      filters: apiFilters,
+      sortBy: 'CreatedDate',
+      isAsc: false,
+      isPaging: true
+    }
+
+    const res = await fetchFunc(payload)
+    if (res && res.isSuccess && res.data) {
+      questions.value = res.data.items || []
+      totalItems.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh sách câu hỏi:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Table change handler for paging
+const handleTableChange = (pagination: any) => {
+  currentPage.value = pagination.current
+  fetchQuestions()
+}
+
+// Debounce helper
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  return function (this: any, ...args: Parameters<T>) {
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
+  }
+}
+
+const debouncedFetch = debounce(() => {
+  currentPage.value = 1
+  fetchQuestions()
+}, 300)
+
+// Watchers for search & filters
+watch(() => filters.search, () => {
+  debouncedFetch()
+})
+
+watch(() => [filters.categoryId, filters.level, filters.accessType, filters.scope], () => {
+  currentPage.value = 1
+  fetchQuestions()
+})
+
+watch(listTab, () => {
+  currentPage.value = 1
+  fetchQuestions()
+})
 
 // Routing
 const goToCreatePage = () => {
@@ -380,6 +405,10 @@ const goToEditPage = (id: string) => {
   router.push(`/personal/questions/edit/${id}`)
 }
 
+const viewQuestionDetail = (id: string) => {
+  router.push(`/question/${id}`)
+}
+
 // Actions
 const confirmDelete = (id: string) => {
   Modal.confirm({
@@ -388,47 +417,77 @@ const confirmDelete = (id: string) => {
     okText: 'Xóa câu hỏi',
     okType: 'danger',
     cancelText: 'Hủy bỏ',
-    onOk() {
-      questions.value = questions.value.filter(q => q.id !== id)
-      saveToStorage()
-      message.success('Đã xóa câu hỏi thành công!')
+    async onOk() {
+      try {
+        const res = await deleteQuestions([id])
+        if (res && res.isSuccess) {
+          message.success('Đã xóa câu hỏi thành công!')
+          fetchQuestions()
+        } else {
+          message.error(res.errorMessage || 'Xóa câu hỏi thất bại')
+        }
+      } catch (error) {
+        message.error('Đã xảy ra lỗi khi xóa câu hỏi')
+      }
     }
   })
 }
 
-// Storage helpers
-const saveToStorage = () => {
-  localStorage.setItem('cn_questions', JSON.stringify(questions.value))
-}
-
-const loadFromStorage = () => {
-  const stored = localStorage.getItem('cn_questions')
-  if (stored) {
-    questions.value = JSON.parse(stored)
-  } else {
-    questions.value = [...INITIAL_QUESTIONS]
-    saveToStorage()
-  }
-
-  const saved = localStorage.getItem('cn_saved_questions')
-  if (saved) {
-    savedQuestionIds.value = JSON.parse(saved)
-  } else {
-    savedQuestionIds.value = ['q002']
-    localStorage.setItem('cn_saved_questions', JSON.stringify(savedQuestionIds.value))
-  }
-
-  const done = localStorage.getItem('cn_done_questions')
-  if (done) {
-    doneQuestionIds.value = JSON.parse(done)
-  } else {
-    doneQuestionIds.value = ['q003']
-    localStorage.setItem('cn_done_questions', JSON.stringify(doneQuestionIds.value))
+// Categories load
+const fetchCategories = async () => {
+  try {
+    const res = await getAllCate()
+    if (res && res.isSuccess && res.data) {
+      categories.value = res.data.items || []
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh mục:', error)
   }
 }
 
-onMounted(() => {
-  loadFromStorage()
+const savedQuestionIdsList = ref<string[]>([])
+
+const fetchSavedQuestionIds = async () => {
+  try {
+    const res = await getSavedQuestionIds()
+    if (res && res.isSuccess && res.data) {
+      savedQuestionIdsList.value = res.data
+    }
+  } catch (e) {
+    console.error('Lỗi tải danh sách ID đã lưu:', e)
+  }
+}
+
+const handleToggleSave = async (id: string) => {
+  try {
+    const res = await toggleSaveQuestion(id)
+    if (res && res.isSuccess) {
+      const isSaved = res.data
+      if (isSaved) {
+        message.success('Đã lưu câu hỏi thành công!')
+        if (!savedQuestionIdsList.value.includes(id)) {
+          savedQuestionIdsList.value.push(id)
+        }
+      } else {
+        message.success('Đã bỏ lưu câu hỏi thành công!')
+        savedQuestionIdsList.value = savedQuestionIdsList.value.filter(savedId => savedId !== id)
+        if (listTab.value === 'saved') {
+          questions.value = questions.value.filter(q => q.id !== id)
+          totalItems.value = Math.max(0, totalItems.value - 1)
+        }
+      }
+    } else {
+      message.error(res.errorMessage || 'Lỗi khi thực hiện thao tác')
+    }
+  } catch (error) {
+    message.error('Không thể thực hiện tác vụ lưu câu hỏi')
+  }
+}
+
+onMounted(async () => {
+  await fetchCategories()
+  await fetchSavedQuestionIds()
+  await fetchQuestions()
 })
 </script>
 
@@ -516,6 +575,10 @@ onMounted(() => {
 
 .fs-8 {
   font-size: 0.75rem;
+}
+
+.fs-9 {
+  font-size: 0.7rem;
 }
 
 .custom-table :deep(.ant-table-thead > tr > th) {

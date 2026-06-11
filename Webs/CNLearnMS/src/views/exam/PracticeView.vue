@@ -111,14 +111,10 @@
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import type { QuestionCategory } from '@/components/category'
+import { getAllCate } from '@/api/categories'
 
 const router = useRouter()
-
-interface QuestionCategory {
-  questionCategoryId: string
-  slug: string
-  name: string
-}
 
 // State
 const categories = ref<QuestionCategory[]>([])
@@ -153,15 +149,15 @@ let observer: IntersectionObserver | null = null
 
 // Mock dataset in case backend API is not available or doesn't have categories
 const MOCK_CATEGORIES: QuestionCategory[] = [
-  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", slug: "vat-ly-12-chuyen-de", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "hoa-hoc-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", slug: "tieng-anh-ielts-reading", name: "Tiếng Anh - IELTS Reading Academic" },
-  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", slug: "lich-su-viet-nam-hien-dai", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
-  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", slug: "sinh-hoc-di-truyen-bien-di", name: "Sinh Học - Di Truyền Học & Biến Dị" },
-  { questionCategoryId: "c07a92a2-a69f-4143-8589-da11688d7d07", slug: "tin-hoc-lap-trinh-c", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
-  { questionCategoryId: "c08a92a2-a69f-4143-8589-da11688d7d08", slug: "dia-ly-kinh-te-xa-hoi", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
-  { questionCategoryId: "c09a92a2-a69f-4143-8589-da11688d7d09", slug: "giao-duc-cong-dan", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
+  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
+  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: null, slug: "vat-ly-12-chuyen-de", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
+  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "hoa-hoc-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
+  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: null, slug: "tieng-anh-ielts-reading", name: "Tiếng Anh - IELTS Reading Academic" },
+  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "lich-su-viet-nam-hien-dai", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
+  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "sinh-hoc-di-truyen-bien-di", name: "Sinh Học - Di Truyền Học & Biến Dị" },
+  { questionCategoryId: "c07a92a2-a69f-4143-8589-da11688d7d07", parentId: null, slug: "tin-hoc-lap-trinh-c", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
+  { questionCategoryId: "c08a92a2-a69f-4143-8589-da11688d7d08", parentId: null, slug: "dia-ly-kinh-te-xa-hoi", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
+  { questionCategoryId: "c09a92a2-a69f-4143-8589-da11688d7d09", parentId: null, slug: "giao-duc-cong-dan", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
 ]
 
 // Get quiz counts based on Category ID to keep them stable and realistic
@@ -198,30 +194,31 @@ const getBadgeStyle = (name: string) => {
   }
 }
 
+const allFetchedCategories = ref<QuestionCategory[]>([])
+
 // Fetch categories from Backend API or fall back to mock data
 const fetchCategories = async () => {
   if (loading.value || !hasMore.value) return
   loading.value = true
 
   try {
-    const response = await axios.post('http://localhost:5000/api/questioncategories/paging', {
-      page: page.value,
-      size: size.value,
-      search: "",
-      filters: []
-    })
-
-    if (response.data && response.data.isSuccess && response.data.data) {
-      const data = response.data.data
-      const items = data.items || []
-      
-      categories.value.push(...items)
-      totalCategories.value = data.total || categories.value.length
-      hasMore.value = categories.value.length < data.total
-      page.value++
-    } else {
-      throw new Error("API response was unsuccessful")
+    if (allFetchedCategories.value.length === 0) {
+      const res = await getAllCate()
+      if (res.isSuccess && res.data) {
+        allFetchedCategories.value = res.data.items || []
+      } else {
+        throw new Error("API response was unsuccessful")
+      }
     }
+
+    const startIdx = (page.value - 1) * size.value
+    const endIdx = startIdx + size.value
+    const chunk = allFetchedCategories.value.slice(startIdx, endIdx)
+
+    categories.value.push(...chunk)
+    totalCategories.value = allFetchedCategories.value.length
+    hasMore.value = categories.value.length < allFetchedCategories.value.length
+    page.value++
   } catch (error) {
     console.error("Lỗi khi kết nối API:", error)
     errorMsg.value = "Không thể kết nối đến máy chủ API"

@@ -16,6 +16,7 @@ namespace HoangCN.MainSystem.Utils
         public string Issuer { get; set; }
         public int AccessTokenTTL { get; set; } // min
         public int RefreshTokenTTL { get; set; } // min
+        public string? CookieDomain { get; set; }
     }
 
     public class JwtUtil

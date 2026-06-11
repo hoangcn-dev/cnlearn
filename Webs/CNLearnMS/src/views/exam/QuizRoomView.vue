@@ -664,6 +664,17 @@ const submitExam = (bypassConfirm = false) => {
     historyList.unshift(attempt)
     localStorage.setItem('cn_history', JSON.stringify(historyList))
 
+    // Save to cn_done_questions
+    const storedDone = localStorage.getItem('cn_done_questions')
+    const doneIds = storedDone ? JSON.parse(storedDone) : []
+    const doneSet = new Set(doneIds)
+    questions.value.forEach(q => {
+      if (q.id && q.chosenAnswerIds && q.chosenAnswerIds.length > 0) {
+        doneSet.add(q.id)
+      }
+    })
+    localStorage.setItem('cn_done_questions', JSON.stringify(Array.from(doneSet)))
+
     message.success('Đã nộp bài thi thành công!')
 
     // Redirect to results detail

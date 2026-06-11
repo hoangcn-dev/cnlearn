@@ -13,7 +13,7 @@
             <h3 class="h5 fw-bold text-dark-blue mb-2 card-title">{{ getLocalName(cat.name) }}</h3>
             <p class="text-secondary small mb-0 desc-text">
               Khám phá các đề thi thử và tài liệu thuộc phần {{ getLocalName(cat.name) }}.
-            </p>
+             </p>
           </div>
           <div class="d-flex align-items-center justify-content-between border-top pt-3 mt-4 text-indigo">
             <span class="small fw-semibold">Khám phá ngay</span>

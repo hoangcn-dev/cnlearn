@@ -1,14 +1,6 @@
 <template>
   <div class="admin-dashboard small-font">
 
-    <!-- Alert thông báo lỗi API -->
-    <div v-if="apiError" class="alert alert-warning border-0 shadow-sm rounded-3 mb-4 d-flex justify-content-between align-items-center">
-      <div class="small">
-        <strong>⚠️ Kết nối API:</strong> {{ apiError }} (Đã kích hoạt chế độ tự động lưu trữ Offline để thử nghiệm).
-      </div>
-      <button type="button" class="btn-close" @click="apiError = ''"></button>
-    </div>
-
     <div class="row g-4">
       <div class="col-12">
         <div class="card border-0 rounded-4 shadow-sm bg-white p-4">
@@ -42,10 +34,9 @@
                       v-model:selectedKeys="selectedTreeKeys"
                       @select="handleSelectNode"
                     >
-                      <template #title="{ title, dataRef }">
+                      <template #title="{ title }">
                         <span class="d-flex align-items-center justify-content-between w-100 py-1">
                           <span class="fw-semibold text-dark">{{ title }}</span>
-                          <span class="badge bg-secondary-soft text-secondary ms-2 fs-9">{{ dataRef.originalItem ? 'Entity' : 'Virtual' }}</span>
                         </span>
                       </template>
                     </a-tree>
@@ -103,8 +94,6 @@
                         </div>
                       </div>
 
-                      <!-- Đã ẩn thẻ Preview Tên đầy đủ hệ thống để giao diện sạch sẽ hơn -->
-
                       <!-- Action buttons -->
                       <div class="d-flex justify-content-between align-items-center border-top pt-3">
                         <div>
@@ -158,34 +147,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import axios from 'axios'
-import { CategorySelect } from '@/components/category'
-
-// API configurations
-const API_URL = 'http://localhost:5000/api/questioncategories'
-
-// Interface
-interface QuestionCategory {
-  questionCategoryId: string
-  name: string
-  slug: string
-}
-
-interface TreeNode {
-  key: string
-  title: string
-  slug?: string
-  children?: TreeNode[]
-  originalItem?: QuestionCategory
-}
+import { CategorySelect, type CategoryNode, type QuestionCategory, buildCategoryTree } from '@/components/category'
+import { getAllCate, saveCategories, deleteCategories } from '@/api/categories'
 
 // State variables
 const activeTab = ref('categories')
 const loading = ref(false)
 const actionLoading = ref(false)
-const apiError = ref('')
 const searchQuery = ref('')
 const selectedTreeKeys = ref<string[]>([])
 
@@ -201,98 +171,31 @@ const editingForm = reactive({
   parentId: ''
 })
 
-// MOCK data to fallback when API fails
-const MOCK_CATEGORIES: QuestionCategory[] = [
-  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc", name: "Toán Học" },
-  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly", name: "Vật Lý" },
-  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
-]
-
-// Fetch categories from API or LocalStorage
+// Fetch categories from API
 const fetchCategories = async () => {
   loading.value = true
-  apiError.value = ''
-  
   try {
-    const response = await axios.get(API_URL)
-    if (response.data && response.data.isSuccess && response.data.data) {
-      const items = response.data.data.items || []
-      flatCategories.value = items
-      // Sync offline data
-      localStorage.setItem('offline_categories', JSON.stringify(items))
-    } else {
-      throw new Error('Đầu ra API không đúng định dạng')
+    const res = await getAllCate()
+    if (res.isSuccess && res.data) {
+      flatCategories.value = res.data.items || []
     }
   } catch (err: any) {
-    console.error('API Error:', err)
-    apiError.value = 'Không thể kết nối đến API Máy chủ. Sử dụng CSDL Offline.'
-    
-    // Load offline storage or mock fallback
-    const savedOffline = localStorage.getItem('offline_categories')
-    if (savedOffline) {
-      flatCategories.value = JSON.parse(savedOffline)
-    } else {
-      flatCategories.value = [...MOCK_CATEGORIES]
-      localStorage.setItem('offline_categories', JSON.stringify(MOCK_CATEGORIES))
-    }
+    console.error('Lỗi khi lấy danh mục:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Build Tree representation from flat list using delimiter " - "
+// Build Tree representation from flat list
 const treeData = computed(() => {
-  const rootNodes: TreeNode[] = []
-  
-  flatCategories.value.forEach(item => {
-    const parts = item.name.split(' - ').map(p => p.trim())
-    let currentLevel = rootNodes
-    
-    parts.forEach((part, index) => {
-      let node = currentLevel.find(n => n.title === part)
-      
-      if (!node) {
-        node = {
-          key: index === parts.length - 1 ? item.questionCategoryId : `temp-${part}-${index}`,
-          title: part,
-          slug: index === parts.length - 1 ? item.slug : undefined,
-          children: [],
-          originalItem: index === parts.length - 1 ? item : undefined
-        }
-        currentLevel.push(node)
-      } else if (index === parts.length - 1) {
-        // If leaf reached, assign properties
-        node.key = item.questionCategoryId
-        node.slug = item.slug
-        node.originalItem = item
-      }
-      currentLevel = node.children!
-    })
-  })
-  
-  // Remove empty children array to disable tree collapse handles
-  const pruneChildren = (nodes: TreeNode[]) => {
-    nodes.forEach(n => {
-      if (n.children && n.children.length === 0) {
-        delete n.children
-      } else if (n.children) {
-        pruneChildren(n.children)
-      }
-    })
-  }
-  
-  pruneChildren(rootNodes)
-  return rootNodes
+  return buildCategoryTree(flatCategories.value)
 })
 
 // Search query filter for the tree
 const filteredTreeData = computed(() => {
   if (!searchQuery.value.trim()) return treeData.value
   
-  const filter = (nodes: TreeNode[]): TreeNode[] => {
+  const filter = (nodes: CategoryNode[]): CategoryNode[] => {
     return nodes
       .map(n => ({ ...n }))
       .filter(n => {
@@ -307,17 +210,27 @@ const filteredTreeData = computed(() => {
   return filter(treeData.value)
 })
 
-// Available parent categories (excludes self to avoid circular reference)
+// Available parent categories (excludes self and its descendants to avoid circular references)
 const availableParentCategories = computed(() => {
   if (!isEditing.value) return flatCategories.value
   
-  // Return all flat items except the one we are editing
-  return flatCategories.value.filter(cat => cat.questionCategoryId !== editingForm.id)
+  const excludedIds = new Set<string>([editingForm.id])
+  const addDescendants = (parentId: string) => {
+    flatCategories.value
+      .filter(c => c.parentId === parentId)
+      .forEach(c => {
+        excludedIds.add(c.questionCategoryId)
+        addDescendants(c.questionCategoryId)
+      })
+  }
+  addDescendants(editingForm.id)
+  
+  return flatCategories.value.filter(cat => !excludedIds.has(cat.questionCategoryId))
 })
 
 // Reconstruct Full Name
 const reconstructedFullName = computed(() => {
-  if (!editingForm.localName.trim()) return '*(Đang soạn thảo)*'
+  if (!editingForm.localName.trim()) return ''
   
   if (editingForm.parentId) {
     const parent = flatCategories.value.find(c => c.questionCategoryId === editingForm.parentId)
@@ -350,7 +263,7 @@ const autoGenerateSlug = () => {
 
 // Select a node in the tree to edit
 const handleSelectNode = (keys: any[], info: any) => {
-  if (keys.length === 0 || !info.node.originalItem) {
+  if (keys.length === 0 || !info.node || !info.node.originalItem) {
     resetForm()
     return
   }
@@ -358,30 +271,12 @@ const handleSelectNode = (keys: any[], info: any) => {
   const original = info.node.originalItem as QuestionCategory
   isEditing.value = true
   editingForm.id = original.questionCategoryId
-  editingForm.slug = original.slug
+  editingForm.slug = original.slug || ''
   
   // Local name is the last part of full name split by ' - '
   const parts = original.name.split(' - ')
   editingForm.localName = parts[parts.length - 1] || ''
-  
-  // Determine parent ID: If name has parent prefix, find matching category
-  if (parts.length > 1) {
-    const parentName = parts.slice(0, parts.length - 1).join(' - ')
-    const parent = flatCategories.value.find(c => c.name === parentName)
-    editingForm.parentId = parent ? parent.questionCategoryId : ''
-  } else {
-    editingForm.parentId = ''
-  }
-}
-
-// Prepare to create a Root category
-const prepareCreateRoot = () => {
-  isEditing.value = false
-  selectedTreeKeys.value = []
-  editingForm.id = ''
-  editingForm.localName = ''
-  editingForm.slug = ''
-  editingForm.parentId = ''
+  editingForm.parentId = original.parentId || ''
 }
 
 // Reset form
@@ -406,8 +301,9 @@ const handleSave = async () => {
   }
 
   // Double check duplicates
+  const fullName = reconstructedFullName.value
   const duplicate = flatCategories.value.find(c => 
-    c.name.toLowerCase() === reconstructedFullName.value.toLowerCase() && 
+    c.name.toLowerCase() === fullName.toLowerCase() && 
     c.questionCategoryId !== editingForm.id
   )
   if (duplicate) {
@@ -418,37 +314,24 @@ const handleSave = async () => {
   actionLoading.value = true
   
   // Create payload
-  const targetId = editingForm.id || crypto.randomUUID()
   const payloadItem = {
-    questionCategoryId: targetId,
-    name: reconstructedFullName.value,
-    slug: editingForm.slug.trim()
+    questionCategoryId: editingForm.id || undefined,
+    name: fullName,
+    slug: editingForm.slug.trim(),
+    parentId: editingForm.parentId || null
   }
 
   try {
-    // API request (Post expects List<QuestionCategory>)
-    await axios.post(API_URL, [payloadItem])
-    message.success(isEditing.value ? 'Cập nhật danh mục thành công!' : 'Tạo danh mục mới thành công!')
-    
-    // Refresh
-    await fetchCategories()
-    resetForm()
+    const res = await saveCategories([payloadItem])
+    if (res.isSuccess) {
+      message.success(isEditing.value ? 'Cập nhật danh mục thành công!' : 'Tạo danh mục mới thành công!')
+      await fetchCategories()
+      resetForm()
+    } else {
+      message.error(res.errorMessage || 'Lưu danh mục thất bại')
+    }
   } catch (err) {
     console.error('Failed to save to API:', err)
-    
-    // Offline simulation
-    if (isEditing.value) {
-      const idx = flatCategories.value.findIndex(c => c.questionCategoryId === editingForm.id)
-      if (idx !== -1) {
-        flatCategories.value[idx] = payloadItem
-      }
-    } else {
-      flatCategories.value.push(payloadItem)
-    }
-    
-    localStorage.setItem('offline_categories', JSON.stringify(flatCategories.value))
-    message.success('Đã lưu danh mục thành công ( Offline Simulation )!')
-    resetForm()
   } finally {
     actionLoading.value = false
   }
@@ -459,15 +342,7 @@ const handleDelete = () => {
   if (!editingForm.id) return
 
   // Warn if this category has children
-  const children = flatCategories.value.filter(c => {
-    const parts = c.name.split(' - ')
-    if (parts.length > 1) {
-      const parentName = parts.slice(0, parts.length - 1).join(' - ')
-      const currentEditing = flatCategories.value.find(curr => curr.questionCategoryId === editingForm.id)
-      return currentEditing && parentName === currentEditing.name
-    }
-    return false
-  })
+  const children = flatCategories.value.filter(c => c.parentId === editingForm.id)
 
   const confirmContent = children.length > 0 
     ? `Hành động này sẽ xóa danh mục này. Chú ý: Danh mục này đang có ${children.length} danh mục con cấp dưới phụ thuộc. Bạn có chắc chắn muốn xóa?`
@@ -482,17 +357,16 @@ const handleDelete = () => {
     async onOk() {
       actionLoading.value = true
       try {
-        await axios.post(`${API_URL}/delete`, { ids: [editingForm.id] })
-        message.success('Xóa danh mục thành công!')
-        await fetchCategories()
-        resetForm()
+        const res = await deleteCategories([editingForm.id])
+        if (res.isSuccess) {
+          message.success('Xóa danh mục thành công!')
+          await fetchCategories()
+          resetForm()
+        } else {
+          message.error(res.errorMessage || 'Xóa danh mục thất bại')
+        }
       } catch (err) {
         console.error('API Delete error:', err)
-        // Offline simulation
-        flatCategories.value = flatCategories.value.filter(c => c.questionCategoryId !== editingForm.id)
-        localStorage.setItem('offline_categories', JSON.stringify(flatCategories.value))
-        message.success('Đã xóa danh mục thành công ( Offline Simulation )!')
-        resetForm()
       } finally {
         actionLoading.value = false
       }

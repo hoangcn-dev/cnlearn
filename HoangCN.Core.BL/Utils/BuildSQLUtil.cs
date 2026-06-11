@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;

@@ -44,8 +44,8 @@
                   <div class="col-md-6">
                     <a-form-item label="Vai trò người dùng (Thay đổi để thử nghiệm phân quyền):">
                       <a-select v-model:value="userInfo.role" placeholder="Chọn vai trò">
-                        <a-select-option value="student">Học viên / Giáo viên</a-select-option>
-                        <a-select-option value="admin">Quản trị viên hệ thống (Admin)</a-select-option>
+                        <a-select-option value="User">Học viên / Giáo viên</a-select-option>
+                        <a-select-option value="Admin">Quản trị viên hệ thống (Admin)</a-select-option>
                       </a-select>
                     </a-form-item>
                   </div>
@@ -64,24 +64,16 @@
             </a-tab-pane>
 
             <a-tab-pane key="password" tab="Đổi mật khẩu">
-              <a-form layout="vertical" class="mt-3">
-                <a-form-item label="Mật khẩu hiện tại:" required>
-                  <a-input-password v-model:value="passwordState.current" placeholder="Nhập mật khẩu hiện tại..." />
-                </a-form-item>
-                <a-form-item label="Mật khẩu mới:" required>
-                  <a-input-password v-model:value="passwordState.new" placeholder="Nhập mật khẩu mới..." />
-                </a-form-item>
-                <a-form-item label="Xác nhận mật khẩu mới:" required>
-                  <a-input-password v-model:value="passwordState.confirm" placeholder="Xác nhận mật khẩu mới..." />
-                </a-form-item>
-                
-                <div class="text-end border-top pt-3 mt-3">
-                  <button type="button" class="btn btn-indigo text-white fw-semibold px-4 hover-up" @click="changePassword" :disabled="loadingPassword">
-                    <span v-if="loadingPassword" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Đổi mật khẩu
-                  </button>
+              <div class="p-4 text-center my-4">
+                <div class="mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 </div>
-              </a-form>
+                <h5 class="fw-bold text-dark mb-2">Đổi mật khẩu bảo mật</h5>
+                <p class="text-secondary small mb-4">Để đảm bảo an toàn tuyệt đối cho tài khoản của bạn, chức năng thay đổi mật khẩu được thực hiện tập trung thông qua cổng xác thực bảo mật id.hoangcn.com.</p>
+                <button type="button" class="btn btn-indigo text-white fw-semibold px-4 py-2" @click="redirectToChangePassword">
+                  Đi tới Cổng đổi mật khẩu
+                </button>
+              </div>
             </a-tab-pane>
           </a-tabs>
         </div>
@@ -91,73 +83,100 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { getLearnMsUserProfile, updateLearnMsUserProfile } from '@/api/user'
 
 const activeTab = ref('info')
 const loading = ref(false)
-const loadingPassword = ref(false)
 
 const userInfo = reactive({
+  userId: '',
   name: 'Học Viên Cao Cấp',
   email: 'student@hoangcn.dev',
-  phone: '0987654321',
-  role: 'student',
-  bio: 'Đam mê học hỏi công nghệ và luyện thi trắc nghiệm trực tuyến.'
+  phone: '',
+  role: 'User',
+  bio: ''
 })
 
-const passwordState = reactive({
-  current: '',
-  new: '',
-  confirm: ''
-})
-
-onMounted(() => {
+onMounted(async () => {
+  // 1. Phục hồi nhanh từ LocalStorage trước
   const saved = localStorage.getItem('cn_user_profile')
   if (saved) {
     try {
       const data = JSON.parse(saved)
-      Object.assign(userInfo, data)
-    } catch (e) {
-      // Ignore
+      userInfo.userId = data.userId || ''
+      userInfo.name = data.name || ''
+      userInfo.email = data.email || ''
+      userInfo.role = data.role || 'User'
+    } catch (e) {}
+  }
+
+  // 2. Tải thông tin thực tế từ cơ sở dữ liệu riêng của LearnMS
+  try {
+    const res = await getLearnMsUserProfile()
+    if (res && res.isSuccess && res.data) {
+      const dbUser = res.data
+      userInfo.userId = dbUser.learnMsUserId
+      userInfo.name = dbUser.fullName
+      userInfo.email = dbUser.email
+      userInfo.phone = dbUser.phoneNumber || ''
+      userInfo.role = dbUser.role || 'User'
+      userInfo.bio = dbUser.biography || ''
     }
+  } catch (e) {
+    console.error('Lỗi khi tải thông tin hồ sơ từ LearnMS:', e)
   }
 })
 
-const saveProfile = () => {
+const saveProfile = async () => {
   if (!userInfo.name.trim()) {
     message.error('Họ và tên không được để trống!')
     return
   }
 
   loading.value = true
-  setTimeout(() => {
+  try {
+    const res = await updateLearnMsUserProfile({
+      learnMsUserId: userInfo.userId,
+      fullName: userInfo.name,
+      email: userInfo.email,
+      phoneNumber: userInfo.phone,
+      role: userInfo.role,
+      biography: userInfo.bio
+    })
+
+    if (res && res.isSuccess) {
+      // Cập nhật lại cache LocalStorage để đồng bộ header/avatar ngay lập tức
+      const saved = localStorage.getItem('cn_user_profile')
+      let localProfile = saved ? JSON.parse(saved) : {}
+      localProfile.name = userInfo.name
+      localProfile.role = userInfo.role
+      localProfile.isAdmin = userInfo.role === 'Admin'
+      localStorage.setItem('cn_user_profile', JSON.stringify(localProfile))
+
+      message.success('Cập nhật thông tin tài khoản thành công!')
+    } else {
+      message.error(res.errorMessage || 'Lỗi cập nhật thông tin!')
+    }
+  } catch (e) {
+    message.error('Đã xảy ra lỗi kết nối hệ thống!')
+  } finally {
     loading.value = false
-    localStorage.setItem('cn_user_profile', JSON.stringify(userInfo))
-    message.success('Cập nhật thông tin tài khoản thành công!')
-  }, 1000)
+  }
 }
 
-const changePassword = () => {
-  if (!passwordState.current || !passwordState.new || !passwordState.confirm) {
-    message.error('Vui lòng điền đầy đủ thông tin đổi mật khẩu!')
-    return
-  }
-
-  if (passwordState.new !== passwordState.confirm) {
-    message.error('Mật khẩu mới và xác nhận mật khẩu không khớp!')
-    return
-  }
-
-  loadingPassword.value = true
-  setTimeout(() => {
-    loadingPassword.value = false
-    passwordState.current = ''
-    passwordState.new = ''
-    passwordState.confirm = ''
-    message.success('Đổi mật khẩu tài khoản thành công!')
-  }, 1000)
+const redirectToChangePassword = () => {
+  const idServerUrl = import.meta.env.VITE_ID_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5173' : 'https://id.hoangcn.com');
+  const returnUrl = encodeURIComponent(window.location.href);
+  window.location.href = `${idServerUrl}/auth?mode=changepass&return_url=${returnUrl}`;
 }
+
+watch(activeTab, (newVal) => {
+  if (newVal === 'password') {
+    redirectToChangePassword();
+  }
+})
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
@@ -196,6 +196,12 @@ namespace HoangCN.Core.BL.Base
 
                 foreach (var prop in metadata.Properties)
                 {
+                    // Không kiểm tra các trường audit của người tạo lúc cập nhật vì chúng sẽ được giữ nguyên ở DB
+                    if (entity.State == ModelState.Update && (prop.PropertyName == "CreatedBy" || prop.PropertyName == "CreatedDate"))
+                    {
+                        continue;
+                    }
+
                     var v = prop.PropertyInfo.GetValue(entity);
 
                     // Kiểm tra null hoặc trống [Required]

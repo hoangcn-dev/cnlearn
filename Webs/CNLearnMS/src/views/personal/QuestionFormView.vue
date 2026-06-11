@@ -169,7 +169,7 @@
                   <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Danh mục:</span>
                     <a-select v-model:value="q.categoryIds[0]" style="width: 210px" size="small" placeholder="Chọn môn học">
-                      <a-select-option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                      <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId">
                         {{ cat.name }}
                       </a-select-option>
                     </a-select>
@@ -394,12 +394,15 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { getAllCate } from '@/api/categories'
+import { getQuestionDetails, saveQuestions } from '@/api/questions'
 
 const route = useRoute()
 const router = useRouter()
 
 // Seed Types
 interface Answer {
+  questionAnswerId?: string
   stringContent: string
   isCorrectAnswer: boolean
 }
@@ -418,22 +421,12 @@ interface Question {
 }
 
 interface Category {
-  id: string
+  questionCategoryId: string
   name: string
 }
 
-// Categories list
-const categories = ref<Category[]>([
-  { id: "c01a92a2-a69f-4143-8589-da11688d7d01", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { id: "c02a92a2-a69f-4143-8589-da11688d7d02", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { id: "c03a92a2-a69f-4143-8589-da11688d7d03", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { id: "c04a92a2-a69f-4143-8589-da11688d7d04", name: "Tiếng Anh - IELTS Reading Academic" },
-  { id: "c05a92a2-a69f-4143-8589-da11688d7d05", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
-  { id: "c06a92a2-a69f-4143-8589-da11688d7d06", name: "Sinh Học - Di Truyền Học & Biến Dị" },
-  { id: "c07a92a2-a69f-4143-8589-da11688d7d07", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
-  { id: "c08a92a2-a69f-4143-8589-da11688d7d08", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
-  { id: "c09a92a2-a69f-4143-8589-da11688d7d09", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
-])
+// Categories list loaded from API
+const categories = ref<Category[]>([])
 
 const isEditMode = computed(() => !!route.params.id)
 
@@ -463,23 +456,70 @@ const aiConfirmModalOpen = ref(false)
 const questions = ref<Question[]>([])
 const currentQuestionId = ref<string | null>(null)
 
+const isGuid = (val: string) => {
+  const reg = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return reg.test(val)
+}
+
+const formatId = (val?: string) => {
+  if (!val || !isGuid(val)) {
+    return '00000000-0000-0000-0000-000000000000'
+  }
+  return val
+}
+
+const fetchQuestionForEdit = async (id: string) => {
+  try {
+    const res = await getQuestionDetails(id)
+    if (res && res.isSuccess && res.data) {
+      const q = res.data
+      questionsList.value = [{
+        id: q.id || '',
+        slug: q.slug || '',
+        stringContent: q.stringContent || '',
+        explanation: q.explanation || '',
+        level: q.level ?? 0,
+        type: q.type ?? 0,
+        accessType: q.accessType ?? 0,
+        categoryIds: q.categoryIds || [],
+        answers: (q.answers || []).map((a: any) => ({
+          questionAnswerId: a.questionAnswerId,
+          stringContent: a.stringContent || '',
+          isCorrectAnswer: a.isCorrectAnswer ?? false
+        })),
+        isMyCreated: q.isMyCreated ?? false
+      }]
+      latestSavedDraft.value = JSON.stringify(questionsList.value)
+      globalAccessType.value = q.accessType ?? 0
+    } else {
+      message.error(res.errorMessage || 'Không tìm thấy câu hỏi!')
+      router.push('/personal/questions')
+    }
+  } catch (error) {
+    message.error('Lỗi khi tải thông tin câu hỏi')
+    router.push('/personal/questions')
+  }
+}
+
+const fetchCategories = async () => {
+  try {
+    const res = await getAllCate()
+    if (res && res.isSuccess && res.data) {
+      categories.value = res.data.items || []
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh mục:', error)
+  }
+}
+
 // Initialize logic
-onMounted(() => {
-  loadQuestions()
+onMounted(async () => {
+  await fetchCategories()
 
   if (isEditMode.value) {
     const id = route.params.id as string
     currentQuestionId.value = id
-    const found = questions.value.find(q => q.id === id)
-    if (found) {
-      // Load this single question as the list element
-      questionsList.value = [JSON.parse(JSON.stringify(found))]
-      latestSavedDraft.value = JSON.stringify(questionsList.value)
-      globalAccessType.value = found.accessType
-    } else {
-      message.error('Không tìm thấy câu hỏi tương ứng!')
-      router.push('/personal/questions')
-    }
+    await fetchQuestionForEdit(id)
   } else {
     // Load from local storage draft if exists
     const draft = localStorage.getItem('cn_questions_draft')
@@ -499,24 +539,13 @@ onMounted(() => {
   }
 })
 
-const loadQuestions = () => {
-  const stored = localStorage.getItem('cn_questions')
-  if (stored) {
-    questions.value = JSON.parse(stored)
-  }
-}
-
-const saveQuestionsToStorage = () => {
-  localStorage.setItem('cn_questions', JSON.stringify(questions.value))
-}
-
 const goBack = () => {
   router.push('/personal/questions')
 }
 
 // Card Editing Actions
 const addNewQuestionCard = () => {
-  const defaultCategory = categories.value[0]?.id || ''
+  const defaultCategory = categories.value[0]?.questionCategoryId || ''
   const newQ: Question = {
     id: 'q_new_' + Date.now() + Math.random().toString(36).substring(2, 6),
     slug: 'cau-hoi-moi-' + Date.now(),
@@ -603,7 +632,7 @@ const confirmClearAll = () => {
 }
 
 // Final Save to Bank
-const saveAllQuestionsToBank = () => {
+const saveAllQuestionsToBank = async () => {
   // Validate each question in preview list
   if (questionsList.value.length === 0) {
     message.error('Không có câu hỏi nào để lưu!')
@@ -635,54 +664,38 @@ const saveAllQuestionsToBank = () => {
     indexCounter++
   }
 
-  // Final confirmation
-  if (isEditMode.value && currentQuestionId.value) {
-    // Single Update mode
-    const idx = questions.value.findIndex(item => item.id === currentQuestionId.value)
-    if (idx !== -1) {
-      const formQ = questionsList.value[0]
-      const targetQ = questions.value[idx]
-      if (targetQ && formQ) {
-        targetQ.stringContent = formQ.stringContent.trim()
-        targetQ.categoryIds = formQ.categoryIds
-        targetQ.level = formQ.level
-        targetQ.accessType = globalAccessType.value
-        targetQ.explanation = formQ.explanation.trim()
-        targetQ.answers = formQ.answers.map(ans => ({
-          stringContent: ans.stringContent.trim(),
-          isCorrectAnswer: ans.isCorrectAnswer
-        }))
-        
-        saveQuestionsToStorage()
-        message.success('Cập nhật câu hỏi thành công!')
-        router.push('/personal/questions')
-      }
-    }
-  } else {
-    // Multiple Create mode
-    const formatted = questionsList.value.map((q, idx) => ({
-      id: 'q_' + (Date.now() + idx),
-      slug: 'cau-hoi-' + (Date.now() + idx),
+  try {
+    const payload = questionsList.value.map(q => ({
+      id: formatId(q.id),
+      slug: q.slug || '',
       stringContent: q.stringContent.trim(),
-      categoryIds: q.categoryIds,
+      explanation: q.explanation ? q.explanation.trim() : '',
       level: q.level,
-      type: 0,
+      type: q.type || 0,
       accessType: globalAccessType.value,
-      explanation: q.explanation.trim(),
-      answers: q.answers.map(ans => ({
+      isMyCreated: globalAccessType.value === 0,
+      categoryIds: q.categoryIds.filter(id => id && isGuid(id)),
+      answers: q.answers.map((ans) => ({
+        questionAnswerId: formatId(ans.questionAnswerId || (ans as any).id),
         stringContent: ans.stringContent.trim(),
         isCorrectAnswer: ans.isCorrectAnswer
-      })),
-      isMyCreated: globalAccessType.value === 0
+      }))
     }))
 
-    questions.value.unshift(...formatted)
-    saveQuestionsToStorage()
-
-    // Clear Draft
-    localStorage.removeItem('cn_questions_draft')
-    message.success(`Đã thêm thành công ${formatted.length} câu hỏi mới vào Ngân hàng!`)
-    router.push('/personal/questions')
+    const res = await saveQuestions(payload)
+    if (res && res.isSuccess) {
+      if (isEditMode.value) {
+        message.success('Cập nhật câu hỏi thành công!')
+      } else {
+        localStorage.removeItem('cn_questions_draft')
+        message.success(`Đã thêm thành công ${payload.length} câu hỏi mới vào Ngân hàng!`)
+      }
+      router.push('/personal/questions')
+    } else {
+      message.error(res.errorMessage || 'Lưu câu hỏi thất bại!')
+    }
+  } catch (error) {
+    message.error('Đã xảy ra lỗi khi lưu câu hỏi')
   }
 }
 
@@ -733,7 +746,7 @@ const parseImportFile = (file: File) => {
           level: 1,
           type: 0,
           accessType: globalAccessType.value,
-          categoryIds: [categories.value[6]?.id || ''],
+          categoryIds: [categories.value[6]?.questionCategoryId || ''],
           answers: [
             { stringContent: 'Task.Run()', isCorrectAnswer: true },
             { stringContent: 'Thread.Start()', isCorrectAnswer: false },
@@ -748,7 +761,7 @@ const parseImportFile = (file: File) => {
           level: 0,
           type: 0,
           accessType: globalAccessType.value,
-          categoryIds: [categories.value[5]?.id || ''],
+          categoryIds: [categories.value[5]?.questionCategoryId || ''],
           answers: [
             { stringContent: 'Nhiễm sắc thể', isCorrectAnswer: true },
             { stringContent: 'Màng nhân', isCorrectAnswer: false },
@@ -767,7 +780,7 @@ const parseImportFile = (file: File) => {
           level: 0,
           type: 0,
           accessType: globalAccessType.value,
-          categoryIds: [categories.value[2]?.id || ''],
+          categoryIds: [categories.value[2]?.questionCategoryId || ''],
           answers: [
             { stringContent: 'Sắt (Fe)', isCorrectAnswer: true },
             { stringContent: 'Đồng (Cu)', isCorrectAnswer: false },
@@ -877,7 +890,7 @@ const generateQuestionsViaAi = () => {
         level: 0,
         type: 0,
         accessType: globalAccessType.value,
-        categoryIds: [categories.value[0]?.id || ''],
+        categoryIds: [categories.value[0]?.questionCategoryId || ''],
         answers: [
           { stringContent: 'I(2; -1)', isCorrectAnswer: true },
           { stringContent: 'I(-2; -1)', isCorrectAnswer: false },
@@ -893,7 +906,7 @@ const generateQuestionsViaAi = () => {
         level: 0,
         type: 0,
         accessType: globalAccessType.value,
-        categoryIds: [categories.value[0]?.id || ''],
+        categoryIds: [categories.value[0]?.questionCategoryId || ''],
         answers: [
           { stringContent: 'sin(x) + C', isCorrectAnswer: true },
           { stringContent: '-sin(x) + C', isCorrectAnswer: false },

@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -85,12 +85,16 @@ namespace HoangCN.Core.DL.Implementation
                         break;
                     case ModelState.Update:
                         _context.Entry(entity).State = EntityState.Modified;
+                        _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
+                        _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
                         break;
                     case ModelState.Delete:
                         // Nếu đã được đánh dấu là xóa mềm, ta cập nhật Entity ở trạng thái Modified
                         if (entity.IsDeleted)
                         {
                             _context.Entry(entity).State = EntityState.Modified;
+                            _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
+                            _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
                         }
                         else
                         {

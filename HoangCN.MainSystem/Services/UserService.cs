@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.BL.Base;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.MainSystem.Entities;
@@ -26,6 +26,7 @@ namespace HoangCN.MainSystem.Services
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly EmailSettings _emailSettings;
         private readonly IRedisService _redisService;
+        private readonly JwtConfig _jwtConfig;
 
         private class TempPasswordCache
         {
@@ -42,7 +43,8 @@ namespace HoangCN.MainSystem.Services
             IEmailService emailService,
             IEmailTemplateService emailTemplateService,
             IOptions<EmailSettings> emailOptions,
-            IRedisService redisService) : base(baseReadDL, baseWriteDL)
+            IRedisService redisService,
+            IOptions<JwtConfig> jwtOptions) : base(baseReadDL, baseWriteDL)
         {
             _accesstor = accesstor;
             _jwtUtil = jwtUtil;
@@ -51,6 +53,7 @@ namespace HoangCN.MainSystem.Services
             _emailTemplateService = emailTemplateService;
             _emailSettings = emailOptions?.Value ?? throw new ArgumentNullException(nameof(emailOptions));
             _redisService = redisService;
+            _jwtConfig = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
         }
 
         public async Task<Guid> CheckAuth(ClaimsPrincipal claimsPrincipal)
@@ -172,16 +175,24 @@ namespace HoangCN.MainSystem.Services
             var httpContext = _accesstor.HttpContext;
             if (httpContext != null)
             {
-                httpContext.Response.Cookies.Append("aToken", token.AccessToken, new CookieOptions
+                var cookieOptions = new CookieOptions
                 {
                     Path = "/",
                     HttpOnly = true,
                     SameSite = SameSiteMode.None,
                     Secure = true,
                     Expires = token.ExpireAt
-                });
+                };
+
+                if (!string.IsNullOrEmpty(_jwtConfig.CookieDomain))
+                {
+                    cookieOptions.Domain = _jwtConfig.CookieDomain;
+                }
+
+                httpContext.Response.Cookies.Append("aToken", token.AccessToken, cookieOptions);
             }
         }
+
 
         /// <summary>
         /// Xử lý khôi phục mật khẩu: Tạo mật khẩu ngẫu nhiên mới, cập nhật vào DB, và gửi mail đến user
@@ -373,6 +384,28 @@ namespace HoangCN.MainSystem.Services
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Xử lý đăng xuất: Xóa cookie aToken của người dùng khỏi trình duyệt
+        /// </summary>
+        public async Task SignOut()
+        {
+            var httpContext = _accesstor.HttpContext;
+            if (httpContext != null)
+            {
+                httpContext.Response.Cookies.Delete("aToken", new CookieOptions
+                {
+                    Path = "/",
+                    Domain = "localhost"
+                });
+
+                httpContext.Response.Cookies.Delete("aToken", new CookieOptions
+                {
+                    Path = "/"
+                });
+            }
+            await Task.CompletedTask;
         }
     }
 }

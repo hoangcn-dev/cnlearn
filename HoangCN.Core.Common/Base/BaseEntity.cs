@@ -17,6 +17,7 @@ namespace HoangCN.Core.Common.Base
         [BindNever]
         [Required]
         [MaxLength(100)]
+        [JsonIgnore]
         public string CreatedBy { get; set; }
 
         /// <summary>
@@ -31,6 +32,7 @@ namespace HoangCN.Core.Common.Base
         /// </summary>
         [BindNever]
         [MaxLength(100)]
+        [JsonIgnore]
         public string? ModifiedBy { get; set; }
 
         /// <summary>
@@ -50,6 +52,7 @@ namespace HoangCN.Core.Common.Base
         /// Đã xóa mềm
         /// </summary>
         [BindNever]
+        [JsonIgnore]
         public bool IsDeleted { get; set; } = false;
     }
 }

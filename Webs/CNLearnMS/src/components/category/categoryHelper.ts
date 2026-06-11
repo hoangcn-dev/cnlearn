@@ -1,5 +1,6 @@
 export interface QuestionCategory {
   questionCategoryId: string
+  parentId: string | null
   name: string
   slug: string
 }
@@ -13,49 +14,27 @@ export interface CategoryNode {
 }
 
 /**
- * Phân tích danh sách phẳng thành cấu trúc cây dựa trên ký tự phân tách " - "
+ * Phân tích danh sách phẳng thành cấu trúc cây dựa trên parentId
  */
 export function buildCategoryTree(flatList: QuestionCategory[]): CategoryNode[] {
-  const rootNodes: CategoryNode[] = []
-
-  flatList.forEach(item => {
-    const parts = item.name.split(' - ').map(p => p.trim())
-    let currentLevel = rootNodes
-
-    parts.forEach((part, index) => {
-      let node = currentLevel.find(n => n.title === part)
-
-      if (!node) {
-        node = {
-          key: index === parts.length - 1 ? item.questionCategoryId : `virtual-${part}-${index}`,
-          title: part,
-          slug: index === parts.length - 1 ? item.slug : undefined,
-          children: [],
-          originalItem: index === parts.length - 1 ? item : undefined
+  const build = (parentId: string | null): CategoryNode[] => {
+    return flatList
+      .filter(x => x.parentId === parentId)
+      .map(x => {
+        const children = build(x.questionCategoryId)
+        const node: CategoryNode = {
+          key: x.questionCategoryId,
+          title: x.name.split(' - ').pop() || x.name, // Hiển thị nhãn cục bộ
+          slug: x.slug,
+          originalItem: x
         }
-        currentLevel.push(node)
-      } else if (index === parts.length - 1) {
-        node.key = item.questionCategoryId
-        node.slug = item.slug
-        node.originalItem = item
-      }
-      currentLevel = node.children!
-    })
-  })
-
-  // Đệ quy dọn dẹp mảng children trống
-  const pruneChildren = (nodes: CategoryNode[]) => {
-    nodes.forEach(n => {
-      if (n.children && n.children.length === 0) {
-        delete n.children
-      } else if (n.children) {
-        pruneChildren(n.children)
-      }
-    })
+        if (children.length > 0) {
+          node.children = children
+        }
+        return node
+      })
   }
-
-  pruneChildren(rootNodes)
-  return rootNodes
+  return build(null)
 }
 
 /**
@@ -65,15 +44,7 @@ export function getDirectChildren(
   parentCategory: QuestionCategory,
   flatList: QuestionCategory[]
 ): QuestionCategory[] {
-  const prefix = parentCategory.name + ' - '
-  return flatList.filter(c => {
-    if (c.name.startsWith(prefix)) {
-      const remainingName = c.name.slice(prefix.length)
-      // Không chứa dấu " - " chứng tỏ đây là con trực tiếp, không phải cháu chắt
-      return !remainingName.includes(' - ')
-    }
-    return false
-  })
+  return flatList.filter(c => c.parentId === parentCategory.questionCategoryId)
 }
 
 /**
@@ -83,10 +54,16 @@ export function getRecursiveChildIds(
   parentCategory: QuestionCategory,
   flatList: QuestionCategory[]
 ): string[] {
-  const prefix = parentCategory.name + ' - '
-  return flatList
-    .filter(c => c.name.startsWith(prefix))
-    .map(c => c.questionCategoryId)
+  const ids: string[] = []
+  const traverse = (parentId: string) => {
+    const children = flatList.filter(c => c.parentId === parentId)
+    children.forEach(c => {
+      ids.push(c.questionCategoryId)
+      traverse(c.questionCategoryId)
+    })
+  }
+  traverse(parentCategory.questionCategoryId)
+  return ids
 }
 
 /**
@@ -96,8 +73,7 @@ export function isLeafCategory(
   category: QuestionCategory,
   flatList: QuestionCategory[]
 ): boolean {
-  const prefix = category.name + ' - '
-  return !flatList.some(c => c.name.startsWith(prefix))
+  return !flatList.some(c => c.parentId === category.questionCategoryId)
 }
 
 /**
@@ -113,26 +89,29 @@ export interface IndentedOption {
 export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOption[] {
   const options: IndentedOption[] = []
   
-  // Sắp xếp danh mục theo bảng chữ cái để hiển thị khoa học
-  const sorted = [...flatList].sort((a, b) => a.name.localeCompare(b.name))
-  
-  sorted.forEach(cat => {
-    const parts = cat.name.split(' - ')
-    const level = parts.length - 1
-    const localName = parts[parts.length - 1]
-    
-    // Tạo khoảng trống thụt lề trực quan
-    const indent = '  '.repeat(level)
-    const prefix = level > 0 ? '└─ ' : ''
-    
-    options.push({
-      value: cat.questionCategoryId,
-      label: `${indent}${prefix}${localName}`,
-      rawName: cat.name,
-      level
+  const traverse = (parentId: string | null, level: number) => {
+    const children = flatList
+      .filter(x => x.parentId === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      
+    children.forEach(cat => {
+      const currentPath = cat.name
+      const localName = cat.name.split(' - ').pop() || cat.name
+      const indent = '\u00A0\u00A0'.repeat(level)
+      const prefix = level > 0 ? '└─ ' : ''
+      
+      options.push({
+        value: cat.questionCategoryId,
+        label: `${indent}${prefix}${localName}`,
+        rawName: currentPath,
+        level
+      })
+      
+      traverse(cat.questionCategoryId, level + 1)
     })
-  })
+  }
   
+  traverse(null, 0)
   return options
 }
 
