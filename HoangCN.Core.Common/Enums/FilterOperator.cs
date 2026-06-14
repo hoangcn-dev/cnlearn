@@ -1,8 +1,11 @@
-﻿namespace HoangCN.Core.Common.Enums
+using System.Text.Json.Serialization;
+
+namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Toán tử để lọc
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum FilterOperator
     {
         /// <summary>

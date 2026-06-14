@@ -19,20 +19,9 @@ namespace HoangCN.LearnMS.Migrations
                 name: "UserAttemptDetail",
                 newName: "ExamAttemptDetail");
 
-            migrationBuilder.RenameColumn(
-                name: "UserAttemptId",
-                table: "ExamAttempt",
-                newName: "ExamAttemptId");
-
-            migrationBuilder.RenameColumn(
-                name: "UserAttemptDetailId",
-                table: "ExamAttemptDetail",
-                newName: "ExamAttemptDetailId");
-
-            migrationBuilder.RenameColumn(
-                name: "UserAttemptId",
-                table: "ExamAttemptDetail",
-                newName: "ExamAttemptId");
+            migrationBuilder.Sql("ALTER TABLE `ExamAttempt` RENAME COLUMN `UserAttemptId` TO `ExamAttemptId`;");
+            migrationBuilder.Sql("ALTER TABLE `ExamAttemptDetail` RENAME COLUMN `UserAttemptDetailId` TO `ExamAttemptDetailId`;");
+            migrationBuilder.Sql("ALTER TABLE `ExamAttemptDetail` RENAME COLUMN `UserAttemptId` TO `ExamAttemptId`;");
         }
 
         /// <inheritdoc />
@@ -46,20 +35,9 @@ namespace HoangCN.LearnMS.Migrations
                 name: "ExamAttemptDetail",
                 newName: "UserAttemptDetail");
 
-            migrationBuilder.RenameColumn(
-                name: "ExamAttemptId",
-                table: "UserAttempt",
-                newName: "UserAttemptId");
-
-            migrationBuilder.RenameColumn(
-                name: "ExamAttemptDetailId",
-                table: "UserAttemptDetail",
-                newName: "UserAttemptDetailId");
-
-            migrationBuilder.RenameColumn(
-                name: "ExamAttemptId",
-                table: "UserAttemptDetail",
-                newName: "UserAttemptId");
+            migrationBuilder.Sql("ALTER TABLE `UserAttempt` RENAME COLUMN `ExamAttemptId` TO `UserAttemptId`;");
+            migrationBuilder.Sql("ALTER TABLE `UserAttemptDetail` RENAME COLUMN `ExamAttemptDetailId` TO `UserAttemptDetailId`;");
+            migrationBuilder.Sql("ALTER TABLE `UserAttemptDetail` RENAME COLUMN `ExamAttemptId` TO `UserAttemptId`;");
         }
     }
 }

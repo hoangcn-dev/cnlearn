@@ -243,6 +243,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { examSessionApi } from '@/api/examSessions'
 
 interface Answer {
   id: string
@@ -293,6 +294,8 @@ const joinForm = reactive({
 const candidateName = ref('')
 const currentQuiz = ref<Quiz | null>(null)
 const questions = ref<Question[]>([])
+const currentSessionId = ref<string>('')
+let heartbeatTimer: any = null
 
 // Countdown Timers
 const lobbyTimeLeft = ref(0)
@@ -362,6 +365,7 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(lobbyTimer)
   clearInterval(examTimer)
+  clearInterval(heartbeatTimer)
   removeAntiCheatListeners()
 })
 
@@ -452,6 +456,15 @@ const enterExamWorkspace = () => {
   examTimeLeft.value = durationMins * 60
   startExamTimer()
 
+  examSessionApi.startSession(currentQuiz.value.id).then((res: any) => {
+    if (res.data?.data) {
+      currentSessionId.value = res.data.data
+      startHeartbeat()
+    }
+  }).catch((err: any) => {
+    message.warning('Không thể kết nối đến máy chủ giám sát. Vui lòng kiểm tra mạng!')
+  })
+
   // Setup security listeners
   setupAntiCheatListeners()
 
@@ -459,6 +472,26 @@ const enterExamWorkspace = () => {
   if (antiCheatOptions.value.fullscreen) {
     requestFullscreen()
   }
+}
+
+const startHeartbeat = () => {
+  if (heartbeatTimer) clearInterval(heartbeatTimer)
+  heartbeatTimer = setInterval(() => {
+    if (!currentSessionId.value) return
+    const offlineLogs = JSON.parse(localStorage.getItem('cn_offline_cheat_logs') || '[]')
+    
+    examSessionApi.heartbeat(currentSessionId.value, offlineLogs).then(() => {
+      if (offlineLogs.length > 0) {
+        localStorage.removeItem('cn_offline_cheat_logs')
+      }
+    }).catch((err: any) => {
+      // If forbidden, force submit
+      if (err.response && err.response.status === 403) {
+        message.error(err.response.data?.message || 'Phiên làm bài đã bị hủy!')
+        submitExam(true)
+      }
+    })
+  }, 10000)
 }
 
 const startExamTimer = () => {
@@ -511,9 +544,25 @@ const preventDefaultAction = (e: Event) => {
   message.warning('Hành vi sao chép/chuột phải đã bị chặn để bảo mật đề thi!')
 }
 
+const logCheatEvent = (violationType: number) => {
+  if (!currentSessionId.value) return
+  examSessionApi.logCheat(currentSessionId.value, violationType).catch((err: any) => {
+    if (!err.response) {
+      // Offline network error, push to queue
+      const logs = JSON.parse(localStorage.getItem('cn_offline_cheat_logs') || '[]')
+      logs.push({ violationType, timestamp: new Date().toISOString() })
+      localStorage.setItem('cn_offline_cheat_logs', JSON.stringify(logs))
+    } else if (err.response.status === 403) {
+      message.error(err.response.data?.message || 'Bạn đã vi phạm quá số lần!')
+      submitExam(true)
+    }
+  })
+}
+
 const handleWindowBlur = () => {
   if (state.value !== 'taking' || isLockedOut.value) return
   antiCheatCounters.blurCount++
+  logCheatEvent(1) // 1 = BlurWindow
   message.error(`Cảnh báo gian lận: Bạn đã thoát khỏi cửa sổ làm bài (${antiCheatCounters.blurCount} lần vi phạm!)`)
 }
 
@@ -521,6 +570,7 @@ const handleVisibilityChange = () => {
   if (state.value !== 'taking' || isLockedOut.value) return
   if (document.hidden) {
     antiCheatCounters.blurCount++
+    logCheatEvent(1) // 1 = BlurWindow
     message.error(`Cảnh báo gian lận: Vui lòng tập trung vào màn hình đề thi!`)
   }
 }
@@ -531,6 +581,7 @@ const handleFullscreenChange = () => {
   if (!isFullscreen) {
     antiCheatCounters.fullscreenExitCount++
     isLockedOut.value = true
+    logCheatEvent(2) // 2 = ExitFullscreen
     
     if (antiCheatCounters.fullscreenExitCount >= 3) {
       message.error('Bạn đã thoát toàn màn hình 3 lần. Bài thi sẽ bị chấm dứt lập tức!')
@@ -613,8 +664,13 @@ const handleExamTimeOut = () => {
 const submitExam = (bypassConfirm = false) => {
   const performSubmit = () => {
     clearInterval(examTimer)
+    clearInterval(heartbeatTimer)
     removeAntiCheatListeners()
     
+    if (currentSessionId.value) {
+      examSessionApi.submitSession(currentSessionId.value).catch(() => {})
+    }
+
     // Exit Fullscreen safely
     if (document.fullscreenElement) {
       document.exitFullscreen()

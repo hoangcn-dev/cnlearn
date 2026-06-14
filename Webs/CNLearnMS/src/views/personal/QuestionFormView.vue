@@ -738,46 +738,59 @@ const parseImportFile = (file: File) => {
   }
 
   parsingLoading.value = true
-  setTimeout(() => {
-    parsingLoading.value = false
-    let parsed: Question[] = []
 
-    if (ext === 'json') {
-      parsed = [
-        {
-          id: 'preview_f1_' + Date.now(),
-          slug: 'preview-slug-1',
-          stringContent: 'Trong C#, phương thức nào được dùng để bắt đầu chạy một tiến trình bất đồng bộ mới?',
-          explanation: 'Task.Run được sử dụng để chạy một delegate trên một ThreadPool thread.',
-          level: 1,
-          type: 0,
-          accessType: globalAccessType.value,
-          categoryIds: [categories.value[6]?.questionCategoryId || ''],
-          answers: [
-            { stringContent: 'Task.Run()', isCorrectAnswer: true },
-            { stringContent: 'Thread.Start()', isCorrectAnswer: false },
-            { stringContent: 'Async.Begin()', isCorrectAnswer: false }
-          ]
-        },
-        {
-          id: 'preview_f2_' + Date.now(),
-          slug: 'preview-slug-2',
-          stringContent: 'Thành phần chính nào của nhân tế bào nhân thực chứa thông tin di truyền?',
-          explanation: 'Nhiễm sắc thể cấu tạo từ DNA chứa toàn bộ mã thông tin di truyền ở sinh vật nhân thực.',
-          level: 0,
-          type: 0,
-          accessType: globalAccessType.value,
-          categoryIds: [categories.value[5]?.questionCategoryId || ''],
-          answers: [
-            { stringContent: 'Nhiễm sắc thể', isCorrectAnswer: true },
-            { stringContent: 'Màng nhân', isCorrectAnswer: false },
-            { stringContent: 'Lưới nội chất', isCorrectAnswer: false }
-          ]
-        }
-      ]
-      message.success(`Tải tệp JSON thành công! Đọc được ${parsed.length} câu hỏi.`)
-    } else {
-      parsed = [
+  if (ext === 'json') {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string
+        const parsedData = JSON.parse(content)
+        
+        // Đảm bảo dữ liệu là một mảng
+        const items = Array.isArray(parsedData) ? parsedData : [parsedData]
+        
+        // Map dữ liệu từ JSON sang Question interface (Hỗ trợ cả camelCase và PascalCase)
+        const formattedQuestions: Question[] = items.map((item: any, index: number) => {
+          return {
+            id: 'import_' + Date.now() + '_' + index,
+            slug: item.slug || item.Slug || '',
+            stringContent: item.stringContent || item.StringContent || '',
+            explanation: item.explanation || item.Explanation || '',
+            level: item.level !== undefined ? item.level : (item.Level !== undefined ? item.Level : 1),
+            type: item.type !== undefined ? item.type : (item.Type !== undefined ? item.Type : 0),
+            accessType: item.accessType !== undefined ? item.accessType : (item.AccessType !== undefined ? item.AccessType : globalAccessType.value),
+            categoryIds: Array.isArray(item.categoryIds) ? item.categoryIds : (Array.isArray(item.CategoryIds) ? item.CategoryIds : []),
+            answers: Array.isArray(item.answers) ? item.answers.map((ans: any) => ({
+              stringContent: ans.stringContent || ans.StringContent || '',
+              isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer)
+            })) : (Array.isArray(item.Answers) ? item.Answers.map((ans: any) => ({
+              stringContent: ans.stringContent || ans.StringContent || '',
+              isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer)
+            })) : [])
+          }
+        })
+        
+        questionsList.value = formattedQuestions
+        initialUploadBackup.value = JSON.stringify(formattedQuestions)
+        fileImportModalOpen.value = false
+        message.success(`Tải tệp JSON thành công! Đọc được ${formattedQuestions.length} câu hỏi.`)
+      } catch (err) {
+        console.error(err)
+        message.error('File JSON không đúng định dạng hợp lệ!')
+      } finally {
+        parsingLoading.value = false
+      }
+    }
+    reader.onerror = () => {
+      message.error('Lỗi khi đọc file!')
+      parsingLoading.value = false
+    }
+    reader.readAsText(file)
+  } else {
+    // Fake logic cho Excel
+    setTimeout(() => {
+      parsingLoading.value = false
+      let parsed: Question[] = [
         {
           id: 'preview_f3_' + Date.now(),
           slug: 'preview-slug-3',
@@ -795,13 +808,12 @@ const parseImportFile = (file: File) => {
           ]
         }
       ]
-      message.success(`Tải tệp Excel thành công! Tìm thấy ${parsed.length} câu hỏi hợp lệ.`)
-    }
-
-    questionsList.value = parsed
-    initialUploadBackup.value = JSON.stringify(parsed)
-    fileImportModalOpen.value = false
-  }, 1200)
+      message.success(`Tải tệp Excel thành công! Tìm thấy ${parsed.length} câu hỏi hợp lệ. (Tính năng đang phát triển)`)
+      questionsList.value = parsed
+      initialUploadBackup.value = JSON.stringify(parsed)
+      fileImportModalOpen.value = false
+    }, 1200)
+  }
 }
 
 const clearImportFile = () => {

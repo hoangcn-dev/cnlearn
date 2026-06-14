@@ -291,10 +291,10 @@ const fetchQuestions = async () => {
     // 1. Tab filtering
     if (listTab.value === 'mine') {
       apiFilters.push({
-        property: 'UserId',
+        property: 'IsMyCreated',
         operator: 'Equal',
-        value: 'mine',
-        type: 'String'
+        value: true,
+        type: 'Bool'
       })
     } else if (listTab.value === 'saved') {
       fetchFunc = getSavedQuestionsPaging
@@ -327,14 +327,7 @@ const fetchQuestions = async () => {
         type: 'Number'
       })
     }
-    if (filters.scope === 'mine') {
-      apiFilters.push({
-        property: 'UserId',
-        operator: 'Equal',
-        value: 'mine',
-        type: 'String'
-      })
-    }
+    // (Đã loại bỏ bộ lọc scope === 'mine' vì backend không cho phép truyền userId kiểu text)
 
     const payload = {
       page: currentPage.value,

@@ -370,8 +370,16 @@ namespace HoangCN.LearnMS.Services
 
             Expression<Func<Question, bool>>? condition = q => q.AccessType == QuestionAccessType.Public || q.UserId == currentUserId;
 
-
-
+            // Xử lý bộ lọc IsMyCreated
+            var myCreatedFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsMyCreated", StringComparison.OrdinalIgnoreCase));
+            if (myCreatedFilter != null)
+            {
+                request.Filters.Remove(myCreatedFilter);
+                if (bool.TryParse(myCreatedFilter.Value?.ToString(), out bool isMyCreated) && isMyCreated)
+                {
+                    condition = q => q.UserId == currentUserId;
+                }
+            }
             // Xử lý bộ lọc IsSaved
             var savedFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsSaved", StringComparison.OrdinalIgnoreCase));
             if (savedFilter != null)
