@@ -49,14 +49,26 @@ axiosInstance.interceptors.response.use(
   (error: any) => {
     const msg = getErrorMessage(error);
     
-    // Chỉ hiển thị toast lỗi nếu không phải là endpoint kiểm tra auth
-    if (error.config && !error.config.url.endsWith('/users/me')) {
-      const now = Date.now();
-      // Không hiển thị trùng lặp cùng một thông báo lỗi trong vòng 1.5 giây
-      if (msg !== lastErrorMessage || now - lastErrorTime > 1500) {
-        lastErrorMessage = msg;
-        lastErrorTime = now;
-        message.error(msg);
+    // Kiểm tra lỗi 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+      const pathname = window.location.pathname;
+      if (pathname.includes('/practice') || pathname.includes('/room')) {
+        const url = import.meta.env.VITE_MAIN_URL || 'http://localhost:5173';
+        message.warning('Phiên đăng nhập hết hạn! Hệ thống đã mở Tab mới để đăng nhập lại. Hãy QUAY LẠI ĐÂY nộp bài sau khi xong.', 8);
+        window.open(`${url}/auth/login`, '_blank');
+      } else {
+        window.dispatchEvent(new CustomEvent('auth-required'));
+      }
+    } else {
+      // Chỉ hiển thị toast lỗi nếu không phải là endpoint kiểm tra auth
+      if (error.config && !error.config.url.endsWith('/users/me')) {
+        const now = Date.now();
+        // Không hiển thị trùng lặp cùng một thông báo lỗi trong vòng 1.5 giây
+        if (msg !== lastErrorMessage || now - lastErrorTime > 1500) {
+          lastErrorMessage = msg;
+          lastErrorTime = now;
+          message.error(msg);
+        }
       }
     }
     

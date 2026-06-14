@@ -175,5 +175,11 @@ namespace HoangCN.LearnMS.Entities
         public int DirectHardCount { get; set; } = 0;
 
         #endregion
+
+        /// <summary>
+        /// Đánh dấu kỳ thi này do chính user hiện tại (đang gọi API) tạo ra
+        /// </summary>
+        [NotMapped]
+        public bool IsMyCreated { get; set; }
     }
 }

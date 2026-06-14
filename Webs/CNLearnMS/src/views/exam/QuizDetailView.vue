@@ -157,7 +157,7 @@
             <div class="mb-4">
               <h5 class="fw-bold text-dark-blue h6 mb-2">Mô tả chi tiết:</h5>
               <p class="text-secondary small leading-relaxed">
-                Bộ đề ôn tập này được tuyển chọn kỹ lưỡng bám sát theo chương trình chuẩn hóa. Bộ câu hỏi bao gồm đầy đủ các khía cạnh từ lý thuyết căn bản tới bài tập vận dụng cao, kèm lời giải chi tiết giúp học viên hiểu rõ bản chất vấn đề sau khi hoàn thành.
+                {{ quizInfo.description }}
               </p>
             </div>
           </div>
@@ -167,11 +167,13 @@
             <div class="d-flex flex-wrap gap-3">
               <!-- Action: Lưu đề thi -->
               <button 
-                class="btn px-4 py-2.5 rounded-3 fw-semibold flex-grow-1 flex-sm-grow-0 hover-up d-flex align-items-center gap-1.5"
+                class="btn px-4 py-2.5 rounded-3 fw-semibold flex-grow-1 flex-sm-grow-0 hover-up d-flex align-items-center justify-content-center gap-1.5"
                 :class="isQuizSaved ? 'btn-warning text-white' : 'btn-outline-warning'"
                 @click="toggleSaveQuiz"
+                :disabled="isSaving"
               >
-                <span>{{ isQuizSaved ? '★' : '☆' }}</span>
+                <span v-if="isSaving" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span v-else>{{ isQuizSaved ? '★' : '☆' }}</span>
                 <span>{{ isQuizSaved ? 'Đã lưu đề' : 'Lưu đề thi' }}</span>
               </button>
 
@@ -262,6 +264,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { getExamsPaging, getExamQuestionCounts } from '@/api/exams'
+import { getSavedExamIds, toggleExamBookmark } from '@/api/bookmarks'
 
 const route = useRoute()
 const router = useRouter()
@@ -271,24 +275,40 @@ const quizTitle = ref((route.query.title as string) || 'Đề thi trắc nghiệ
 
 const isQuizSaved = ref(false)
 
-const checkQuizSavedStatus = () => {
-  const saved = localStorage.getItem('cn_saved_quizzes')
-  const savedIds = saved ? JSON.parse(saved) : []
-  isQuizSaved.value = savedIds.includes(quizId.value)
+const checkQuizSavedStatus = async () => {
+  try {
+    const res = await getSavedExamIds()
+    if (res && res.isSuccess && res.data) {
+      isQuizSaved.value = res.data.includes(quizId.value)
+    }
+  } catch (error) {
+    console.error('Lỗi kiểm tra trạng thái lưu đề:', error)
+  }
 }
 
-const toggleSaveQuiz = () => {
-  const saved = localStorage.getItem('cn_saved_quizzes')
-  let savedIds = saved ? JSON.parse(saved) : []
-  if (savedIds.includes(quizId.value)) {
-    savedIds = savedIds.filter((id: string) => id !== quizId.value)
-    message.success('Đã bỏ lưu đề thi!')
-  } else {
-    savedIds.push(quizId.value)
-    message.success('Đã lưu đề thi thành công!')
+const isSaving = ref(false)
+
+const toggleSaveQuiz = async () => {
+  if (isSaving.value) return
+  isSaving.value = true
+  try {
+    const res = await toggleExamBookmark(quizId.value)
+    if (res && res.isSuccess) {
+      // API trả về true nếu đã lưu, false nếu đã bỏ lưu
+      isQuizSaved.value = res.data
+      if (res.data) {
+        message.success('Đã lưu đề thi thành công!')
+      } else {
+        message.success('Đã bỏ lưu đề thi!')
+      }
+    } else {
+      message.error((res as any)?.userMsg || 'Lỗi khi lưu đề thi')
+    }
+  } catch (error: any) {
+    message.error(error.response?.data?.userMsg || 'Đã xảy ra lỗi khi lưu đề thi')
+  } finally {
+    isSaving.value = false
   }
-  localStorage.setItem('cn_saved_quizzes', JSON.stringify(savedIds))
-  isQuizSaved.value = savedIds.includes(quizId.value)
 }
 
 // Comments and Download Modal state
@@ -464,16 +484,18 @@ interface QuizDetails {
   modifiedDate: Date
   level: number
   tags: string[]
+  description?: string
 }
 
 const quizInfo = ref<QuizDetails>({
-  questionCount: 40,
-  duration: 60,
-  attemptsCount: 1420,
-  createdBy: 'Hoàng Cao Nguyên',
+  questionCount: 0,
+  duration: 0,
+  attemptsCount: 0,
+  createdBy: '',
   modifiedDate: new Date(),
-  level: 1,
-  tags: []
+  level: 0,
+  tags: [],
+  description: ''
 })
 
 const getLevelText = (level: number): string => {
@@ -514,29 +536,44 @@ const goToPractice = () => {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
   checkQuizSavedStatus()
-  // Populate random details based on ID to keep it realistic
-  const hash = quizId.value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  quizInfo.value.questionCount = (hash % 2 === 0) ? 30 : 50
-  quizInfo.value.duration = (hash % 2 === 0) ? 45 : 90
-  quizInfo.value.attemptsCount = 820 + (hash * 7) % 5000
-  quizInfo.value.level = hash % 3
 
-  // Populate dynamic category tags based on title
-  const titleLower = quizTitle.value.toLowerCase()
-  const tagsList = ['Luyện thi']
-  if (titleLower.includes('toán')) tagsList.push('Toán học')
-  if (titleLower.includes('lý') || titleLower.includes('vật lý')) tagsList.push('Vật lý')
-  if (titleLower.includes('hóa')) tagsList.push('Hóa học')
-  if (titleLower.includes('anh') || titleLower.includes('tiếng anh')) tagsList.push('Tiếng Anh')
-  if (titleLower.includes('thpt') || titleLower.includes('quốc gia')) tagsList.push('THPT Quốc Gia')
-  if (titleLower.includes('khảo sát') || titleLower.includes('hè')) tagsList.push('Khảo sát hè')
-  
-  if (tagsList.length === 1) {
-    tagsList.push('Trắc Nghiệm', 'Tổng Hợp')
+  try {
+    const [examsRes, countsRes] = await Promise.all([
+      getExamsPaging({
+        pageIndex: 1,
+        pageSize: 1,
+        filters: [{
+          property: 'ExamId',
+          operator: 0, // Equal
+          value: quizId.value,
+          type: 1 // Guid/String
+        }]
+      }),
+      getExamQuestionCounts()
+    ])
+
+    if (examsRes && examsRes.isSuccess && examsRes.data && examsRes.data.items && examsRes.data.items.length > 0) {
+      const exam = examsRes.data.items[0]
+      const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+      
+      quizTitle.value = exam.name
+      quizInfo.value.questionCount = counts[exam.examId] || 0
+      quizInfo.value.duration = exam.duration
+      quizInfo.value.createdBy = exam.createdBy || 'Unknown'
+      quizInfo.value.modifiedDate = new Date(exam.modifiedDate || exam.createdDate || Date.now())
+      quizInfo.value.level = 0
+      quizInfo.value.attemptsCount = 0
+      quizInfo.value.tags = []
+      quizInfo.value.description = exam.description || 'Chưa có mô tả chi tiết cho đề thi này.'
+    } else {
+      message.error('Không tìm thấy thông tin đề thi.')
+    }
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin đề thi:', error)
+    message.error('Đã xảy ra lỗi khi tải thông tin đề thi.')
   }
-  quizInfo.value.tags = tagsList
 })
 </script>
 

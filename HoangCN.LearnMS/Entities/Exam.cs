@@ -81,5 +81,11 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Sinh ngầm từ kỳ thi")]
         public bool IsQuizSource { get; set; } = false;
+
+        /// <summary>
+        /// Đánh dấu đề thi này do chính user hiện tại (đang gọi API) tạo ra
+        /// </summary>
+        [NotMapped]
+        public bool IsMyCreated { get; set; }
     }
 }

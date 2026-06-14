@@ -33,9 +33,19 @@ namespace HoangCN.LearnMS.Interfaces
         Task<QuestionDetailsDto?> GetQuestionDetailsByIdAsync(Guid id, Guid currentUserId);
 
         /// <summary>
+        /// Lấy danh sách câu hỏi thuộc một đề thi
+        /// </summary>
+        Task<List<QuestionDetailsDto>> GetQuestionsByExamIdAsync(Guid examId, Guid currentUserId);
+
+        /// <summary>
         /// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật) kèm đáp án và danh mục
         /// </summary>
         Task SaveQuestionDetailsAsync(List<QuestionDetailsDto> questionsDto, Guid currentUserId);
+
+        /// <summary>
+        /// Chấm điểm và trả về kết quả đáp án cho một câu hỏi
+        /// </summary>
+        Task<QuestionCheckResultDto> CheckAnswerAsync(QuestionCheckDto dto);
     }
 }
 

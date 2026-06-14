@@ -9,15 +9,14 @@ namespace HoangCN.LearnMS.Entities
     /// <summary>
     /// Thực thể lưu lượt làm bài / luyện tập của người dùng (bao gồm câu hỏi lẻ, đề thi, kỳ thi)
     /// </summary>
-    [Table("UserAttempt")]
-    public class UserAttempt : BaseEntity
+    [Table("ExamAttempt")]
+    public class ExamAttempt : BaseEntity
     {
         /// <summary>
         /// Khóa chính
         /// </summary>
         [Key]
-        [DisplayName("Mã lượt làm bài")]
-        public Guid UserAttemptId { get; set; }
+        public Guid ExamAttemptId { get; set; }
 
         /// <summary>
         /// Mã định danh người dùng (Khóa ngoại)

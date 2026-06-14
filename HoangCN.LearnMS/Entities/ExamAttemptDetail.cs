@@ -9,21 +9,21 @@ namespace HoangCN.LearnMS.Entities
     /// <summary>
     /// Thực thể lưu chi tiết câu trả lời của người dùng cho từng câu hỏi trong lượt làm bài
     /// </summary>
-    [Table("UserAttemptDetail")]
-    public class UserAttemptDetail : BaseEntity
+    [Table("ExamAttemptDetail")]
+    public class ExamAttemptDetail : BaseEntity
     {
         /// <summary>
         /// Khóa chính
         /// </summary>
         [Key]
-        public Guid UserAttemptDetailId { get; set; }
+        public Guid ExamAttemptDetailId { get; set; }
 
         /// <summary>
         /// Mã định danh lượt làm bài (Khóa ngoại)
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Mã lượt làm bài")]
-        public Guid UserAttemptId { get; set; }
+        public Guid ExamAttemptId { get; set; }
 
         /// <summary>
         /// Mã định danh câu hỏi (Khóa ngoại)

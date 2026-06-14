@@ -23,12 +23,19 @@ namespace HoangCN.LearnMS.Utils
 
             // Đăng ký QuestionService với giao diện tùy chỉnh IQuestionService (vì có thêm phương thức Bulk import ngoài CRUD)
             services.AddScoped<IQuestionService, QuestionService>();
+            services.AddScoped<IExamAttemptService, ExamAttemptService>();
 
             // Đăng ký QuestionCategoryService tùy chỉnh để hỗ trợ tự sinh SEO Slug khi tạo mới danh mục câu hỏi
             services.AddScoped<IBaseBL<QuestionCategory>, QuestionCategoryService>();
 
             // Đăng ký LearnMsUserService để xử lý nghiệp vụ thông tin người dùng riêng biệt
             services.AddScoped<ILearnMsUserService, LearnMsUserService>();
+
+            // Đăng ký ExamService để xử lý lưu trữ đề thi động
+            services.AddScoped<IExamService, ExamService>();
+
+            // Đăng ký QuizService để xử lý phân quyền và nghiệp vụ bài kiểm tra
+            services.AddScoped<IQuizService, QuizService>();
 
             return services;
         }

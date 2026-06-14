@@ -101,6 +101,35 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getLoginInfo, ensureLearnMsUser, logout, getLearnMsUserProfile } from '@/api/user'
+import { showDialog } from '@/utils/dialog'
+import { h, getCurrentInstance } from 'vue'
+
+const instance = getCurrentInstance()
+
+const handleAuthRequiredEvent = () => {
+  showDialog({
+    appContext: instance?.appContext,
+    title: 'Yêu cầu đăng nhập',
+    okText: 'Đăng nhập ngay',
+    content: () => h('div', { class: 'text-center py-3' }, [
+      h('div', { class: 'mb-3' }, [h('span', { class: 'fs-1' }, '🔒')]),
+      h('h5', { class: 'fw-bold text-dark-blue mb-2' }, 'Vui lòng đăng nhập'),
+      h('p', { class: 'text-secondary small mb-0' }, 
+        (route.name === 'quiz-practice' || route.name === 'quiz-room')
+        ? 'Phiên đăng nhập đã hết hạn. Hệ thống sẽ mở Tab mới để bạn đăng nhập lại. Sau khi đăng nhập thành công, hãy QUAY LẠI ĐÂY (không tải lại trang) để nộp bài.'
+        : 'Bạn cần đăng nhập để tiếp tục sử dụng tính năng này. Hãy đăng nhập tài khoản của bạn để trải nghiệm hệ thống tốt nhất.'
+      )
+    ]),
+    onOk: () => {
+      if (route.name === 'quiz-practice' || route.name === 'quiz-room') {
+        const url = import.meta.env.VITE_MAIN_URL || 'http://localhost:5173'
+        window.open(`${url}/auth/login`, '_blank')
+      } else {
+        redirectToAuth('login')
+      }
+    }
+  })
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -259,10 +288,12 @@ watch(() => route.path, () => {
 onMounted(() => {
   checkLoginStatus()
   window.addEventListener('scroll', checkScroll, true)
+  window.addEventListener('auth-required', handleAuthRequiredEvent)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', checkScroll, true)
+  window.removeEventListener('auth-required', handleAuthRequiredEvent)
 })
 </script>
 

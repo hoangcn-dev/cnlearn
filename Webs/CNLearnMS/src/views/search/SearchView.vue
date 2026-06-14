@@ -146,12 +146,12 @@
                 <div class="card h-100 border-0 rounded-4 shadow-sm card-glowing overflow-hidden d-flex flex-column bg-light-card" @click="goToCategoryDetail(category)">
                   <div class="p-4 d-flex flex-column h-100 hover-pointer">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                      <span class="category-badge px-2.5 py-1 rounded-3 fs-7" :style="getBadgeStyle(category.name)">
-                        {{ getSubjectCategory(category.name) }}
+                      <span class="category-badge px-2.5 py-1 rounded-3 fs-7 bg-indigo-soft text-indigo fw-semibold">
+                        Danh Mục
                       </span>
                       <div class="quiz-count-bubble d-flex align-items-center gap-1">
                         <span>📝</span>
-                        <span class="fw-bold">{{ getQuizCount(category.questionCategoryId) }} đề</span>
+                        <span class="fw-bold">{{ allQuizzes.filter(q => q.categoryId === category.questionCategoryId).length }} đề</span>
                       </div>
                     </div>
                     <h3 class="card-title h5 fw-bold text-dark-blue mb-3 flex-grow-1 line-clamp-2">
@@ -201,9 +201,7 @@
                   
                   <!-- Right side: Stats and Button -->
                   <div class="d-flex align-items-center gap-4 ms-md-auto mt-3 mt-md-0 flex-shrink-0">
-                    <span class="text-muted small text-nowrap">
-                      Số lượt làm: <span class="fw-bold text-dark-blue">{{ getAttemptsCount(question.questionId).toLocaleString('vi-VN') }}</span>
-                    </span>
+                      Số lượt làm: <span class="fw-bold text-dark-blue">0</span>
                     <button class="btn bg-white border border-light-subtle px-4 py-2 rounded-pill fw-semibold text-dark shadow-sm hover-up" @click="viewQuestionDetail(question.questionId)">
                       Chi Tiết
                     </button>
@@ -233,7 +231,7 @@ import { CategorySelect, getRecursiveChildIds, type QuestionCategory } from '@/c
 import BaseSelect, { type SelectOption } from '@/components/BaseSelect.vue'
 import { getAllCate } from '@/api/categories'
 import { getQuestionsPaging } from '@/api/questions'
-
+import { getExamsPaging, getExamQuestionCounts } from '@/api/exams'
 const route = useRoute()
 const router = useRouter()
 
@@ -289,66 +287,7 @@ const sortByOptions: SelectOption[] = [
   { value: 'questions-desc', label: 'Câu hỏi: Giảm dần', icon: '❓' }
 ]
 
-// Mock categories
-const MOCK_CATEGORIES: QuestionCategory[] = [
-  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc", name: "Toán Học" },
-  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "vat-ly", name: "Vật Lý" },
-  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
-]
-
-// Mock questions for Tab 3
-const MOCK_QUESTIONS: Question[] = [
-  {
-    questionId: "q1",
-    stringContent: "Điểm khác biệt lớn nhất giữa IEnumerable và IQueryable là gì?",
-    explaination: "IEnumerable thực hiện lọc dữ liệu trên Client (In-Memory), còn IQueryable thực hiện lọc phía Server (Database) trước khi kéo về Client.",
-    level: 1,
-    createdDate: new Date(),
-    answers: [
-      { questionAnswerId: "a1_1", stringContent: "IEnumerable lọc ở Client, IQueryable lọc ở Server Database", isCorrectAnswer: true },
-      { questionAnswerId: "a1_2", stringContent: "IEnumerable lọc ở Server, IQueryable lọc ở Client", isCorrectAnswer: false }
-    ]
-  },
-  {
-    questionId: "q2",
-    stringContent: "Cú pháp khai báo biến hằng trong C# là gì?",
-    explaination: "Biến hằng trong C# được khai báo bằng từ khóa const đứng trước kiểu dữ liệu và gán giá trị trực tiếp.",
-    level: 0,
-    createdDate: new Date(Date.now() - 3600000),
-    answers: [
-      { questionAnswerId: "a2_1", stringContent: "const <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: true },
-      { questionAnswerId: "a2_2", stringContent: "readonly <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false },
-      { questionAnswerId: "a2_3", stringContent: "static <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false }
-    ]
-  },
-  {
-    questionId: "q3",
-    stringContent: "Phương thức nào dùng để khởi tạo một Transaction trong DbContext của EF Core?",
-    explaination: "Phương thức Database.BeginTransaction() khởi tạo một giao dịch mới để đảm bảo tính toàn vẹn dữ liệu.",
-    level: 2,
-    createdDate: new Date(Date.now() - 7200000),
-    answers: [
-      { questionAnswerId: "a3_1", stringContent: "Database.BeginTransaction()", isCorrectAnswer: true },
-      { questionAnswerId: "a3_2", stringContent: "Database.StartTransaction()", isCorrectAnswer: false },
-      { questionAnswerId: "a3_3", stringContent: "Database.Commit()", isCorrectAnswer: false }
-    ]
-  },
-  {
-    questionId: "q4",
-    stringContent: "Một lớp (Class) kế thừa trong C# có thể có tối đa bao nhiêu lớp cơ sở?",
-    explaination: "C# chỉ hỗ trợ đơn kế thừa lớp (Single Inheritance), nghĩa là một lớp con chỉ được phép kế thừa từ duy nhất 1 lớp cha.",
-    level: 0,
-    createdDate: new Date(Date.now() - 86400000),
-    answers: [
-      { questionAnswerId: "a4_1", stringContent: "1", isCorrectAnswer: true },
-      { questionAnswerId: "a4_2", stringContent: "Không giới hạn", isCorrectAnswer: false },
-      { questionAnswerId: "a4_3", stringContent: "2", isCorrectAnswer: false }
-    ]
-  }
-]
+// No mock data
 
 // Utilities
 const getRelativeTime = (date: Date): string => {
@@ -369,56 +308,6 @@ const getRelativeTime = (date: Date): string => {
   }
 }
 
-const getQuizCount = (id: string): number => {
-  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return (hash % 12) + 4
-}
-
-const getSubjectCategory = (name: string): string => {
-  const lowercase = name.toLowerCase()
-  if (lowercase.includes("toán")) return "Toán học"
-  if (lowercase.includes("lý")) return "Vật lý"
-  if (lowercase.includes("hóa")) return "Hóa học"
-  if (lowercase.includes("anh")) return "Tiếng anh"
-  if (lowercase.includes("sử")) return "Lịch sử"
-  if (lowercase.includes("sinh")) return "Sinh học"
-  if (lowercase.includes("tin")) return "Tin học"
-  if (lowercase.includes("địa")) return "Địa lý"
-  return "Chuyên đề"
-}
-
-const getBadgeStyle = (name: string) => {
-  const subject = getSubjectCategory(name)
-  switch (subject) {
-    case "Toán học": return { backgroundColor: '#e0f2fe', color: '#0369a1' }
-    case "Vật lý": return { backgroundColor: '#fef3c7', color: '#b45309' }
-    case "Hóa học": return { backgroundColor: '#dcfce7', color: '#15803d' }
-    case "Tiếng anh": return { backgroundColor: '#f3e8ff', color: '#6b21a8' }
-    case "Lịch sử": return { backgroundColor: '#fee2e2', color: '#b91c1c' }
-    case "Sinh học": return { backgroundColor: '#e2f0d9', color: '#385723' }
-    case "Tin học": return { backgroundColor: '#e0f7fa', color: '#006064' }
-    case "Địa lý": return { backgroundColor: '#fff3e0', color: '#e65100' }
-    default: return { backgroundColor: '#f3f4f6', color: '#374151' }
-  }
-}
-
-const getLevelText = (level: number): string => {
-  if (level === 0) return 'Dễ'
-  if (level === 1) return 'Trung Bính'
-  return 'Khó'
-}
-
-const getLevelBadgeClass = (level: number): string => {
-  if (level === 0) return 'bg-success text-white'
-  if (level === 1) return 'bg-warning text-dark'
-  return 'bg-danger text-white'
-}
-
-const getAttemptsCount = (id: string) => {
-  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return 100 + (hash * 13) % 5000
-}
-
 // Load Categories
 const loadCategories = async () => {
   try {
@@ -428,8 +317,9 @@ const loadCategories = async () => {
     } else {
       throw new Error()
     }
-  } catch {
-    availableCategories.value = MOCK_CATEGORIES
+  } catch (error) {
+    message.error('Lỗi tải danh mục từ API.')
+    availableCategories.value = []
   }
 }
 
@@ -440,9 +330,9 @@ const loadQuestions = async () => {
     if (filters.category) {
       apiFilters.push({
         property: 'CategoryId',
-        operator: 'Equal',
+        operator: 0,
         value: filters.category,
-        type: 'Guid'
+        type: 1
       })
     }
 
@@ -469,32 +359,47 @@ const loadQuestions = async () => {
     }
   } catch (error) {
     console.error('Lỗi tải câu hỏi từ API:', error)
-    allQuestions.value = MOCK_QUESTIONS
+    message.error('Lỗi tải danh sách câu hỏi.')
+    allQuestions.value = []
   }
 }
 
-// Generate Quizzes pool
-const generateQuizPool = () => {
-  const list: Quiz[] = []
-  availableCategories.value.forEach((cat, index) => {
-    const quizCount = 5 + (index % 4)
-    for (let i = 1; i <= quizCount; i++) {
-      const createdAt = new Date()
-      createdAt.setHours(createdAt.getHours() - (index * 12 + i * 4))
+// Load Quizzes from Backend API
+const loadQuizzes = async () => {
+  try {
+    const [examsRes, countsRes] = await Promise.all([
+      getExamsPaging({
+        pageIndex: 1,
+        pageSize: 1000,
+        filters: []
+      }),
+      getExamQuestionCounts()
+    ])
 
-      list.push({
-        id: `${cat.questionCategoryId}-quiz-${i}`,
-        title: `Đề thi thử ${cat.name} - Đề số ${i} (Khảo sát chất lượng hè)`,
-        categoryName: cat.name,
-        categoryId: cat.questionCategoryId,
-        duration: (i % 2 === 0) ? 45 : 90,
-        questionCount: (i % 2 === 0) ? 30 : 50,
-        level: i % 3,
-        createdAt
+    if (examsRes && examsRes.isSuccess && examsRes.data) {
+      const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+      
+      allQuizzes.value = (examsRes.data.items || []).map((e: any) => {
+        // Tìm category name
+        const cat = availableCategories.value.find(c => c.questionCategoryId === e.categoryId)
+        return {
+          id: e.examId,
+          title: e.name,
+          categoryName: cat ? cat.name : 'Danh mục chung',
+          categoryId: e.categoryId,
+          duration: e.duration,
+          questionCount: counts[e.examId] || 0,
+          level: 1,
+          createdAt: new Date(e.createdDate || Date.now())
+        }
       })
+    } else {
+      allQuizzes.value = []
     }
-  })
-  allQuizzes.value = list
+  } catch (error) {
+    console.error('Lỗi tải đề thi từ API:', error)
+    allQuizzes.value = []
+  }
 }
 
 // Computed total results
@@ -619,7 +524,7 @@ onMounted(async () => {
   }
 
   await loadCategories()
-  generateQuizPool()
+  await loadQuizzes()
   await loadQuestions()
 })
 </script>

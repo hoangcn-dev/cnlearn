@@ -20,9 +20,12 @@ namespace HoangCN.Core.DL.Implementation
         }
 
         /// <summary>
-        /// Đối tượng DbContext của EF Core dùng để thao tác trực tiếp nếu cần
+        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
         /// </summary>
-        public DbContext Context => _context;
+        public IQueryable<TEntity> GetQueryable<TEntity>() where TEntity : class
+        {
+            return _context.Set<TEntity>();
+        }
 
         /// <summary>
         /// Bắt đầu một Transaction mới

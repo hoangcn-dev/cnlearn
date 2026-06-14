@@ -50,7 +50,6 @@
       <a-tabs v-model:activeKey="listTab" class="custom-list-tabs mb-2">
         <a-tab-pane key="mine" tab="Của tôi" />
         <a-tab-pane key="saved" tab="Đã lưu" />
-        <a-tab-pane key="done" tab="Đã làm" />
       </a-tabs>
 
       <!-- Table list -->

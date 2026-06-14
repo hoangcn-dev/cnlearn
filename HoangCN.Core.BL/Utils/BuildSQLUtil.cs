@@ -76,13 +76,16 @@ namespace HoangCN.Core.BL.Utils
         }
 
         /// <summary>
-        /// Hàm hỗ trợ build toàn bộ mệnh đề WHERE (bao gồm Ids, Filters, và từ khóa Key)
+        /// Hàm hỗ trợ build toàn bộ mệnh đề WHERE (bao gồm Ids, Filters, từ khóa Key và Expression Condition)
         /// </summary>
-        public static string BuildWhereClaude<TEntity>(GetRequest request, DynamicParameters parameters) where TEntity : BaseEntity
+        public static string BuildWhereClaude<TEntity>(GetRequest request, DynamicParameters parameters, Expression<Func<TEntity, bool>>? condition = null) where TEntity : BaseEntity
         {
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
             var mainTableName = metadata.EntityType.Name;
             var whereConditions = new List<string>();
+
+            // 0. Lọc bỏ dữ liệu đã bị xóa mềm mặc định
+            whereConditions.Add($"`{mainTableName}`.`IsDeleted` = 0");
 
             // 1. Lọc theo danh sách Ids (nếu có)
             if (request.Ids != null && request.Ids.Count > 0)
@@ -98,7 +101,7 @@ namespace HoangCN.Core.BL.Utils
                 var filterWhere = BuildWhereClaudeFromFilters<TEntity>(request.Filters, request.FilterGroupType, parameters);
                 if (!string.IsNullOrEmpty(filterWhere) && filterWhere != "TRUE")
                 {
-                    whereConditions.Add(filterWhere);
+                    whereConditions.Add($"({filterWhere})");
                 }
             }
 
@@ -107,6 +110,17 @@ namespace HoangCN.Core.BL.Utils
             if (!string.IsNullOrEmpty(keySearch))
             {
                 whereConditions.Add(keySearch);
+            }
+
+            // 4. Lọc theo Expression condition (Nếu có)
+            if (condition != null)
+            {
+                var (sql, paramsOut) = ExpressionToSqlTranslator.Translate(condition);
+                if (!string.IsNullOrEmpty(sql))
+                {
+                    whereConditions.Add($"({sql})");
+                    parameters.AddDynamicParams(paramsOut);
+                }
             }
 
             // Hợp nhất các điều kiện WHERE

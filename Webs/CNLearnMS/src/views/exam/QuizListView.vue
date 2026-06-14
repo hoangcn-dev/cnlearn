@@ -154,6 +154,7 @@ import { message } from 'ant-design-vue'
 import axios from 'axios'
 import { getDirectChildren, type QuestionCategory, CategoryChildGrid } from '@/components/category'
 import { getAllCate } from '@/api/categories'
+import { getExamsPaging, getExamQuestionCounts } from '@/api/exams'
 
 const route = useRoute()
 const router = useRouter()
@@ -189,20 +190,9 @@ const loadCategories = async () => {
     } else {
       throw new Error()
     }
-  } catch {
-    const savedOffline = localStorage.getItem('offline_categories')
-    if (savedOffline) {
-      flatCategories.value = JSON.parse(savedOffline)
-    } else {
-      flatCategories.value = [
-        { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc", name: "Toán Học" },
-        { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: "c01a92a2-a69f-4143-8589-da11688d7d01", slug: "toan-hoc-luyen-thi-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-        { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "vat-ly", name: "Vật Lý" },
-        { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: "c03a92a2-a69f-4143-8589-da11688d7d03", slug: "vat-ly-chuyen-de-dong-dien-xoay-chieu", name: "Vật Lý - Chuyên Đề Dòng Điện Xoay Chiều" },
-        { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "hoa-hoc-chuyen-de-hoa-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-        { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "tieng-anh-reading", name: "Tiếng Anh - IELTS Reading Academic" }
-      ]
-    }
+  } catch (error) {
+    message.error('Lỗi khi tải danh mục. Vui lòng thử lại sau.')
+    flatCategories.value = []
   } finally {
     loadingCategories.value = false
   }
@@ -289,28 +279,46 @@ const getRelativeTime = (date: Date): string => {
   }
 }
 
-const generateMockQuizzes = () => {
-  const idStr = categoryId.value || 'test'
-  const hash = idStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const count = (hash % 12) + 6
+const fetchExams = async () => {
+  try {
+    const filters = []
+    if (categoryId.value) {
+      filters.push({
+        property: 'CategoryId',
+        value: categoryId.value,
+        operator: 0, // Equal
+        type: 1 // String
+      })
+    }
 
-  const subject = getLocalName(categoryName.value)
-  const list: Quiz[] = []
-  for (let i = 1; i <= count; i++) {
-    const timeOffsetHours = i * 3 + (hash % 10)
-    const createdAt = new Date()
-    createdAt.setHours(createdAt.getHours() - timeOffsetHours)
+    const [examsRes, countsRes] = await Promise.all([
+      getExamsPaging({
+        pageIndex: 1,
+        pageSize: 500,
+        filters: filters
+      }),
+      getExamQuestionCounts()
+    ])
 
-    list.push({
-      id: `${idStr}-quiz-${i}`,
-      title: `Đề thi thử ${subject} - Đề số ${i} (Khảo sát chất lượng hè)`,
-      duration: (i % 2 === 0) ? 45 : 90,
-      questionCount: (i % 2 === 0) ? 30 : 50,
-      level: i % 3,
-      createdAt
-    })
+    if (examsRes && examsRes.isSuccess && examsRes.data) {
+      const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+      
+      quizzes.value = (examsRes.data.items || []).map((e: any) => ({
+        id: e.examId,
+        title: e.name,
+        duration: e.duration,
+        questionCount: counts[e.examId] || 0,
+        level: 1, // Default mapping if no level property exists
+        createdAt: new Date(e.createdDate || Date.now())
+      }))
+    } else {
+      quizzes.value = []
+    }
+  } catch (err) {
+    console.error('Lỗi khi tải đề thi theo danh mục:', err)
+    message.error('Lỗi khi tải đề thi theo danh mục.')
+    quizzes.value = []
   }
-  quizzes.value = list
 }
 
 const handleSearchRedirect = () => {
@@ -350,13 +358,13 @@ watch(() => route.params.id, async (newId) => {
   if (newId) {
     currentPage.value = 1
     await loadCategories()
-    generateMockQuizzes()
+    fetchExams()
   }
 })
 
 onMounted(async () => {
   await loadCategories()
-  generateMockQuizzes()
+  fetchExams()
 })
 </script>
 

@@ -36,17 +36,9 @@
                   </div>
                 </div>
                 <div class="row">
-                  <div class="col-md-6">
+                  <div class="col-md-12">
                     <a-form-item label="Số điện thoại:">
                       <a-input v-model:value="userInfo.phone" placeholder="Nhập số điện thoại..." />
-                    </a-form-item>
-                  </div>
-                  <div class="col-md-6">
-                    <a-form-item label="Vai trò người dùng (Thay đổi để thử nghiệm phân quyền):">
-                      <a-select v-model:value="userInfo.role" placeholder="Chọn vai trò">
-                        <a-select-option value="User">Học viên / Giáo viên</a-select-option>
-                        <a-select-option value="Admin">Quản trị viên hệ thống (Admin)</a-select-option>
-                      </a-select>
                     </a-form-item>
                   </div>
                 </div>

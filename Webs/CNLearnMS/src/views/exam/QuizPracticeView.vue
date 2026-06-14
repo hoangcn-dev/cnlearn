@@ -389,13 +389,15 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import { getExamQuestions } from '@/api/exams'
+import { submitAttempt } from '@/api/attempts'
+import { checkAnswer } from '@/api/questions'
 
 const route = useRoute()
 const router = useRouter()
 
 const quizId = ref(route.params.id as string)
 const quizTitle = ref((route.query.title as string) || 'Đề thi trắc nghiệm')
-const quizDuration = ref(45)
 
 // Configurations
 const config = reactive({
@@ -451,7 +453,10 @@ const startExamTimer = () => {
 
 // Keyboard shortcuts handler
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (!isStarted.value) return
+  if (!isStarted.value || isSubmitted.value) return
+
+  // Prevent handling global shortcuts if any Ant Design Modal is open
+  if (document.querySelector('.ant-modal-wrap:not([style*="display: none"])')) return
 
   // Prevent when focusing text inputs
   const target = e.target as HTMLElement
@@ -478,7 +483,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
       currentIdx.value++
       if (config.mode === 'all') goToQuestion(currentIdx.value)
     }
-  } else if (['1', '2', '3', '4'].includes(e.key)) {
+  } else if (/^[1-9]$/.test(e.key)) {
     const q = currentQuestion.value
     if (q) {
       const idx = parseInt(e.key) - 1
@@ -510,6 +515,7 @@ interface PracticeQuestion {
   stringContent: string
   explaination: string
   level: number
+  type: number
   answers: Answer[]
   chosenAnswerIds: string[]
   isConfirmed?: boolean
@@ -520,7 +526,7 @@ const currentIdx = ref(0)
 const currentQuestion = computed(() => questions.value[currentIdx.value] || null)
 
 const isMultipleChoice = (q: PracticeQuestion): boolean => {
-  return q.answers.filter(a => a.isCorrectAnswer).length > 1
+  return q.type === 1
 }
 
 const isResultRevealed = (q: PracticeQuestion) => {
@@ -537,52 +543,56 @@ const progressPercentage = computed(() => {
   return Math.round((answeredCount.value / questions.value.length) * 100)
 })
 
-// Generate Mock Questions
-const generateQuestions = () => {
-  const hash = quizId.value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const count = (hash % 2 === 0) ? 10 : 15 // Generate 10 or 15 questions for testing convenience
+// Fetch Questions from API
+const fetchQuestions = async () => {
+  try {
+    const res = await getExamQuestions(quizId.value)
+    if (res && res.data) {
+      const list: PracticeQuestion[] = res.data.map((q: any) => ({
+        id: q.id,
+        stringContent: q.stringContent,
+        explaination: q.explanation || '',
+        level: q.level,
+        type: q.type || 0,
+        chosenAnswerIds: [],
+        isConfirmed: false,
+        answers: (q.answers || []).map((a: any, idx: number) => {
+          const ansId = a.questionAnswerId;
+          if (!ansId) throw new Error('Dữ liệu đáp án không hợp lệ (thiếu QuestionAnswerId)')
+          return {
+            id: ansId,
+            stringContent: a.stringContent,
+            isCorrectAnswer: a.isCorrectAnswer ?? false,
+            indexChar: String.fromCharCode(65 + idx)
+          }
+        })
+      }))
 
-  const list: PracticeQuestion[] = []
-  for (let i = 1; i <= count; i++) {
-    list.push({
-      id: `q-${i}`,
-      stringContent: i % 3 === 0
-        ? `Hãy chọn các từ khóa/đặc điểm liên quan đến tính kế thừa trong OOP (Câu mẫu số ${i} - Chọn nhiều đáp án)`
-        : `Cho biết phương thức hoặc từ khóa kế thừa quan trọng trong OOP là gì? (Câu mẫu số ${i})`,
-      explaination: `Giải thích chi tiết: Khóa chính hoặc phương thức kế thừa trong OOP được sử dụng rộng rãi nhằm tái sử dụng mã nguồn và quản lý cấu trúc code hiệu quả.`,
-      level: i % 3,
-      chosenAnswerIds: [],
-      isConfirmed: false,
-      answers: [
-        { id: `ans-${i}-1`, stringContent: 'Đáp án lựa chọn A (Mẫu thử)', isCorrectAnswer: i % 3 === 0 || i % 4 === 1, indexChar: 'A' },
-        { id: `ans-${i}-2`, stringContent: 'Đáp án lựa chọn B (Mẫu thử)', isCorrectAnswer: i % 3 === 0 || i % 4 === 2, indexChar: 'B' },
-        { id: `ans-${i}-3`, stringContent: 'Đáp án lựa chọn C (Mẫu thử)', isCorrectAnswer: i % 4 === 3, indexChar: 'C' },
-        { id: `ans-${i}-4`, stringContent: 'Đáp án lựa chọn D (Mẫu thử)', isCorrectAnswer: i % 4 === 0, indexChar: 'D' }
-      ]
-    })
+      // Shuffle logic if requested
+      if (config.shuffleQuestions) {
+        list.sort(() => Math.random() - 0.5)
+      }
+
+      if (config.shuffleAnswers) {
+        list.forEach(q => {
+          q.answers.sort(() => Math.random() - 0.5)
+          // Re-assign index chars A, B, C...
+          q.answers.forEach((ans, idx) => {
+            ans.indexChar = String.fromCharCode(65 + idx)
+          })
+        })
+      }
+
+      questions.value = list
+    }
+  } catch (error) {
+    message.error('Lỗi khi lấy dữ liệu đề thi.')
+    console.error(error)
   }
-
-  // Shuffle logic if requested
-  if (config.shuffleQuestions) {
-    list.sort(() => Math.random() - 0.5)
-  }
-
-  if (config.shuffleAnswers) {
-    list.forEach(q => {
-      q.answers.sort(() => Math.random() - 0.5)
-      // Re-assign index chars A, B, C, D
-      const chars = ['A', 'B', 'C', 'D']
-      q.answers.forEach((ans, idx) => {
-        ans.indexChar = chars[idx] || '?'
-      })
-    })
-  }
-
-  questions.value = list
 }
 
-const startPractice = () => {
-  generateQuestions()
+const startPractice = async () => {
+  await fetchQuestions()
   isStarted.value = true
   currentIdx.value = 0
   message.success('Đã bắt đầu luyện tập! Chúc bạn làm bài tốt.')
@@ -625,9 +635,31 @@ const skipAndNext = () => {
   goToNext()
 }
 
-const revealCurrentResult = () => {
+const revealCurrentResult = async () => {
   const q = currentQuestion.value
   if (!q) return
+
+  if (!q.isConfirmed) {
+    try {
+      const res = await checkAnswer({
+        questionId: q.id,
+        selectedAnswerIds: q.chosenAnswerIds
+      })
+      if (res && res.data) {
+        const checkResult = res.data
+        q.explaination = checkResult.explanation || q.explaination
+        // Cập nhật isCorrectAnswer từ backend
+        q.answers.forEach(a => {
+          a.isCorrectAnswer = checkResult.correctAnswerIds.includes(a.id)
+        })
+      }
+    } catch (error) {
+      message.error('Lỗi khi chấm đáp án.')
+      console.error(error)
+      return // Dừng lại nếu lỗi, không next
+    }
+  }
+
   q.isConfirmed = true
 
   // Auto next transition logic (n seconds)
@@ -742,33 +774,63 @@ const viewQuizDetail = (id: string, title: string) => {
   router.push({ name: 'quiz-detail', params: { id }, query: { title } })
 }
 
-const submitPractice = (bypassConfirm = false) => {
-  const performSubmit = () => {
-    if (examTimer) clearInterval(examTimer)
-    // Calculate score
-    let correct = 0
-    questions.value.forEach(q => {
-      if (isMultipleChoice(q)) {
-        const correctAnsIds = q.answers.filter(a => a.isCorrectAnswer).map(a => a.id)
-        const isCorrect = correctAnsIds.length === q.chosenAnswerIds.length &&
-                          correctAnsIds.every(id => q.chosenAnswerIds.includes(id))
-        if (isCorrect) {
-          correct++
-        }
-      } else {
-        const chosenId = q.chosenAnswerIds[0] || null
-        const chosen = q.answers.find(a => a.id === chosenId)
-        if (chosen && chosen.isCorrectAnswer) {
-          correct++
-        }
-      }
-    })
+let isConfirmDialogOpen = false
 
-    correctCount.value = correct
-    finalScore.value = ((correct / questions.value.length) * 10).toFixed(1)
-    generateRecommendations()
-    isSubmitted.value = true
-    window.scrollTo({ top: 0, behavior: 'instant' })
+const submitPractice = (bypassConfirm = false) => {
+  if (isSubmitted.value) return
+
+  const performSubmit = async () => {
+    if (examTimer) clearInterval(examTimer)
+
+    const timeSpent = isExamMode.value 
+      ? examDurationSeconds.value - examTimeLeft.value
+      : 0; // Trong tương lai có thể track thời gian practice thực tế
+
+    const payload = {
+      examId: quizId.value,
+      attemptType: isExamMode.value ? 'exam' : 'practice',
+      timeSpentSeconds: timeSpent,
+      answers: questions.value.map(q => ({
+        questionId: q.id,
+        selectedAnswerIds: q.chosenAnswerIds
+      }))
+    }
+
+    try {
+      const res = await submitAttempt(payload as any)
+      const attemptResult = res?.data ?? (res as any)?.Data
+      if (attemptResult) {
+        const cCount = attemptResult.correctCount ?? attemptResult.CorrectCount ?? 0
+        const score = attemptResult.score ?? attemptResult.Score ?? 0
+
+        correctCount.value = cCount
+        finalScore.value = Number(score).toFixed(1)
+
+        // Cập nhật lại thông tin đáp án đúng sai từ Backend trả về
+        const details = attemptResult.details ?? attemptResult.Details
+        if (details) {
+          details.forEach((det: any) => {
+            const qId = det.questionId ?? det.QuestionId
+            const q = questions.value.find(q => q.id === qId)
+            if (q) {
+              q.explaination = det.explanation ?? det.Explanation ?? q.explaination
+              // Cập nhật isCorrectAnswer cho các option để UI đổi màu
+              const cAnswerIds = det.correctAnswerIds ?? det.CorrectAnswerIds ?? []
+              q.answers.forEach(a => {
+                a.isCorrectAnswer = cAnswerIds.includes(a.id)
+              })
+            }
+          })
+        }
+
+        generateRecommendations()
+        isSubmitted.value = true
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    } catch (error) {
+      message.error('Có lỗi xảy ra khi nộp bài. Vui lòng thử lại.')
+      console.error(error)
+    }
   }
 
   if (bypassConfirm) {
@@ -776,13 +838,20 @@ const submitPractice = (bypassConfirm = false) => {
     return
   }
 
+  if (isConfirmDialogOpen) return
+  isConfirmDialogOpen = true
+
   Modal.confirm({
     title: `✔️ Nộp bài ${isExamMode.value ? 'thi thử' : 'luyện tập'}?`,
     content: `Bạn đã hoàn thành ${answeredCount.value}/${questions.value.length} câu. Bạn có muốn nộp bài ngay bây giờ?`,
     okText: 'Nộp bài',
     cancelText: 'Hủy',
     onOk: () => {
+      isConfirmDialogOpen = false
       performSubmit()
+    },
+    onCancel: () => {
+      isConfirmDialogOpen = false
     }
   })
 }
@@ -824,8 +893,6 @@ const getLevelTextColor = (level: number): string => {
 
 onMounted(() => {
   window.scrollTo({ top: 0 })
-  const hash = quizId.value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  quizDuration.value = (hash % 2 === 0) ? 45 : 90
   window.addEventListener('keydown', handleKeyDown)
 
   if (isExamMode.value) {

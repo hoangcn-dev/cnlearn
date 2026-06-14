@@ -169,7 +169,7 @@
                   <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Danh mục:</span>
                     <a-select v-model:value="q.categoryIds[0]" style="width: 210px" size="small" placeholder="Chọn môn học">
-                      <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId">
+                      <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId" :disabled="cat.hasChildren">
                         {{ cat.name }}
                       </a-select-option>
                     </a-select>
@@ -423,6 +423,8 @@ interface Question {
 interface Category {
   questionCategoryId: string
   name: string
+  parentId?: string | null
+  hasChildren?: boolean
 }
 
 // Categories list loaded from API
@@ -505,7 +507,11 @@ const fetchCategories = async () => {
   try {
     const res = await getAllCate()
     if (res && res.isSuccess && res.data) {
-      categories.value = res.data.items || []
+      const items = res.data.items || []
+      categories.value = items.map((cat: any) => ({
+        ...cat,
+        hasChildren: items.some((c: any) => c.parentId === cat.questionCategoryId)
+      }))
     }
   } catch (error) {
     console.error('Lỗi tải danh mục:', error)

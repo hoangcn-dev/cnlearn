@@ -78,6 +78,112 @@ namespace HoangCN.LearnMS.Migrations
                     b.ToTable("Exam");
                 });
 
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.ExamAttempt", b =>
+                {
+                    b.Property<Guid>("ExamAttemptId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AttemptType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Duration")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ExamId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("FinishedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("QuestionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("QuizId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("Score")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime>("StartedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("ExamAttemptId");
+
+                    b.ToTable("ExamAttempt");
+                });
+
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.ExamAttemptDetail", b =>
+                {
+                    b.Property<Guid>("ExamAttemptDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("ExamAttemptId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("SelectedAnswerIds")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("ExamAttemptDetailId");
+
+                    b.ToTable("ExamAttemptDetail");
+                });
+
             modelBuilder.Entity("HoangCN.LearnMS.Entities.ExamQuestion", b =>
                 {
                     b.Property<Guid>("ExamQuestionId")
@@ -518,112 +624,6 @@ namespace HoangCN.LearnMS.Migrations
                     b.HasKey("QuizId");
 
                     b.ToTable("Quiz");
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserAttempt", b =>
-                {
-                    b.Property<Guid>("UserAttemptId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("AttemptType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<int>("CorrectCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Duration")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("ExamId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime?>("FinishedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<Guid?>("QuestionId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid?>("QuizId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<decimal>("Score")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<DateTime>("StartedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("TotalQuestions")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("UserAttemptId");
-
-                    b.ToTable("UserAttempt");
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserAttemptDetail", b =>
-                {
-                    b.Property<Guid>("UserAttemptDetailId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsCorrect")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<Guid>("QuestionId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("SelectedAnswerIds")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<Guid>("UserAttemptId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("UserAttemptDetailId");
-
-                    b.ToTable("UserAttemptDetail");
                 });
 
             modelBuilder.Entity("HoangCN.LearnMS.Entities.UserSavedExam", b =>

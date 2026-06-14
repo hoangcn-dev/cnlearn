@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using System.Linq.Expressions;
@@ -23,7 +23,7 @@ namespace HoangCN.Core.BL.Interfaces
         /// <summary>
         /// Lấy danh sách thực thể phân trang, sắp xếp và lọc động
         /// </summary>
-        Task<ResultDto<TResult>> Get<TResult>(GetRequest request);
+        Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null);
 
         /// <summary>
         /// Lấy thông tin thực thể bằng ID
@@ -34,6 +34,11 @@ namespace HoangCN.Core.BL.Interfaces
         /// Lấy danh sách thực thể theo điều kiện chỉ định
         /// </summary>
         Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
+
+        /// <summary>
+        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
+        /// </summary>
+        IQueryable<TEntity> GetQueryable();
     }
 }
 

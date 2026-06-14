@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Enums;
 using System.Text.Json.Serialization;
 
 namespace HoangCN.Core.Common.Model.Requests
@@ -51,7 +51,8 @@ namespace HoangCN.Core.Common.Model.Requests
         /// <summary>
         /// Kiểm gộp điều kiện: Or / And
         /// </summary>
-        public FilterGroupType FilterGroupType { get; set; } = FilterGroupType.Or;
+        public FilterGroupType FilterGroupType { get; set; } = FilterGroupType.And;
+
 
         /// <summary>
         /// Factory cho tham số Get All

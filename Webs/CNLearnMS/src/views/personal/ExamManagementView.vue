@@ -36,7 +36,6 @@
           <a-tabs v-model:activeKey="examSubTab" class="custom-list-tabs mb-2 px-1">
             <a-tab-pane key="mine" tab="Của tôi" />
             <a-tab-pane key="saved" tab="Đã lưu" />
-            <a-tab-pane key="done" tab="Đã làm" />
           </a-tabs>
 
           <!-- Filter Bar -->
@@ -173,7 +172,6 @@
           <a-tabs v-model:activeKey="quizSubTab" class="custom-list-tabs mb-2 px-1">
             <a-tab-pane key="mine" tab="Của tôi" />
             <a-tab-pane key="saved" tab="Đã lưu" />
-            <a-tab-pane key="done" tab="Đã làm" />
           </a-tabs>
 
           <!-- Quiz Filters -->
@@ -690,6 +688,10 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
+import { getAllCate } from '@/api/categories'
+import { getAllExams, getExamQuestions, deleteExams, getExamQuestionCounts } from '@/api/exams'
+import { getAllQuizzes, saveQuizDetails, deleteQuiz } from '@/api/quizzes'
+import { getSavedExamIds, toggleExamBookmark } from '@/api/bookmarks'
 
 const router = useRouter()
 
@@ -743,17 +745,14 @@ interface Category {
   name: string
 }
 
-const categories = ref<Category[]>([
-  { id: "c01a92a2-a69f-4143-8589-da11688d7d01", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { id: "c02a92a2-a69f-4143-8589-da11688d7d02", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { id: "c03a92a2-a69f-4143-8589-da11688d7d03", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { id: "c04a92a2-a69f-4143-8589-da11688d7d04", name: "Tiếng Anh - IELTS Reading Academic" },
-  { id: "c05a92a2-a69f-4143-8589-da11688d7d05", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
-  { id: "c06a92a2-a69f-4143-8589-da11688d7d06", name: "Sinh Học - Di Truyền Học & Biến Dị" },
-  { id: "c07a92a2-a69f-4143-8589-da11688d7d07", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
-  { id: "c08a92a2-a69f-4143-8589-da11688d7d08", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
-  { id: "c09a92a2-a69f-4143-8589-da11688d7d09", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
-])
+const categories = ref<Category[]>([])
+
+// Helper to check and return a valid Guid
+const ensureGuid = (id: string | null | undefined): string | null => {
+  if (!id) return null
+  const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  return isGuid ? id : null
+}
 
 // Mock DB values to link together
 const questionsList = ref<Question[]>([])
@@ -1139,7 +1138,33 @@ const openCreateQuizModal = () => {
 }
 
 const viewDetailShowAnswers = ref(true)
-const viewExamDetails = (exam: Exam, showAnswers: boolean = true) => {
+const viewExamDetails = async (exam: Exam, showAnswers: boolean = true) => {
+  const hasRealQuestions = exam.questions && exam.questions.length > 0 && exam.questions[0] && Object.keys(exam.questions[0]).length > 0
+  if (!hasRealQuestions && exam.id) {
+    try {
+      const res = await getExamQuestions(exam.id)
+      if (res && res.isSuccess && res.data) {
+        exam.questions = res.data.map((q: any) => ({
+          id: q.id,
+          slug: q.slug || '',
+          stringContent: q.stringContent,
+          explanation: q.explanation || q.explaination || '',
+          level: q.level,
+          type: q.type,
+          accessType: q.accessType,
+          categoryIds: q.categoryIds || [],
+          answers: (q.answers || []).map((a: any) => ({
+            questionAnswerId: a.questionAnswerId,
+            stringContent: a.stringContent,
+            isCorrectAnswer: a.isCorrectAnswer
+          }))
+        }))
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải câu hỏi của đề thi:', err)
+    }
+  }
+
   selectedExamForDetail.value = exam
   viewDetailShowAnswers.value = showAnswers
   detailModalOpen.value = true
@@ -1153,10 +1178,19 @@ const confirmDeleteExam = (id: string) => {
     okText: 'Xóa đề',
     okType: 'danger',
     cancelText: 'Hủy',
-    onOk() {
-      exams.value = exams.value.filter(e => e.id !== id)
-      saveToStorage()
-      message.success('Đã xóa đề thi thành công!')
+    async onOk() {
+      try {
+        const res = await deleteExams([id])
+        if (res && res.isSuccess) {
+          message.success('Đã xóa đề thi thành công!')
+          await fetchExamsList()
+        } else {
+          message.error(res.errorMessage || 'Lỗi khi xóa đề thi.')
+        }
+      } catch (error) {
+        console.error('Lỗi khi xóa đề thi:', error)
+        message.error('Đã xảy ra lỗi khi kết nối máy chủ để xóa đề thi.')
+      }
     }
   })
 }
@@ -1168,10 +1202,18 @@ const unsaveExam = (id: string) => {
     okText: 'Bỏ lưu',
     okType: 'danger',
     cancelText: 'Hủy',
-    onOk() {
-      savedExamIds.value = savedExamIds.value.filter(item => item !== id)
-      localStorage.setItem('cn_saved_exams', JSON.stringify(savedExamIds.value))
-      message.success('Đã xóa đề thi khỏi danh sách đã lưu!')
+    async onOk() {
+      try {
+        const res = await toggleExamBookmark(id)
+        if (res && res.isSuccess) {
+          savedExamIds.value = savedExamIds.value.filter(item => item !== id)
+          message.success('Đã xóa đề thi khỏi danh sách đã lưu!')
+        } else {
+          message.error((res as any)?.userMsg || 'Lỗi khi bỏ lưu đề thi')
+        }
+      } catch (error) {
+        message.error('Lỗi khi bỏ lưu đề thi')
+      }
     }
   })
 }
@@ -1183,10 +1225,19 @@ const confirmDeleteQuiz = (id: string) => {
     okText: 'Xóa kỳ thi',
     okType: 'danger',
     cancelText: 'Hủy',
-    onOk() {
-      quizzes.value = quizzes.value.filter(q => q.id !== id)
-      saveToStorage()
-      message.success('Đã xóa bài kiểm tra thành công!')
+    async onOk() {
+      try {
+        const res = await deleteQuiz(id)
+        if (res && res.isSuccess) {
+          message.success('Đã xóa bài kiểm tra thành công!')
+          await fetchQuizzesList()
+        } else {
+          message.error(res.errorMessage || 'Lỗi khi xóa bài kiểm tra.')
+        }
+      } catch (error) {
+        console.error('Lỗi khi xóa bài kiểm tra:', error)
+        message.error('Đã xảy ra lỗi khi kết nối máy chủ để xóa bài kiểm tra.')
+      }
     }
   })
 }
@@ -1276,7 +1327,7 @@ const saveExam = () => {
 }
 
 // Action: Save Quiz
-const saveQuiz = () => {
+const saveQuiz = async () => {
   if (!quizForm.title.trim()) {
     message.error('Vui lòng nhập tên bài kiểm tra!')
     return
@@ -1290,32 +1341,45 @@ const saveQuiz = () => {
     return
   }
 
-  if (quizForm.sourceType === 'exam' && !quizForm.examId) {
-    message.error('Vui lòng chọn một đề thi mẫu!')
-    return
-  }
-
-  const newQuiz: Quiz = {
-    id: 'quiz_' + Date.now(),
+  const quizPayload = {
+    quizId: ensureGuid(''),
     title: quizForm.title.trim(),
     targetGroup: quizForm.targetGroup.trim(),
     sourceType: quizForm.sourceType,
-    examId: quizForm.sourceType === 'exam' ? quizForm.examId : undefined,
-    startDate: quizForm.startDate,
-    endDate: quizForm.endDate,
-    directRule: quizForm.sourceType === 'direct' && quizForm.directRule ? {
-      categoryId: quizForm.directRule.categoryId || categories.value[0]?.id || '',
-      totalQuestions: quizForm.directRule.totalQuestions,
-      duration: quizForm.directRule.duration
-    } : undefined,
-    isMyCreated: true
+    examId: quizForm.sourceType === 'exam' ? ensureGuid(quizForm.examId) : null,
+    startDate: quizForm.startDate ? new Date(quizForm.startDate).toISOString() : null,
+    endDate: quizForm.endDate ? new Date(quizForm.endDate).toISOString() : null,
+    isDraft: false,
+    lockBrowser: false,
+    shuffleQuestions: false,
+    disableCopyPaste: false,
+    fullscreen: false,
+    webcam: false,
+    ipLimit: false,
+    allowLateJoin: true,
+    allowLateSubmit: false,
+    publicLeaderboard: true,
+    sendEmailReport: true,
+    directCategoryId: quizForm.sourceType === 'direct' && quizForm.directRule ? ensureGuid(quizForm.directRule.categoryId) : null,
+    directTotalQuestions: quizForm.sourceType === 'direct' && quizForm.directRule ? quizForm.directRule.totalQuestions : null,
+    directEasyCount: quizForm.sourceType === 'direct' && quizForm.directRule ? Math.floor(quizForm.directRule.totalQuestions * 0.5) : 0,
+    directMediumCount: quizForm.sourceType === 'direct' && quizForm.directRule ? Math.floor(quizForm.directRule.totalQuestions * 0.3) : 0,
+    directHardCount: quizForm.sourceType === 'direct' && quizForm.directRule ? Math.floor(quizForm.directRule.totalQuestions * 0.2) : 0
   }
 
-  quizzes.value.unshift(newQuiz)
-  saveToStorage()
-
-  message.success(`Lên lịch tổ chức bài kiểm tra "${newQuiz.title}" thành công!`)
-  quizModalOpen.value = false
+  try {
+    const res = await saveQuizDetails(quizPayload)
+    if (res && res.isSuccess) {
+      message.success(`Lên lịch tổ chức bài kiểm tra "${quizForm.title.trim()}" thành công!`)
+      await fetchQuizzesList()
+      quizModalOpen.value = false
+    } else {
+      message.error(res.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
+    }
+  } catch (error) {
+    console.error('Lỗi khi lưu bài kiểm tra:', error)
+    message.error('Đã xảy ra lỗi khi kết nối máy chủ để lưu bài kiểm tra.')
+  }
 }
 
 // Simulate Taking Quiz
@@ -1401,14 +1465,6 @@ const loadFromStorage = () => {
     saveToStorage()
   }
 
-  // Load saved / done IDs
-  const savedEx = localStorage.getItem('cn_saved_exams')
-  if (savedEx) {
-    savedExamIds.value = JSON.parse(savedEx)
-  } else {
-    savedExamIds.value = ['exam_default_2']
-    localStorage.setItem('cn_saved_exams', JSON.stringify(savedExamIds.value))
-  }
 
   const doneEx = localStorage.getItem('cn_done_exams')
   if (doneEx) {
@@ -1435,8 +1491,95 @@ const loadFromStorage = () => {
   }
 }
 
-onMounted(() => {
+const fetchCategories = async () => {
+  try {
+    const res = await getAllCate()
+    if (res && res.isSuccess && res.data) {
+      categories.value = (res.data.items || []).map((cat: any) => ({
+        id: cat.questionCategoryId,
+        name: cat.name
+      }))
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh mục:', error)
+  }
+}
+
+const fetchExamsList = async () => {
+  try {
+    const [examsRes, countsRes] = await Promise.all([
+      getAllExams(),
+      getExamQuestionCounts()
+    ])
+
+    if (examsRes && examsRes.isSuccess && examsRes.data) {
+      const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+      
+      exams.value = (examsRes.data.items || []).map((exam: any) => {
+        const questionCount = counts[exam.examId] || 0
+        return {
+          id: exam.examId,
+          name: exam.name,
+          description: exam.description || '',
+          categoryId: exam.categoryId,
+          duration: exam.duration,
+          accessType: exam.accessType,
+          isDraft: exam.isDraft,
+          questions: Array(questionCount).fill({}),
+          isMyCreated: exam.isMyCreated
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh sách đề thi:', error)
+  }
+}
+
+const fetchSavedExamsList = async () => {
+  try {
+    const res = await getSavedExamIds()
+    if (res && res.isSuccess && res.data) {
+      savedExamIds.value = res.data
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh sách đề thi đã lưu:', error)
+  }
+}
+
+const fetchQuizzesList = async () => {
+  try {
+    const res = await getAllQuizzes()
+    
+    if (res && res.isSuccess && res.data) {
+      quizzes.value = (res.data.items || []).map((q: any) => ({
+        id: q.quizId,
+        title: q.title,
+        targetGroup: q.targetGroup || '',
+        sourceType: q.sourceType,
+        examId: q.examId,
+        startDate: q.startDate || '',
+        endDate: q.endDate || '',
+        directRule: q.sourceType === 'direct' ? {
+          categoryId: q.directCategoryId || '',
+          totalQuestions: q.directTotalQuestions || 0,
+          duration: 45
+        } : undefined,
+        isMyCreated: q.isMyCreated
+      }))
+    }
+  } catch (error) {
+    console.error('Lỗi tải danh sách bài kiểm tra:', error)
+  }
+}
+
+onMounted(async () => {
+  await fetchCategories()
   loadFromStorage()
+  await Promise.all([
+    fetchExamsList(),
+    fetchSavedExamsList(),
+    fetchQuizzesList()
+  ])
 })
 </script>
 

@@ -41,6 +41,31 @@ namespace HoangCN.LearnMS.Controllers
             return userId;
         }
 
+        private Guid? GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
+            {
+                return parsedId;
+            }
+            return null;
+        }
+
+        [HttpGet]
+        public override async Task<IActionResult> GetAll()
+        {
+            var request = GetRequest.GetAllRequest();
+            var res = await _questionService.GetQuestionDetailsPagingAsync(request, GetCurrentUserId() ?? Guid.Empty);
+            return Ok(ApiResponseDto.Success(res.Items)); // Trả về Items để khớp cấu trúc mảng của GetAll
+        }
+
+        [HttpPost("paging")]
+        public override async Task<IActionResult> GetPaging([FromBody] GetRequest request)
+        {
+            var res = await _questionService.GetQuestionDetailsPagingAsync(request, GetCurrentUserId() ?? Guid.Empty);
+            return Ok(ApiResponseDto.Success(res));
+        }
+
         /// <summary>
         /// Endpoint API nhận chuỗi JSON trực tiếp từ body để import ngân hàng câu hỏi hàng loạt
         /// Đường dẫn: POST api/questions/bulk/json
@@ -82,7 +107,7 @@ namespace HoangCN.LearnMS.Controllers
         [HttpPost("paging-details")]
         public async Task<IActionResult> GetPagingDetails([FromBody] GetRequest request)
         {
-            var userId = CheckAuth();
+            var userId = GetCurrentUserId() ?? Guid.Empty;
             var res = await _questionService.GetQuestionDetailsPagingAsync(request, userId);
             return Ok(ApiResponseDto.Success(res));
         }
@@ -155,6 +180,16 @@ namespace HoangCN.LearnMS.Controllers
             var userId = CheckAuth();
             await _questionService.SaveQuestionDetailsAsync(questionsDto, userId);
             return Ok(ApiResponseDto.Success());
+        }
+
+        /// <summary>
+        /// API kiểm tra đáp án của một câu hỏi (Dành cho Luyện tập/Thi)
+        /// </summary>
+        [HttpPost("check-answer")]
+        public async Task<IActionResult> CheckAnswer([FromBody] QuestionCheckDto dto)
+        {
+            var result = await _questionService.CheckAnswerAsync(dto);
+            return Ok(ApiResponseDto.Success(result));
         }
     }
 }

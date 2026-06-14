@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using HoangCN.Core.Common.Base;
 
 namespace HoangCN.Core.DL.Interfaces
@@ -9,9 +9,9 @@ namespace HoangCN.Core.DL.Interfaces
     public interface IBaseWriteDL
     {
         /// <summary>
-        /// Đối tượng DbContext của EF Core dùng để thao tác trực tiếp nếu cần
+        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
         /// </summary>
-        DbContext Context { get; }
+        IQueryable<TEntity> GetQueryable<TEntity>() where TEntity : class;
 
         /// <summary>
         /// Bắt đầu một Transaction mới

@@ -37,6 +37,11 @@ export const importBulkJson = async (jsonBody: any) => {
   return await post(endpoints.questions.bulkJson, jsonBody);
 };
 
+// Chấm điểm đáp án
+export const checkAnswer = async (payload: { questionId: string, selectedAnswerIds: string[] }) => {
+  return await post(endpoints.questions.checkAnswer, payload);
+};
+
 // Import hàng loạt từ JSON file
 export const importBulkJsonFile = async (formData: FormData) => {
   try {

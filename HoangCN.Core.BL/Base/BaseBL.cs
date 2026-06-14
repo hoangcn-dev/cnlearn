@@ -33,7 +33,7 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Xóa nhiều đối tượng thông qua danh sách ID
         /// </summary>
-        public async Task Delete(DeleteRequest request)
+        public virtual async Task Delete(DeleteRequest request)
         {
             var res = await Get<TEntity>(new GetRequest { Ids = request.Ids });
             if (res.Items.Count == 0)
@@ -48,12 +48,12 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Lấy danh sách đối tượng sử dụng Dapper (Read DB)
         /// </summary>
-        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request)
+        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null)
         {
             var parameters = new DynamicParameters();
             var mainTableName = typeof(TEntity).Name;
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters);
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters, condition);
             var sortClause = BuildSQLUtil.BuildSortClaude<TEntity>(request);
 
             var result = new ResultDto<TResult>();
@@ -378,6 +378,14 @@ namespace HoangCN.Core.BL.Base
             var sql = $"{selectFromSql} {whereClause}";
             var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);
             return items.ToList();
+        }
+
+        /// <summary>
+        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
+        /// </summary>
+        public IQueryable<TEntity> GetQueryable()
+        {
+            return _baseWriteDL.GetQueryable<TEntity>();
         }
     }
 }

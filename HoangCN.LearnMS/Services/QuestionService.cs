@@ -18,6 +18,7 @@ using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -256,34 +257,98 @@ namespace HoangCN.LearnMS.Services
         /// <summary>
         /// Tiền xử lý xóa - thực hiện xóa mềm/cascade các thực thể liên quan
         /// </summary>
-        protected override void BeforeDelete(List<Question> entities)
+        public override async Task Delete(DeleteRequest request)
         {
-            var dbContext = ((HoangCN.Core.DL.Implementation.BaseWriteDL)_baseWriteDL).Context;
+            var res = await Get<Question>(new GetRequest { Ids = request.Ids });
+            if (res.Items.Count == 0) return;
+
+            var entities = res.Items;
             var questionIds = entities.Select(q => q.QuestionId).ToList();
 
+            var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
+            var queryableRel = _baseWriteDL.GetQueryable<QuestionInCategory>();
+
             // 1. Xóa mềm đáp án
-            var answers = dbContext.Set<QuestionAnswer>()
+            var answers = queryableAns
                 .Where(a => questionIds.Contains(a.QuestionId) && !a.IsDeleted)
                 .ToList();
             foreach (var a in answers)
             {
                 a.IsDeleted = true;
                 a.State = ModelState.Delete;
-                dbContext.Entry(a).State = EntityState.Modified;
             }
 
             // 2. Xóa mềm liên kết danh mục
-            var relations = dbContext.Set<QuestionInCategory>()
+            var relations = queryableRel
                 .Where(r => questionIds.Contains(r.QuestionId) && !r.IsDeleted)
                 .ToList();
             foreach (var r in relations)
             {
                 r.IsDeleted = true;
                 r.State = ModelState.Delete;
-                dbContext.Entry(r).State = EntityState.Modified;
             }
 
             base.BeforeDelete(entities);
+
+            await _baseWriteDL.BeginTransactionAsync();
+            try
+            {
+                await base.Save(entities);
+                if (answers.Count > 0) await _baseWriteDL.SaveEntitiesAsync(answers);
+                if (relations.Count > 0) await _baseWriteDL.SaveEntitiesAsync(relations);
+                await _baseWriteDL.CommitTransactionAsync();
+            }
+            catch
+            {
+                await _baseWriteDL.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Chấm điểm và trả về kết quả đáp án cho một câu hỏi
+        /// </summary>
+        public async Task<QuestionCheckResultDto> CheckAnswerAsync(QuestionCheckDto dto)
+        {
+            var q = await GetById<Question>(dto.QuestionId);
+            if (q == null)
+            {
+                throw new BadRequestException("Không tìm thấy câu hỏi.");
+            }
+
+            var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionId(dto.QuestionId, out var ansParams);
+            var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
+
+            var correctIds = answers.Where(a => a.IsCorrectAnswer).Select(a => a.QuestionAnswerId).ToList();
+            
+            var selectedIds = dto.SelectedAnswerIds ?? new List<Guid>();
+
+            bool isCorrect = true;
+
+            // Kiểm tra số lượng đáp án chọn có khớp số lượng đáp án đúng không
+            if (selectedIds.Count != correctIds.Count)
+            {
+                isCorrect = false;
+            }
+            else
+            {
+                // Nếu khớp số lượng, kiểm tra từng đáp án chọn xem có nằm trong danh sách đúng không
+                foreach (var id in selectedIds)
+                {
+                    if (!correctIds.Contains(id))
+                    {
+                        isCorrect = false;
+                        break;
+                    }
+                }
+            }
+
+            return new QuestionCheckResultDto
+            {
+                IsCorrect = isCorrect,
+                Explanation = q.Explaination,
+                CorrectAnswerIds = correctIds
+            };
         }
 
         /// <summary>
@@ -303,12 +368,9 @@ namespace HoangCN.LearnMS.Services
                 Items = new List<QuestionDetailsDto>()
             };
 
-            // Xử lý bộ lọc UserId "mine"
-            var userIdFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "UserId", StringComparison.OrdinalIgnoreCase));
-            if (userIdFilter != null && userIdFilter.Value?.ToString() == "mine")
-            {
-                userIdFilter.Value = currentUserId.ToString();
-            }
+            Expression<Func<Question, bool>>? condition = q => q.AccessType == QuestionAccessType.Public || q.UserId == currentUserId;
+
+
 
             // Xử lý bộ lọc IsSaved
             var savedFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsSaved", StringComparison.OrdinalIgnoreCase));
@@ -406,7 +468,7 @@ namespace HoangCN.LearnMS.Services
                 }
             }
 
-            var questionsResult = await Get<Question>(request);
+            var questionsResult = await Get<Question>(request, condition);
             if (questionsResult == null)
             {
                 return result;
@@ -496,6 +558,9 @@ namespace HoangCN.LearnMS.Services
             var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionId(id, out var relParams);
             var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
 
+            int correctCount = answers?.Count(a => a.IsCorrectAnswer) ?? 0;
+            int determinedType = correctCount > 1 ? 1 : 0;
+
             return new QuestionDetailsDto
             {
                 Id = q.QuestionId,
@@ -503,7 +568,7 @@ namespace HoangCN.LearnMS.Services
                 StringContent = q.StringContent,
                 Explanation = q.Explaination,
                 Level = (int)q.Level,
-                Type = (int)q.Type,
+                Type = determinedType,
                 AccessType = (int)q.AccessType,
                 IsMyCreated = q.UserId == currentUserId,
                 CategoryIds = relations.Select(r => r.QuestionCategoryId).ToList(),
@@ -514,6 +579,76 @@ namespace HoangCN.LearnMS.Services
                     IsCorrectAnswer = a.IsCorrectAnswer
                 }).ToList()
             };
+        }
+
+        /// <summary>
+        /// Lấy danh sách câu hỏi thuộc một đề thi (bỏ qua điều kiện AccessType để đảm bảo học viên thấy nội dung đề thi)
+        /// </summary>
+        public async Task<List<QuestionDetailsDto>> GetQuestionsByExamIdAsync(Guid examId, Guid currentUserId)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("ExamId", examId);
+
+            var sql = @"
+                SELECT q.* 
+                FROM Question q
+                INNER JOIN ExamQuestion eq ON q.QuestionId = eq.QuestionId
+                WHERE eq.ExamId = @ExamId AND q.IsDeleted = 0 AND eq.IsDeleted = 0
+                ORDER BY eq.SortOrder";
+
+            var questions = (await _baseReadDL.ExecuteQueryText<Question>(sql, parameters))?.ToList();
+            if (questions == null || questions.Count == 0)
+            {
+                return new List<QuestionDetailsDto>();
+            }
+
+            var questionIds = questions.Select(q => q.QuestionId).ToList();
+
+            var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
+            var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
+
+            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionIds(questionIds, out var relParams);
+            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
+
+            var answerGroup = (answers ?? Enumerable.Empty<QuestionAnswer>())
+                .GroupBy(a => a.QuestionId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(a => a.OrderInList).ToList());
+
+            var relationGroup = (relations ?? Enumerable.Empty<QuestionInCategory>())
+                .GroupBy(r => r.QuestionId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.OrderInList).Select(r => r.QuestionCategoryId).ToList());
+
+            var result = new List<QuestionDetailsDto>();
+            foreach (var q in questions)
+            {
+                answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
+                relationGroup.TryGetValue(q.QuestionId, out var qCategoryIds);
+
+                bool isOwner = q.UserId == currentUserId;
+                int correctCount = qAnswers?.Count(a => a.IsCorrectAnswer) ?? 0;
+                int determinedType = correctCount > 1 ? 1 : 0;
+
+                result.Add(new QuestionDetailsDto
+                {
+                    Id = q.QuestionId,
+                    Slug = q.Slug,
+                    StringContent = q.StringContent,
+                    Explanation = isOwner ? q.Explaination : null,
+                    Level = (int)q.Level,
+                    Type = determinedType,
+                    AccessType = (int)q.AccessType,
+                    IsMyCreated = isOwner,
+                    CategoryIds = qCategoryIds ?? new List<Guid>(),
+                    Answers = qAnswers?.Select(a => new AnswerDetailsDto
+                    {
+                        QuestionAnswerId = a.QuestionAnswerId,
+                        StringContent = a.StringContent,
+                        IsCorrectAnswer = isOwner ? a.IsCorrectAnswer : false
+                    }).ToList() ?? new List<AnswerDetailsDto>()
+                });
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -529,9 +664,8 @@ namespace HoangCN.LearnMS.Services
             var questionsToSave = new List<Question>();
             var answersToSave = new List<QuestionAnswer>();
             var relationsToSave = new List<QuestionInCategory>();
-
-            var dbContext = ((HoangCN.Core.DL.Implementation.BaseWriteDL)_baseWriteDL).Context;
-
+            var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
+            var queryableRel = _baseWriteDL.GetQueryable<QuestionInCategory>();
             foreach (var qDto in questionsDto)
             {
                 var isNew = qDto.Id == Guid.Empty;
@@ -587,7 +721,7 @@ namespace HoangCN.LearnMS.Services
                 var existingAnswers = new List<QuestionAnswer>();
                 if (!isNew)
                 {
-                    existingAnswers = dbContext.Set<QuestionAnswer>()
+                    existingAnswers = queryableAns
                         .Where(a => a.QuestionId == questionId && !a.IsDeleted)
                         .ToList();
                 }
@@ -647,7 +781,7 @@ namespace HoangCN.LearnMS.Services
                 var existingRelations = new List<QuestionInCategory>();
                 if (!isNew)
                 {
-                    existingRelations = dbContext.Set<QuestionInCategory>()
+                    existingRelations = queryableRel
                         .Where(r => r.QuestionId == questionId && !r.IsDeleted)
                         .ToList();
                 }
