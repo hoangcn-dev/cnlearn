@@ -154,16 +154,16 @@
           <!-- Question Cards Preview & Direct Editing -->
           <div v-else class="d-flex flex-column gap-4">
             <div 
-              v-for="(q, index) in questionsList" 
+              v-for="(q, index) in paginatedQuestions" 
               :key="q.id" 
-              :id="'question-card-' + index"
+              :id="'question-card-' + (index + (currentPage - 1) * pageSize)"
               class="card card-body p-4 border border-light shadow-sm bg-light-soft position-relative rounded-4"
               style="scroll-margin-top: 90px;"
             >
               <!-- Card Header details -->
               <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
                 <div class="d-flex align-items-center gap-3 flex-wrap">
-                  <span class="badge bg-indigo-soft text-dark fw-bold px-3 py-2 rounded-pill fs-8">Câu {{ index + 1 }}</span>
+                  <span class="badge bg-indigo-soft text-dark fw-bold px-3 py-2 rounded-pill fs-8">Câu {{ index + 1 + (currentPage - 1) * pageSize }}</span>
                   
                   <!-- Select Category in card -->
                   <div class="d-flex align-items-center gap-2">
@@ -192,7 +192,7 @@
                   type="button" 
                   class="btn btn-xs btn-outline-danger p-0 rounded-circle d-flex align-items-center justify-content-center shadow-none" 
                   style="width: 24px; height: 24px;" 
-                  @click="removeQuestionCard(index)"
+                  @click="removeQuestionCard(index + (currentPage - 1) * pageSize)"
                   title="Xóa câu hỏi này"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -253,6 +253,17 @@
                 <label class="form-label fw-bold text-dark-blue small mb-1">Giải thích lời giải / Hướng dẫn học tập:</label>
                 <a-textarea v-model:value="q.explanation" :rows="2" placeholder="Giải thích chi tiết lời giải vì sao phương án được chọn là chính xác..." />
               </div>
+            </div>
+
+            <!-- Client-side Pagination -->
+            <div v-if="questionsList.length > pageSize" class="d-flex justify-content-center mt-3 mb-2">
+              <a-pagination 
+                v-model:current="currentPage" 
+                :total="questionsList.length" 
+                :page-size="pageSize" 
+                :show-size-changer="false"
+                show-less-items
+              />
             </div>
           </div>
         </div>
@@ -387,11 +398,29 @@
         </ul>
       </div>
     </a-modal>
+
+    <!-- Modal 3: Tiến trình lưu câu hỏi theo Batch -->
+    <a-modal
+      v-model:open="isSavingModalOpen"
+      title="Đang lưu câu hỏi vào Ngân hàng..."
+      :closable="false"
+      :mask-closable="false"
+      :footer="null"
+      centered
+      width="400px"
+    >
+      <div class="py-4 text-center">
+        <div class="mb-3">
+          <span class="text-secondary small">Đang lưu lô {{ currentSaveBatch }} / {{ totalSaveBatches }}...</span>
+        </div>
+        <a-progress :percent="saveProgress" status="active" />
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
@@ -434,6 +463,16 @@ const isEditMode = computed(() => !!route.params.id)
 
 // Core workspace states
 const questionsList = ref<Question[]>([])
+
+// Pagination
+const currentPage = ref(1)
+const pageSize = ref(20)
+
+const paginatedQuestions = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return questionsList.value.slice(start, end)
+})
 const latestSavedDraft = ref<string>('')
 const initialUploadBackup = ref<string>('')
 const globalAccessType = ref(0) // 0: Private, 1: Public
@@ -453,6 +492,12 @@ const aiGeneratingLoading = ref(false)
 
 const aiGeneratedTempList = ref<Question[]>([])
 const aiConfirmModalOpen = ref(false)
+
+// Saving Batch Progress States
+const isSavingModalOpen = ref(false)
+const saveProgress = ref(0)
+const currentSaveBatch = ref(0)
+const totalSaveBatches = ref(0)
 
 // All Questions Storage
 const questions = ref<Question[]>([])
@@ -569,10 +614,17 @@ const addNewQuestionCard = () => {
     ]
   }
   questionsList.value.push(newQ)
+  // Switch to the page containing the new question
+  currentPage.value = Math.ceil(questionsList.value.length / pageSize.value)
 }
 
 const removeQuestionCard = (index: number) => {
   questionsList.value.splice(index, 1)
+  // Adjust current page if it goes out of bounds
+  const maxPage = Math.ceil(questionsList.value.length / pageSize.value) || 1
+  if (currentPage.value > maxPage) {
+    currentPage.value = maxPage
+  }
 }
 
 const addAnswerOptionToQuestion = (q: Question) => {
@@ -588,14 +640,20 @@ const removeAnswerOptionFromQuestion = (q: Question, index: number) => {
 // Goto navigation control
 const selectedGotoIndex = ref<number | undefined>(undefined)
 const scrollToQuestion = (index: number) => {
-  const element = document.getElementById(`question-card-${index}`)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    element.classList.add('flash-highlight')
-    setTimeout(() => {
-      element.classList.remove('flash-highlight')
-    }, 1500)
-  }
+  // Determine and switch to the target page first
+  const targetPage = Math.floor(index / pageSize.value) + 1
+  currentPage.value = targetPage
+  
+  nextTick(() => {
+    const element = document.getElementById(`question-card-${index}`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      element.classList.add('flash-highlight')
+      setTimeout(() => {
+        element.classList.remove('flash-highlight')
+      }, 1500)
+    }
+  })
   selectedGotoIndex.value = undefined
 }
 
@@ -616,6 +674,7 @@ const resetToLatestDraft = () => {
   if (targetStr) {
     try {
       questionsList.value = JSON.parse(targetStr)
+      currentPage.value = 1
       message.success('Đã phục hồi danh sách về bản nháp gần nhất!')
     } catch (e) {
       message.error('Lỗi khi khôi phục bản nháp.')
@@ -632,6 +691,7 @@ const confirmClearAll = () => {
     cancelText: 'Hủy bỏ',
     onOk() {
       questionsList.value = []
+      currentPage.value = 1
       message.info('Đã làm sạch danh sách câu hỏi.')
     }
   })
@@ -688,19 +748,44 @@ const saveAllQuestionsToBank = async () => {
       }))
     }))
 
-    const res = await saveQuestions(payload)
-    if (res && res.isSuccess) {
-      if (isEditMode.value) {
-        message.success('Cập nhật câu hỏi thành công!')
-      } else {
-        localStorage.removeItem('cn_questions_draft')
-        message.success(`Đã thêm thành công ${payload.length} câu hỏi mới vào Ngân hàng!`)
-      }
-      router.push('/personal/questions')
-    } else {
-      message.error(res.errorMessage || 'Lưu câu hỏi thất bại!')
+    // Chia nhỏ payload thành các batch (mỗi batch tối đa 20 câu)
+    const chunks: any[] = []
+    const chunkSize = 20
+    for (let i = 0; i < payload.length; i += chunkSize) {
+      chunks.push(payload.slice(i, i + chunkSize))
     }
+
+    // Hiển thị modal tiến trình
+    isSavingModalOpen.value = true
+    saveProgress.value = 0
+    totalSaveBatches.value = chunks.length
+
+    for (let i = 0; i < chunks.length; i++) {
+      currentSaveBatch.value = i + 1
+      const chunk = chunks[i]
+      
+      const res = await saveQuestions(chunk)
+      if (!res || !res.isSuccess) {
+        isSavingModalOpen.value = false
+        message.error(res?.errorMessage || `Lưu lô câu hỏi thứ ${i + 1} thất bại! Đã dừng lưu.`);
+        return
+      }
+      
+      // Tính toán tiến trình
+      saveProgress.value = Math.round(((i + 1) / chunks.length) * 100)
+    }
+
+    // Hoàn thành lưu tất cả các lô
+    isSavingModalOpen.value = false
+    if (isEditMode.value) {
+      message.success('Cập nhật câu hỏi thành công!')
+    } else {
+      localStorage.removeItem('cn_questions_draft')
+      message.success(`Đã thêm thành công ${payload.length} câu hỏi mới vào Ngân hàng!`)
+    }
+    router.push('/personal/questions')
   } catch (error) {
+    isSavingModalOpen.value = false
     message.error('Đã xảy ra lỗi khi lưu câu hỏi')
   }
 }
@@ -759,7 +844,17 @@ const parseImportFile = (file: File) => {
             level: item.level !== undefined ? item.level : (item.Level !== undefined ? item.Level : 1),
             type: item.type !== undefined ? item.type : (item.Type !== undefined ? item.Type : 0),
             accessType: item.accessType !== undefined ? item.accessType : (item.AccessType !== undefined ? item.AccessType : globalAccessType.value),
-            categoryIds: Array.isArray(item.categoryIds) ? item.categoryIds : (Array.isArray(item.CategoryIds) ? item.CategoryIds : []),
+            categoryIds: (() => {
+              const ids = Array.isArray(item.categoryIds) ? item.categoryIds : (Array.isArray(item.CategoryIds) ? item.CategoryIds : []);
+              // Lọc các ID thực sự tồn tại trong danh mục hệ thống
+              const validIds = ids.filter(id => categories.value.some(c => c.questionCategoryId.toLowerCase() === id.toLowerCase()));
+              if (validIds.length > 0) {
+                return validIds;
+              }
+              // Nếu không có ID hợp lệ nào, gán mặc định là danh mục hợp lệ đầu tiên (nút lá)
+              const firstLeaf = categories.value.find(c => !c.hasChildren);
+              return firstLeaf ? [firstLeaf.questionCategoryId] : (categories.value[0] ? [categories.value[0].questionCategoryId] : []);
+            })(),
             answers: Array.isArray(item.answers) ? item.answers.map((ans: any) => ({
               stringContent: ans.stringContent || ans.StringContent || '',
               isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer)
@@ -771,6 +866,7 @@ const parseImportFile = (file: File) => {
         })
         
         questionsList.value = formattedQuestions
+        currentPage.value = 1
         initialUploadBackup.value = JSON.stringify(formattedQuestions)
         fileImportModalOpen.value = false
         message.success(`Tải tệp JSON thành công! Đọc được ${formattedQuestions.length} câu hỏi.`)
@@ -818,6 +914,7 @@ const parseImportFile = (file: File) => {
 
 const clearImportFile = () => {
   questionsList.value = []
+  currentPage.value = 1
 }
 
 // Template downloads
@@ -955,6 +1052,7 @@ const handleAiAppend = () => {
 const handleAiOverwrite = () => {
   questionsList.value = [...aiGeneratedTempList.value]
   initialUploadBackup.value = JSON.stringify(questionsList.value)
+  currentPage.value = 1
   aiConfirmModalOpen.value = false
   message.success(`Đã ghi đè danh sách bằng ${aiGeneratedTempList.value.length} câu hỏi mới từ AI!`)
   aiGeneratedTempList.value = []

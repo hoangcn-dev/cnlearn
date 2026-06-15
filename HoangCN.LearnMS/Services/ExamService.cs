@@ -16,6 +16,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
+
 namespace HoangCN.LearnMS.Services
 {
     /// <summary>
@@ -30,7 +32,8 @@ namespace HoangCN.LearnMS.Services
             IBaseReadDL baseReadDL, 
             IBaseWriteDL baseWriteDL,
             IQuestionService questionService,
-            IBaseBL<ExamQuestion> examQuestionBL) : base(baseReadDL, baseWriteDL)
+            IBaseBL<ExamQuestion> examQuestionBL,
+            IHttpContextAccessor httpContextAccessor) : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
             _questionService = questionService ?? throw new ArgumentNullException(nameof(questionService));
             _examQuestionBL = examQuestionBL ?? throw new ArgumentNullException(nameof(examQuestionBL));
@@ -91,8 +94,7 @@ namespace HoangCN.LearnMS.Services
                     exam = new Exam
                     {
                         ExamId = examId,
-                        UserId = currentUserId,
-                        State = ModelState.Insert
+                        UserId = currentUserId
                     };
                 }
                 else
@@ -103,14 +105,14 @@ namespace HoangCN.LearnMS.Services
                         exam = new Exam
                         {
                             ExamId = examId,
-                            UserId = currentUserId,
-                            State = ModelState.Insert
+                            UserId = currentUserId
                         };
+                        isNew = true;
                     }
                     else
                     {
                         exam = existing;
-                        exam.State = ModelState.Update;
+                        isNew = false;
                     }
                 }
 
@@ -123,7 +125,7 @@ namespace HoangCN.LearnMS.Services
                 exam.ContributeToBank = dto.ContributeToBank;
 
                 var now = DateTime.Now;
-                if (exam.State == ModelState.Insert)
+                if (isNew)
                 {
                     exam.CreatedBy = currentUserId.ToString();
                     exam.CreatedDate = now;
@@ -136,7 +138,14 @@ namespace HoangCN.LearnMS.Services
                     exam.ModifiedDate = now;
                 }
 
-                await _baseWriteDL.SaveEntitiesAsync(new List<Exam> { exam });
+                if (isNew)
+                {
+                    await _baseWriteDL.InsertRangeAsync(new List<Exam> { exam });
+                }
+                else
+                {
+                    await _baseWriteDL.UpdateRangeAsync(new List<Exam> { exam });
+                }
 
                 // 2. Lưu thông tin các câu hỏi trắc nghiệm liên quan
                 var questionsToSave = new List<QuestionDetailsDto>();
@@ -167,12 +176,11 @@ namespace HoangCN.LearnMS.Services
                 foreach (var relation in existingRelations)
                 {
                     relation.IsDeleted = true;
-                    relation.State = ModelState.Delete;
                 }
 
                 if (existingRelations.Count > 0)
                 {
-                    await _baseWriteDL.SaveEntitiesAsync(existingRelations);
+                    await _baseWriteDL.DeleteRangeAsync(existingRelations);
                 }
 
                 // 4. Tạo các mối liên kết đề thi - câu hỏi mới
@@ -186,7 +194,6 @@ namespace HoangCN.LearnMS.Services
                         ExamId = examId,
                         QuestionId = qDto.Id,
                         SortOrder = i + 1,
-                        State = ModelState.Insert,
                         CreatedBy = currentUserId.ToString(),
                         CreatedDate = now,
                         ModifiedBy = currentUserId.ToString(),
@@ -197,7 +204,7 @@ namespace HoangCN.LearnMS.Services
 
                 if (newRelations.Count > 0)
                 {
-                    await _baseWriteDL.SaveEntitiesAsync(newRelations);
+                    await _baseWriteDL.InsertRangeAsync(newRelations);
                 }
 
                 await _baseWriteDL.CommitTransactionAsync();
@@ -208,6 +215,22 @@ namespace HoangCN.LearnMS.Services
                 await _baseWriteDL.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        private class ExamQuestionCountQueryResult
+        {
+            public Guid ExamId { get; set; }
+            public int Count { get; set; }
+        }
+
+        /// <summary>
+        /// Lấy số lượng câu hỏi của tất cả đề thi sử dụng Dapper SQL GROUP BY trực tiếp ở DB
+        /// </summary>
+        public async Task<Dictionary<Guid, int>> GetQuestionCountsAsync()
+        {
+            var sql = "SELECT ExamId, COUNT(*) as Count FROM ExamQuestion WHERE IsDeleted = 0 GROUP BY ExamId";
+            var queryResult = await _baseReadDL.ExecuteQueryText<ExamQuestionCountQueryResult>(sql);
+            return queryResult.ToDictionary(x => x.ExamId, x => x.Count);
         }
     }
 }

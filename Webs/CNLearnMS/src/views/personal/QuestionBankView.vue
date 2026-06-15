@@ -75,12 +75,12 @@
                 {{ record.stringContent }}
               </div>
               <div class="text-secondary small mt-1">
-                {{ record.answers.length }} đáp án • Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explanation || 'Không có' }}</span>
+                {{ (record.answers || []).length }} đáp án • Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explanation || 'Không có' }}</span>
               </div>
             </template>
 
             <template v-else-if="column.key === 'category'">
-              <span class="badge bg-light text-dark border">{{ getCategoryName(record.categoryIds[0]) }}</span>
+              <span class="badge bg-light text-dark border">{{ getCategoryName(record.questionCategoryId || (record.categoryIds && record.categoryIds[0])) }}</span>
             </template>
 
             <template v-else-if="column.key === 'level'">
@@ -205,7 +205,8 @@ interface Question {
   level: number
   type: number
   accessType: number
-  categoryIds: string[]
+  questionCategoryId?: string
+  categoryIds?: string[]
   answers: Answer[]
   isMyCreated?: boolean
 }
