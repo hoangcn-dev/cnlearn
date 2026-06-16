@@ -1525,6 +1525,7 @@ const saveForm = async (isDraft = false) => {
       level: q.level,
       type: q.type,
       accessType: q.accessType,
+      questionCategoryId: ensureGuid(q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds[0] : (formData.categoryId || categories.value[0]?.id || '')),
       categoryIds: q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds : [formData.categoryId || categories.value[0]?.id || ''],
       answers: q.answers.map(ans => ({
         questionAnswerId: ensureGuid(ans.questionAnswerId || ''),
