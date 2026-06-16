@@ -233,10 +233,10 @@
           <!-- Action buttons -->
           <div class="mt-4 pt-3 border-top border-light d-flex flex-column gap-2">
             <button class="btn btn-indigo text-white w-100 rounded-3 py-2 fw-semibold shadow-sm" @click="submitPractice(false)">
-              ✔️ Nộp Bài
+              Nộp Bài
             </button>
             <button class="btn btn-outline-danger w-100 rounded-3 py-2 fw-semibold mt-1" @click="confirmExit">
-              🚪 Hủy {{ isExamMode ? 'Thi Thử' : 'Luyện Tập' }}
+              Hủy {{ isExamMode ? 'Thi Thử' : 'Luyện Tập' }}
             </button>
           </div>
         </div>
@@ -317,7 +317,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
-import { getExamQuestions } from '@/api/exams'
+import { getExamQuestions, getExamsPaging, getExamQuestionCounts } from '@/api/exams'
 import { submitAttempt } from '@/api/attempts'
 import { checkAnswer } from '@/api/questions'
 import QuestionCard from '@/components/QuestionCard.vue'
@@ -349,6 +349,7 @@ const isSubmitted = ref(false)
 const correctCount = ref(0)
 const finalScore = ref('0.0')
 const recommendedQuizzes = ref<any[]>([])
+const currentExamCategoryId = ref<string | null>(null)
 let autoNextTimeout: any = null
 
 // Exam Mode properties
@@ -472,6 +473,27 @@ const progressPercentage = computed(() => {
   return Math.round((answeredCount.value / questions.value.length) * 100)
 })
 
+// Lấy danh mục của đề thi hiện tại
+const fetchCurrentExamCategory = async () => {
+  try {
+    const res = await getExamsPaging({
+      pageIndex: 1,
+      pageSize: 1,
+      filters: [{
+        property: 'ExamId',
+        operator: 0, // Equal
+        value: quizId.value,
+        type: 1
+      }]
+    })
+    if (res && res.isSuccess && res.data && res.data.items && res.data.items.length > 0) {
+      currentExamCategoryId.value = res.data.items[0].categoryId
+    }
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin danh mục đề thi:', error)
+  }
+}
+
 // Fetch Questions from API
 const fetchQuestions = async () => {
   try {
@@ -513,6 +535,8 @@ const fetchQuestions = async () => {
       }
 
       questions.value = list
+      // Tải danh mục của đề thi để chuẩn bị cho phần gợi ý sau này
+      fetchCurrentExamCategory()
     }
   } catch (error) {
     message.error('Lỗi khi lấy dữ liệu đề thi.')
@@ -670,7 +694,7 @@ const handleTimeOut = () => {
   })
 }
 
-const generateRecommendations = () => {
+const generateMockRecommendations = () => {
   const hash = quizId.value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   const list = []
   const topics = ['nâng cao', 'cơ bản', 'tổng hợp', 'chuyên đề', 'thử thách', 'mở rộng']
@@ -684,6 +708,90 @@ const generateRecommendations = () => {
     })
   }
   recommendedQuizzes.value = list
+}
+
+const fetchRecommendations = async () => {
+  try {
+    // 1. Lấy categoryId của đề thi hiện tại nếu chưa có
+    if (!currentExamCategoryId.value) {
+      const examRes = await getExamsPaging({
+        pageIndex: 1,
+        pageSize: 1,
+        filters: [{
+          property: 'ExamId',
+          operator: 0, // Equal
+          value: quizId.value,
+          type: 1
+        }]
+      })
+      if (examRes && examRes.isSuccess && examRes.data && examRes.data.items && examRes.data.items.length > 0) {
+        currentExamCategoryId.value = examRes.data.items[0].categoryId
+      }
+    }
+
+    // 2. Tìm các đề thi cùng CategoryId
+    const filters = []
+    if (currentExamCategoryId.value) {
+      filters.push({
+        property: 'CategoryId',
+        operator: 0, // Equal
+        value: currentExamCategoryId.value,
+        type: 1
+      })
+    }
+
+    const [examsRes, countsRes] = await Promise.all([
+      getExamsPaging({
+        pageIndex: 1,
+        pageSize: 10, // Lấy dư để loại trừ đề thi hiện tại
+        filters: filters
+      }),
+      getExamQuestionCounts()
+    ])
+
+    let list: any[] = []
+    if (examsRes && examsRes.isSuccess && examsRes.data && examsRes.data.items) {
+      const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+      // Loại trừ đề thi hiện tại
+      const filtered = examsRes.data.items.filter((e: any) => e.examId !== quizId.value)
+      
+      list = filtered.map((e: any) => ({
+        id: e.examId,
+        title: e.name,
+        duration: e.duration || 45,
+        questionCount: counts[e.examId] || 0
+      }))
+    }
+
+    // 3. Fallback: nếu không đủ 3 đề cùng chuyên mục, lấy thêm đề mới nhất khác
+    if (list.length < 3) {
+      const fallbackRes = await getExamsPaging({
+        pageIndex: 1,
+        pageSize: 10,
+        filters: []
+      })
+      if (fallbackRes && fallbackRes.isSuccess && fallbackRes.data && fallbackRes.data.items) {
+        const counts = countsRes?.isSuccess ? (countsRes.data || {}) : {}
+        const fallbackItems = fallbackRes.data.items
+          .filter((e: any) => e.examId !== quizId.value && !list.some(existing => existing.id === e.examId))
+        
+        const needed = 3 - list.length
+        const mappedFallback = fallbackItems.slice(0, needed).map((e: any) => ({
+          id: e.examId,
+          title: e.name,
+          duration: e.duration || 45,
+          questionCount: counts[e.examId] || 0
+        }))
+        list = [...list, ...mappedFallback]
+      }
+    }
+
+    recommendedQuizzes.value = list.slice(0, 3)
+  } catch (error) {
+    console.error('Lỗi khi tải đề thi gợi ý:', error)
+    // Fallback sang sinh dữ liệu mock cũ nếu có lỗi API
+    generateMockRecommendations()
+  }
 }
 
 const shareResult = () => {
@@ -752,7 +860,7 @@ const submitPractice = (bypassConfirm = false) => {
           })
         }
 
-        generateRecommendations()
+        fetchRecommendations()
         isSubmitted.value = true
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
@@ -922,13 +1030,15 @@ onUnmounted(() => {
   width: 100% !important;
   aspect-ratio: 1 / 1;
   font-size: 0.85rem;
+  padding: 0 !important;
+  min-width: 0 !important;
 }
 
 .sticky-sidebar {
   position: -webkit-sticky;
   position: sticky;
-  top: 88px; /* Offset to clear the sticky header */
-  max-height: calc(100vh - 110px); /* Subtract header height and spacing */
+  top: 20px; /* Closer to top since there is no sticky header navbar in this mode */
+  max-height: calc(100vh - 40px); /* Adjust max-height for scrolling */
   overflow-y: auto;
   z-index: 10;
 }
