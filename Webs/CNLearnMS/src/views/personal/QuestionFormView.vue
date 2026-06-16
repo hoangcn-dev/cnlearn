@@ -528,7 +528,7 @@ const fetchQuestionForEdit = async (id: string) => {
         level: q.level ?? 0,
         type: q.type ?? 0,
         accessType: q.accessType ?? 0,
-        categoryIds: q.categoryIds || [],
+        categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
         answers: (q.answers || []).map((a: any) => ({
           questionAnswerId: a.questionAnswerId,
           stringContent: a.stringContent || '',

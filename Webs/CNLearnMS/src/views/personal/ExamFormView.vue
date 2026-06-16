@@ -856,7 +856,7 @@ const fetchBankQuestions = async () => {
         level: item.level || 0,
         type: item.type || 0,
         accessType: item.accessType || 1,
-        categoryIds: item.categoryIds || [],
+        categoryIds: item.questionCategoryId ? [item.questionCategoryId] : [],
         answers: (item.answers || []).map((ans: any) => ({
           stringContent: ans.stringContent || '',
           isCorrectAnswer: ans.isCorrectAnswer || false
@@ -958,7 +958,7 @@ onMounted(async () => {
             level: q.level || 0,
             type: q.type || 0,
             accessType: q.accessType || 1,
-            categoryIds: q.categoryIds || [],
+            categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
             answers: (q.answers || []).map((ans: any) => ({
               stringContent: ans.stringContent || '',
               isCorrectAnswer: ans.isCorrectAnswer || false
@@ -999,7 +999,7 @@ onMounted(async () => {
                   level: q.level || 0,
                   type: q.type || 0,
                   accessType: q.accessType || 1,
-                  categoryIds: q.categoryIds || [],
+                  categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
                   answers: (q.answers || []).map((ans: any) => ({
                     stringContent: ans.stringContent || '',
                     isCorrectAnswer: ans.isCorrectAnswer || false
