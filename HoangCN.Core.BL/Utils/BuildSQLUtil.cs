@@ -78,7 +78,7 @@ namespace HoangCN.Core.BL.Utils
         /// <summary>
         /// Hàm hỗ trợ build toàn bộ mệnh đề WHERE (bao gồm Ids, Filters, từ khóa Key và Expression Condition)
         /// </summary>
-        public static string BuildWhereClaude<TEntity>(GetRequest request, DynamicParameters parameters, Expression<Func<TEntity, bool>>? condition = null) where TEntity : BaseEntity
+        public static string BuildWhereClaude<TEntity>(GetRequest request, DynamicParameters parameters) where TEntity : BaseEntity
         {
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
             var mainTableName = metadata.EntityType.Name;
@@ -112,16 +112,16 @@ namespace HoangCN.Core.BL.Utils
                 whereConditions.Add(keySearch);
             }
 
-            // 4. Lọc theo Expression condition (Nếu có)
-            if (condition != null)
-            {
-                var (sql, paramsOut) = ExpressionToSqlTranslator.Translate(condition);
-                if (!string.IsNullOrEmpty(sql))
-                {
-                    whereConditions.Add($"({sql})");
-                    parameters.AddDynamicParams(paramsOut);
-                }
-            }
+            //// 4. Lọc theo Expression condition (Nếu có)
+            //if (condition != null)
+            //{
+            //    var (sql, paramsOut) = ExpressionToSqlTranslator.Translate(condition);
+            //    if (!string.IsNullOrEmpty(sql))
+            //    {
+            //        whereConditions.Add($"({sql})");
+            //        parameters.AddDynamicParams(paramsOut);
+            //    }
+            //}
 
             // Hợp nhất các điều kiện WHERE
             return whereConditions.Count > 0 

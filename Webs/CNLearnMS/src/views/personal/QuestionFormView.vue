@@ -740,6 +740,7 @@ const saveAllQuestionsToBank = async () => {
       type: q.type || 0,
       accessType: globalAccessType.value,
       isMyCreated: globalAccessType.value === 0,
+      questionCategoryId: formatId(q.categoryIds[0]),
       categoryIds: q.categoryIds.filter(id => id && isGuid(id)),
       answers: q.answers.map((ans) => ({
         questionAnswerId: formatId(ans.questionAnswerId || (ans as any).id),

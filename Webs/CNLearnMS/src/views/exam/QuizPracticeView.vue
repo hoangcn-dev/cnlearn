@@ -246,138 +246,66 @@
       <div class="col-lg-9 col-md-8 order-md-1">
         
         <!-- CHẾ ĐỘ 1: Làm từng câu (SINGLE MODE) -->
-        <div v-if="config.mode === 'single' && currentQuestion" class="card border-0 rounded-4 shadow-sm bg-white p-4 mb-4">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="badge bg-indigo-soft text-indigo fw-bold">Câu hỏi {{ currentIdx + 1 }}/{{ questions.length }} - {{ getLevelText(currentQuestion.level).toLowerCase() }}</span>
-          </div>
-
-          <h3 class="h6 fw-semibold text-dark-blue leading-relaxed mb-4">
-            {{ currentQuestion.stringContent }}
-          </h3>
-
-          <!-- Options -->
-          <div class="options-container d-flex flex-column gap-3 mb-4">
-            <div 
-              v-for="ans in currentQuestion.answers" 
-              :key="ans.id" 
-              class="option-item py-3 px-4 rounded-3 border hover-pointer d-flex align-items-center gap-3 transition"
-              :class="getOptionClass(currentQuestion, ans)"
-              @click="chooseAnswer(currentQuestion, ans)"
-            >
-              <input 
-                :type="isMultipleChoice(currentQuestion) ? 'checkbox' : 'radio'" 
-                :name="`q-single-radio-${currentQuestion.id}`"
-                :checked="isChosen(currentQuestion, ans)"
-                class="form-check-input hover-pointer custom-input-control m-0"
-                @click.stop="chooseAnswer(currentQuestion, ans)"
-              >
-              <div class="option-text text-dark flex-grow-1 ps-1 mb-0 small">
-                <span class="fw-bold text-dark-blue me-1">{{ ans.indexChar }}.</span>
-                {{ ans.stringContent }}
-              </div>
-              
-              <!-- Indicator if instant result is enabled -->
-              <span v-if="config.showResultInstant && isResultRevealed(currentQuestion) && ans.isCorrectAnswer" class="badge bg-success-soft text-success ms-auto fs-9">Đáp án đúng</span>
-              <span v-else-if="config.showResultInstant && isResultRevealed(currentQuestion) && isChosen(currentQuestion, ans) && !ans.isCorrectAnswer" class="badge bg-danger-soft text-danger ms-auto fs-9">Sai</span>
-            </div>
-          </div>
-
-          <!-- Explanation if instant enabled and answered -->
-          <div v-if="config.showResultInstant && isResultRevealed(currentQuestion) && currentQuestion.explaination" class="explanation-box p-3 rounded-3 border border-indigo-accent bg-indigo-light-opacity mb-4">
-            <div class="fw-bold text-indigo mb-1 d-flex align-items-center gap-2">
-              <span>💡</span> Lời giải chi tiết:
-            </div>
-            <div class="text-secondary small leading-relaxed">{{ currentQuestion.explaination }}</div>
-          </div>
+        <div v-if="config.mode === 'single' && currentQuestion">
+          <QuestionCard
+            :question="currentQuestion!"
+            :index="currentIdx + 1"
+            mode="practice"
+            :show-result-instant="config.showResultInstant"
+            @choose-answer="(ans: any) => chooseAnswer(currentQuestion!, ans)"
+          />
 
           <!-- Navigation controls -->
-          <div class="d-flex justify-content-between align-items-center pt-3 border-top border-light">
-            <button class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold" :disabled="currentIdx === 0" @click="goToPrevious">
-              ⬅️ Câu trước
-            </button>
+          <div class="card border-0 rounded-4 shadow-sm bg-white p-4 mb-4 mt-n3 border-top-0 rounded-top-0">
+            <div class="d-flex justify-content-between align-items-center pt-2">
+              <button class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold" :disabled="currentIdx === 0" @click="goToPrevious">
+                ⬅️ Câu trước
+              </button>
 
-            <!-- Case 1: Result Instant is true, user has selected answers, but not revealed yet -->
-            <button 
-              v-if="config.showResultInstant && !isResultRevealed(currentQuestion) && currentQuestion.chosenAnswerIds.length > 0" 
-              class="btn btn-indigo text-white px-4 py-2 rounded-3 fw-semibold"
-              @click="revealCurrentResult"
-            >
-              ✔️ Kiểm tra đáp án
-            </button>
+              <!-- Case 1: Result Instant is true, user has selected answers, but not revealed yet -->
+              <button 
+                v-if="config.showResultInstant && !isResultRevealed(currentQuestion!) && currentQuestion!.chosenAnswerIds.length > 0" 
+                class="btn btn-indigo text-white px-4 py-2 rounded-3 fw-semibold"
+                @click="revealCurrentResult"
+              >
+                ✔️ Kiểm tra đáp án
+              </button>
 
-            <!-- Case 2: Result Instant is true, user has NOT selected answers, and not revealed yet -> acts as Skip -->
-            <button 
-              v-else-if="config.showResultInstant && !isResultRevealed(currentQuestion) && currentQuestion.chosenAnswerIds.length === 0" 
-              class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold"
-              :disabled="currentIdx === questions.length - 1"
-              @click="skipAndNext"
-            >
-              Bỏ qua & Tiếp theo ➡️
-            </button>
+              <!-- Case 2: Result Instant is true, user has NOT selected answers, and not revealed yet -> acts as Skip -->
+              <button 
+                v-else-if="config.showResultInstant && !isResultRevealed(currentQuestion!) && currentQuestion!.chosenAnswerIds.length === 0" 
+                class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold"
+                :disabled="currentIdx === questions.length - 1"
+                @click="skipAndNext"
+              >
+                Bỏ qua & Tiếp theo ➡️
+              </button>
 
-            <!-- Case 3: Result is already revealed, or Result Instant is false -> normal Next -->
-            <button 
-              v-else
-              class="btn btn-indigo text-white px-4 py-2 rounded-3 fw-semibold"
-              :disabled="currentIdx === questions.length - 1"
-              @click="goToNext"
-            >
-              Câu tiếp theo ➡️
-            </button>
+              <!-- Case 3: Result is already revealed, or Result Instant is false -> normal Next -->
+              <button 
+                v-else
+                class="btn btn-indigo text-white px-4 py-2 rounded-3 fw-semibold"
+                :disabled="currentIdx === questions.length - 1"
+                @click="goToNext"
+              >
+                Câu tiếp theo ➡️
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- CHẾ ĐỘ 2: Làm toàn bộ đề (ALL MODE) -->
-        <div v-else-if="config.mode === 'all'" class="card border-0 rounded-4 shadow-sm bg-white p-4">
-          <!-- <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom border-light">
-            <div class="d-flex align-items-center gap-2">
-              <span class="fs-4">📝</span>
-              <h2 class="h5 fw-bold text-dark-blue mb-0">Nội Dung Đề Thi</h2>
-            </div>
-            <span class="badge bg-indigo-soft text-indigo fw-bold px-3 py-1.5 rounded-pill">{{ questions.length }} Câu Hỏi</span>
-          </div> -->
-
-          <div class="d-flex flex-column gap-4">
-            <div 
-              v-for="(q, idx) in questions" 
-              :key="q.id" 
-              :id="`q-block-${idx}`"
-              class="question-block pb-4"
-              :class="{ 'border-bottom border-light': idx < questions.length - 1 }"
-            >
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold text-indigo fs-7">Câu {{ idx + 1 }} <span class="text-secondary fw-normal fs-8 opacity-75"> - {{ getLevelText(q.level).toLowerCase() }}</span></span>
-              </div>
-
-              <h3 class="h6 fw-semibold text-dark-blue leading-relaxed mb-3">
-                {{ q.stringContent }}
-              </h3>
-
-              <!-- Radio Options -->
-              <div class="options-container d-flex flex-column gap-2 mb-2">
-                <div 
-                  v-for="ans in q.answers" 
-                  :key="ans.id" 
-                  class="option-check-item py-3 px-4 rounded-3 d-flex align-items-center gap-3 hover-pointer transition"
-                  :class="{ 'bg-indigo-light-opacity border-indigo-accent-solid': isChosen(q, ans) }"
-                  @click="chooseAnswer(q, ans)"
-                >
-                  <input 
-                    :type="isMultipleChoice(q) ? 'checkbox' : 'radio'" 
-                    :name="`q-radio-${q.id}`" 
-                    :id="`ans-${ans.id}`" 
-                    :checked="isChosen(q, ans)"
-                    class="form-check-input hover-pointer custom-input-control m-0"
-                    @click.stop="chooseAnswer(q, ans)"
-                  >
-                  <label :for="`ans-${ans.id}`" class="form-check-label text-dark small hover-pointer flex-grow-1 mb-0 ps-1">
-                    <span class="fw-bold text-dark-blue me-1">{{ ans.indexChar }}.</span>
-                    {{ ans.stringContent }}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div v-else-if="config.mode === 'all'" class="d-flex flex-column gap-4">
+          <QuestionCard
+            v-for="(q, idx) in questions" 
+            :key="q.id" 
+            :id="`q-block-${idx}`"
+            :question="q"
+            :index="idx + 1"
+            mode="practice"
+            :show-result-instant="config.showResultInstant"
+            @choose-answer="(ans: any) => chooseAnswer(q, ans)"
+          />
         </div>
 
       </div>
@@ -392,6 +320,7 @@ import { message, Modal } from 'ant-design-vue'
 import { getExamQuestions } from '@/api/exams'
 import { submitAttempt } from '@/api/attempts'
 import { checkAnswer } from '@/api/questions'
+import QuestionCard from '@/components/QuestionCard.vue'
 
 const route = useRoute()
 const router = useRouter()

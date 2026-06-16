@@ -9,11 +9,14 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
+
 namespace HoangCN.LearnMS.Services
 {
     public class QuizService : BaseBL<Quiz>, IQuizService
     {
-        public QuizService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL) : base(baseReadDL, baseWriteDL)
+        public QuizService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL, IHttpContextAccessor httpContextAccessor) 
+            : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
         }
 

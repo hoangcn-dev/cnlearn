@@ -34,9 +34,19 @@ namespace HoangCN.Core.DL.Interfaces
         Task SaveChangesAsync();
 
         /// <summary>
-        /// Lưu danh sách entity dựa trên trạng thái State của từng đối tượng
+        /// Thêm danh sách entity vào database
         /// </summary>
-        Task SaveEntitiesAsync<TEntity>(List<TEntity> entities) where TEntity : BaseEntity;
+        Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
+
+        /// <summary>
+        /// Cập nhật danh sách entity trong database
+        /// </summary>
+        Task UpdateRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
+
+        /// <summary>
+        /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
+        /// </summary>
+        Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
     }
 }
 

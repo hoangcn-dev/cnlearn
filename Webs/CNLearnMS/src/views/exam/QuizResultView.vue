@@ -174,56 +174,14 @@
           </h3>
 
           <div class="d-flex flex-column gap-4">
-            <div 
+            <QuestionCard
               v-for="(q, idx) in quizQuestions" 
-              :key="q.id || q.questionId" 
-              class="p-4 rounded-4 border transition"
-              :class="isQuestionCorrect(q) ? 'border-success-subtle bg-success-soft' : 'border-danger-subtle bg-danger-soft'"
-            >
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="fw-bold text-indigo fs-6">Câu {{ idx + 1 }}</span>
-                <span :class="isQuestionCorrect(q) ? 'badge bg-success text-white px-3 py-1.5 rounded-pill' : 'badge bg-danger text-white px-3 py-1.5 rounded-pill'">
-                  {{ isQuestionCorrect(q) ? '✓ Trả lời Đúng' : '✗ Trả lời Sai' }}
-                </span>
-              </div>
-
-              <h4 class="fs-6 fw-bold text-dark-blue mb-4 leading-relaxed">{{ q.stringContent }}</h4>
-
-              <!-- Answers options list -->
-              <div class="row g-3 mb-4">
-                <div v-for="(ans, aIdx) in q.answers" :key="aIdx" class="col-md-6">
-                  <div 
-                    class="p-3 border rounded-3 d-flex align-items-center gap-3 h-100"
-                    :class="getAnswerRowClass(q, aIdx, ans)"
-                  >
-                    <div 
-                      class="fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
-                      style="width: 34px; height: 34px;"
-                      :class="getAnswerBadgeClass(q, aIdx, ans)"
-                    >
-                      {{ String.fromCharCode(65 + Number(aIdx)) }}
-                    </div>
-                    <div class="small leading-normal flex-grow-1">
-                      {{ ans.stringContent }}
-                    </div>
-                    <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
-                      <span v-if="ans.isCorrectAnswer" class="badge bg-success text-white px-2 py-1 rounded fs-9">Đáp án đúng</span>
-                      <span v-if="isUserChosenIndex(q, aIdx)" class="badge bg-indigo text-white px-2 py-1 rounded fs-9">Bạn chọn</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Solution explanation -->
-              <div class="p-3 bg-white rounded-3 border-start border-indigo border-4 small">
-                <div class="fw-bold text-indigo mb-1.5 d-flex align-items-center gap-1.5">
-                  <span>💡</span> Hướng dẫn giải chi tiết:
-                </div>
-                <div class="text-secondary leading-relaxed">
-                  {{ q.explanation || q.explaination || 'Chưa có lời giải thích chi tiết cho câu hỏi này.' }}
-                </div>
-              </div>
-            </div>
+              :key="q.id || q.questionId"
+              :question="q"
+              :index="idx + 1"
+              mode="result"
+              :chosen-answer-indexes="getChosenAnswerIndexes(q)"
+            />
           </div>
         </div>
       </div>
@@ -235,6 +193,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import QuestionCard from '@/components/QuestionCard.vue'
 
 interface Attempt {
   attemptId: string
@@ -273,45 +232,9 @@ const getAttemptAnswerForQuestion = (questionId: string) => {
   return attempt.value.answers.find((a: any) => a.questionId === questionId)
 }
 
-const isUserChosenIndex = (q: any, aIdx: number | string) => {
+const getChosenAnswerIndexes = (q: any): number[] => {
   const ans = getAttemptAnswerForQuestion(q.id || q.questionId)
-  if (!ans) return false
-  const idx = typeof aIdx === 'string' ? parseInt(aIdx) : aIdx
-  return ans.selectedAnswerIndexes.includes(idx)
-}
-
-const isQuestionCorrect = (q: any) => {
-  const ans = getAttemptAnswerForQuestion(q.id || q.questionId)
-  if (!ans) return false
-  
-  const correctIndices = q.answers
-    .map((a: any, index: number) => a.isCorrectAnswer ? index : -1)
-    .filter((index: number) => index !== -1)
-    
-  return correctIndices.length === ans.selectedAnswerIndexes.length &&
-         correctIndices.every((index: number) => ans.selectedAnswerIndexes.includes(index))
-}
-
-const getAnswerRowClass = (q: any, aIdx: number | string, ans: any) => {
-  const chosen = isUserChosenIndex(q, aIdx)
-  if (ans.isCorrectAnswer) {
-    return 'border-success bg-success-soft text-success fw-semibold'
-  }
-  if (chosen && !ans.isCorrectAnswer) {
-    return 'border-danger bg-danger-soft text-danger fw-semibold'
-  }
-  return 'border-light bg-light text-secondary'
-}
-
-const getAnswerBadgeClass = (q: any, aIdx: number | string, ans: any) => {
-  const chosen = isUserChosenIndex(q, aIdx)
-  if (ans.isCorrectAnswer) {
-    return 'bg-success text-white'
-  }
-  if (chosen) {
-    return 'bg-danger text-white'
-  }
-  return 'bg-white border text-secondary'
+  return ans ? ans.selectedAnswerIndexes : []
 }
 
 // Compute Duration

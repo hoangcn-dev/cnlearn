@@ -1,5 +1,6 @@
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Utils;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.MainSystem.Entities;
 using HoangCN.Core.Common.Model.Requests;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using HoangCN.MainSystem.Models;
+using HoangCN.Core.Common.Utils;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -44,7 +46,7 @@ namespace HoangCN.MainSystem.Services
             IEmailTemplateService emailTemplateService,
             IOptions<EmailSettings> emailOptions,
             IRedisService redisService,
-            IOptions<JwtConfig> jwtOptions) : base(baseReadDL, baseWriteDL)
+            IOptions<JwtConfig> jwtOptions) : base(baseReadDL, baseWriteDL, accesstor)
         {
             _accesstor = accesstor;
             _jwtUtil = jwtUtil;
@@ -56,19 +58,13 @@ namespace HoangCN.MainSystem.Services
             _jwtConfig = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
         }
 
-        public async Task<Guid> CheckAuth(ClaimsPrincipal claimsPrincipal)
-        {
-            var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
-            {
-                throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện chức năng này");
-            }
-            return await Task.FromResult(userId);
-        }
-
+        /// <summary>
+        /// Lấy thông tin phiên đăng nhập của người dùng hiện tại dựa trên UserId
+        /// </summary>
         public async Task<LoginSessionInfoDto> GetLoginSessionInfo(Guid userId)
         {
-            var info = await GetById<LoginSessionInfoDto>(userId);
+            var res = await Get<LoginSessionInfoDto>(GetRequest.GetByIdRequest(userId)); 
+            var info = res.Items.FirstOrDefault();
             if (info == null)
             {
                 throw new NotFoundException("Tài khoản không tồn tại trong hệ thống");
@@ -76,8 +72,13 @@ namespace HoangCN.MainSystem.Services
             return info;
         }
 
+        /// <summary>
+        /// Xử lý đăng kí taì khoản
+        /// </summary>
         public async Task SignUp(SignUpRequest request)
         {
+            ValidateUtil.CommonValidate(new[] { request });
+
             // 1. Kiểm tra tài khoản hoặc email đã tồn tại hay chưa
             var existingUsers = await GetByCondition<User>(u => u.UserName == request.UserName || u.Email == request.Email);
             if (existingUsers != null && existingUsers.Count > 0)
@@ -108,11 +109,16 @@ namespace HoangCN.MainSystem.Services
             };
 
             // 4. Lưu xuống cơ sở dữ liệu
-            await Save(new List<User> { user });
+            await InsertAsync(new List<User> { user });
         }
 
+        /// <summary>
+        /// Xử lý đăng nhập tài khoản
+        /// </summary>
         public async Task SignIn(SignInRequest request)
         {
+            ValidateUtil.CommonValidate(new[] { request });
+
             // Tìm user theo tên tài khoản / email và lấy kèm RoleName bằng cách dùng GetByCondition của lớp base
             var users = await GetByCondition<UserAuthDto>(u => u.UserName == request.EmailOrUserName || u.Email == request.EmailOrUserName);
 
@@ -161,11 +167,10 @@ namespace HoangCN.MainSystem.Services
                 CreatedBy = userAuth.CreatedBy,
                 CreatedDate = userAuth.CreatedDate,
                 ModifiedBy = userAuth.ModifiedBy,
-                ModifiedDate = DateTime.UtcNow,
-                State = ModelState.Update
+                ModifiedDate = DateTime.UtcNow
             };
             
-            await Save([user]);
+            await UpdateAsync([user]);
 
             // Sinh JWT Token bằng cách khởi tạo Role inline từ RoleName có sẵn trong DTO
             var role = new Role { RoleName = userAuth.RoleName };
@@ -199,14 +204,7 @@ namespace HoangCN.MainSystem.Services
         /// </summary>
         public async Task ForgotPassword(ForgotPasswordRequest request)
         {
-            if (request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-            if (string.IsNullOrWhiteSpace(request.Email))
-            {
-                throw new BadRequestException("Email không được để trống.");
-            }
+            ValidateUtil.CommonValidate(new[] { request });
 
             // 1. Tìm kiếm User theo Email đăng ký
             var users = await GetByCondition<User>(u => u.Email == request.Email);
@@ -263,20 +261,10 @@ namespace HoangCN.MainSystem.Services
         /// </summary>
         public async Task ChangePassword(Guid userId, ChangePasswordRequest request)
         {
-            if (request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
-            {
-                throw new BadRequestException("Mật khẩu hiện tại không được để trống.");
-            }
-            if (string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                throw new BadRequestException("Mật khẩu mới không được để trống.");
-            }
+            ValidateUtil.CommonValidate(new[] { request });
 
-            var user = await GetById<User>(userId);
+            var res = await Get<User>(GetRequest.GetByIdRequest(userId));
+            var user = res.Items.FirstOrDefault();
             if (user == null)
             {
                 throw new KeyNotFoundException("Không tìm thấy thông tin tài khoản người dùng.");
@@ -305,7 +293,7 @@ namespace HoangCN.MainSystem.Services
             user.ModifiedDate = DateTime.UtcNow;
 
             // Lưu thay đổi vào DB
-            await Save(new List<User> { user });
+            await UpdateAsync([ user ]);
 
             // Nếu đã sử dụng mật khẩu tạm thời thành công để đổi sang mật khẩu chính thức, xóa mật khẩu tạm thời khỏi Redis
             if (isTempPasswordUsed)
@@ -316,20 +304,54 @@ namespace HoangCN.MainSystem.Services
         }
 
         /// <summary>
-        /// Tiền xử lý trước khi lưu: Tự sinh mã tài khoản và mã hóa mật khẩu cho tài khoản mới
+        /// Tiền xử lý trước khi thêm mới (Tự sinh mã tài khoản và mã hóa mật khẩu cho tài khoản mới)
         /// </summary>
-        protected override async Task BeforeSave(List<User> entities)
+        protected override async Task BeforeInsert(List<User> entities)
         {
-            await base.BeforeSave(entities);
+            await base.BeforeInsert(entities);
 
             // Truy vấn lấy thông tin Role Admin từ database
             var adminRoles = await _roleBL.GetByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString());
             var adminRole = adminRoles.FirstOrDefault();
 
-            var updatingUsers = entities.Where(u => u.State == ModelState.Update).ToList();
-            if (updatingUsers.Count > 0)
+            foreach (var user in entities)
             {
-                var userIds = updatingUsers.Select(u => u.UserId).ToList();
+                // Chặn tạo tài khoản mới gán vai trò Admin
+                if (adminRole != null && user.RoleId == adminRole.RoleId)
+                {
+                    throw new BadRequestException("Không được phép tạo tài khoản với quyền Admin.");
+                }
+
+                // Tự động sinh mã tài khoản (UserCode) nếu chưa nhập
+                if (string.IsNullOrWhiteSpace(user.UserCode))
+                {
+                    user.UserCode = "U_" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+                }
+
+                // Tự động mã hóa mật khẩu khi lưu
+                if (!string.IsNullOrWhiteSpace(user.Password))
+                {
+                    var (hash, salt) = PasswordUtil.HashPassword(user.Password);
+                    user.Password = hash;
+                    user.PasswordSalt = salt;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tiền xử lý trước khi cập nhật
+        /// </summary>
+        protected override async Task BeforeUpdate(List<User> entities)
+        {
+            await base.BeforeUpdate(entities);
+
+            // Truy vấn lấy thông tin Role Admin từ database
+            var adminRoles = await _roleBL.GetByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString());
+            var adminRole = adminRoles.FirstOrDefault();
+
+            if (entities.Count > 0)
+            {
+                var userIds = entities.Select(u => u.UserId).ToList();
                 var dbUsersResult = await Get<User>(new GetRequest { Ids = userIds, IsPaging = false });
                 var dbUserMap = dbUsersResult.Items.ToDictionary(u => u.UserId);
 
@@ -337,7 +359,7 @@ namespace HoangCN.MainSystem.Services
                 var currentUserIdStr = _accesstor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 Guid.TryParse(currentUserIdStr, out Guid currentUserId);
 
-                foreach (var user in updatingUsers)
+                foreach (var user in entities)
                 {
                     if (dbUserMap.TryGetValue(user.UserId, out var dbUser))
                     {
@@ -355,32 +377,6 @@ namespace HoangCN.MainSystem.Services
                                 throw new BadRequestException("Tài khoản Admin không được phép tự thay đổi vai trò của chính mình.");
                             }
                         }
-                    }
-                }
-            }
-
-            foreach (var user in entities)
-            {
-                if (user.State == ModelState.Insert)
-                {
-                    // Chặn tạo tài khoản mới gán vai trò Admin
-                    if (adminRole != null && user.RoleId == adminRole.RoleId)
-                    {
-                        throw new BadRequestException("Không được phép tạo tài khoản với quyền Admin.");
-                    }
-
-                    // Tự động sinh mã tài khoản (UserCode) nếu chưa nhập
-                    if (string.IsNullOrWhiteSpace(user.UserCode))
-                    {
-                        user.UserCode = "U_" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
-                    }
-
-                    // Tự động mã hóa mật khẩu khi lưu
-                    if (!string.IsNullOrWhiteSpace(user.Password))
-                    {
-                        var (hash, salt) = PasswordUtil.HashPassword(user.Password);
-                        user.Password = hash;
-                        user.PasswordSalt = salt;
                     }
                 }
             }
@@ -406,6 +402,15 @@ namespace HoangCN.MainSystem.Services
                 });
             }
             await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Kiểm tra xác thực và lấy UserId từ ClaimsPrincipal
+        /// </summary>
+        public async Task<Guid> CheckAuth(ClaimsPrincipal principal)
+        {
+            var userId = ClaimUtil.GetUserId(principal);
+            return await Task.FromResult(userId ?? throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện chức năng này"));
         }
     }
 }

@@ -6,7 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using ZLearn.Application.Common.Utils;
+using HoangCN.Core.Common.Utils;
 
 namespace HoangCN.MainSystem.Utils
 {
@@ -32,7 +32,8 @@ namespace HoangCN.MainSystem.Utils
         {
             List<Claim> claims = [
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Role, role.RoleName)
+                new Claim(ClaimTypes.Role, role.RoleName),
+                new Claim(nameof(user.UserName), user.UserName),
             ];
 
             byte[] bytes = Encoding.UTF8.GetBytes(EnvKeyUtil.GetValue(EnvKeyUtil.JWT_SECRET_KEY));

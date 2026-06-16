@@ -51,47 +51,11 @@
       </div>
 
       <div class="p-4 p-md-5">
-        <!-- Question Content -->
-        <h3 class="fw-bold text-dark-blue mb-5 fs-4 lh-base">{{ question.stringContent }}</h3>
-
-        <!-- Answers -->
-        <h4 class="fs-6 fw-bold text-dark-blue mb-3">Các lựa chọn đáp án:</h4>
-        <div class="d-flex flex-column gap-3 mb-5">
-          <div 
-            v-for="(ans, idx) in question.answers" 
-            :key="ans.questionAnswerId"
-            class="p-3 rounded-3 border d-flex flex-column flex-sm-row align-items-sm-center gap-3 transition hover-up"
-            :class="ans.isCorrectAnswer ? 'bg-success-soft border-success' : 'bg-light border-light-subtle'"
-          >
-            <div class="d-flex align-items-center gap-3 flex-grow-1">
-              <div 
-                class="fw-bold fs-5 d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" 
-                style="width: 40px; height: 40px;"
-                :class="ans.isCorrectAnswer ? 'bg-success text-white' : 'bg-white text-dark-blue border'"
-              >
-                {{ String.fromCharCode(65 + idx) }}
-              </div>
-              <div class="fs-6" :class="{ 'fw-semibold text-dark': ans.isCorrectAnswer, 'text-secondary': !ans.isCorrectAnswer }">
-                {{ ans.stringContent }}
-              </div>
-            </div>
-            <div v-if="ans.isCorrectAnswer" class="mt-2 mt-sm-0 align-self-start align-self-sm-center">
-              <span class="badge bg-success px-3 py-2 rounded-pill fs-7 shadow-sm text-nowrap">
-                ✨ ĐÁP ÁN ĐÚNG
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Explanation -->
-        <div class="explanation-box p-4 rounded-4 border border-indigo-accent bg-indigo-light-opacity">
-          <div class="fw-bold text-indigo mb-3 d-flex align-items-center gap-2 fs-5">
-            <span>💡</span> Hướng dẫn giải thích chi tiết
-          </div>
-          <div class="text-secondary leading-relaxed fs-6">
-            {{ question.explaination || 'Chưa có lời giải thích chi tiết cho câu hỏi này.' }}
-          </div>
-        </div>
+        <QuestionCard
+          :question="question"
+          :index="1"
+          mode="detail"
+        />
       </div>
     </div>
 
@@ -113,6 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
 import { getQuestionDetails, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
+import QuestionCard from '@/components/QuestionCard.vue'
 
 const route = useRoute()
 const router = useRouter()

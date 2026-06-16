@@ -10,13 +10,16 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
+
 namespace HoangCN.LearnMS.Services
 {
     public class ExamSessionBL : BaseBL<ExamSession>, IExamSessionBL
     {
         private readonly IBaseBL<ExamCheatLog> _cheatLogBL;
 
-        public ExamSessionBL(IBaseReadDL readDL, IBaseWriteDL writeDL, IBaseBL<ExamCheatLog> cheatLogBL) : base(readDL, writeDL)
+        public ExamSessionBL(IBaseReadDL readDL, IBaseWriteDL writeDL, IBaseBL<ExamCheatLog> cheatLogBL, IHttpContextAccessor httpContextAccessor) 
+            : base(readDL, writeDL, httpContextAccessor)
         {
             _cheatLogBL = cheatLogBL;
         }
@@ -36,7 +39,7 @@ namespace HoangCN.LearnMS.Services
                 FullscreenExitCount = 0
             };
 
-            await Save(new List<ExamSession> { session });
+            await InsertAsync(new List<ExamSession> { session });
             return session.SessionId;
         }
 
@@ -58,7 +61,7 @@ namespace HoangCN.LearnMS.Services
             {
                 session.Status = ExamSessionStatus.Disconnected;
                 session.IsActive = false;
-                await Save(new List<ExamSession> { session });
+                await UpdateAsync(new List<ExamSession> { session });
                 throw new ForbiddenException("Phiên làm bài đã mất kết nối quá thời gian cho phép (1 phút). Hệ thống sẽ tự động nộp bài.");
             }
 
@@ -79,19 +82,19 @@ namespace HoangCN.LearnMS.Services
                         ViolationType = log.ViolationType
                     });
                 }
-                await _cheatLogBL.Save(newLogs);
+                await _cheatLogBL.InsertAsync(newLogs);
             }
 
             if (session.FullscreenExitCount >= 3)
             {
                 session.Status = ExamSessionStatus.Disqualified;
                 session.IsActive = false;
-                await Save(new List<ExamSession> { session });
+                await UpdateAsync(new List<ExamSession> { session });
                 throw new ForbiddenException("Bạn đã thoát toàn màn hình 3 lần. Bài thi bị hủy tự động.");
             }
 
             session.LastHeartbeatAt = now;
-            await Save(new List<ExamSession> { session });
+            await UpdateAsync(new List<ExamSession> { session });
         }
 
         public async Task LogCheatAsync(Guid sessionId, Guid candidateId, ExamCheatLogRequest request)
@@ -118,7 +121,7 @@ namespace HoangCN.LearnMS.Services
                 ViolationType = request.ViolationType
             };
 
-            await _cheatLogBL.Save(new List<ExamCheatLog> { newLog });
+            await _cheatLogBL.InsertAsync(new List<ExamCheatLog> { newLog });
 
             if (session.FullscreenExitCount >= 3)
             {
@@ -126,7 +129,7 @@ namespace HoangCN.LearnMS.Services
                 session.IsActive = false;
             }
 
-            await Save(new List<ExamSession> { session });
+            await UpdateAsync(new List<ExamSession> { session });
 
             if (session.Status == ExamSessionStatus.Disqualified)
             {
@@ -146,7 +149,7 @@ namespace HoangCN.LearnMS.Services
             {
                 session.IsActive = false;
                 session.Status = ExamSessionStatus.Submitted;
-                await Save(new List<ExamSession> { session });
+                await UpdateAsync(new List<ExamSession> { session });
             }
         }
     }

@@ -51,10 +51,10 @@ namespace HoangCN.LearnMS.Controllers
         }
 
         /// <summary>
-        /// Ghi đè phương thức Save để gán UserId hiện tại
+        /// Ghi đè phương thức Insert để gán UserId hiện tại
         /// </summary>
         [HttpPost]
-        public override async Task<IActionResult> Save([FromBody] List<Quiz> entities)
+        public override async Task<IActionResult> Insert([FromBody] List<Quiz> entities)
         {
             Guid userId = Guid.Empty;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -71,7 +71,7 @@ namespace HoangCN.LearnMS.Controllers
                 }
             }
 
-            return await base.Save(entities);
+            return await base.Insert(entities);
         }
     }
 }

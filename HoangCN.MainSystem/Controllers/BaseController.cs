@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
@@ -43,16 +43,23 @@ namespace HoangCN.MainSystem.Controllers
         }
 
         [HttpPost]
-        public virtual async Task<IActionResult> Save([FromBody] List<TEntity> entities)
+        public virtual async Task<IActionResult> Insert([FromBody] List<TEntity> entities)
         {
-            await _baseBL.Save(entities);
+            await _baseBL.InsertAsync(entities);
+            return Ok(ApiResponseDto.Success());
+        }
+
+        [HttpPut]
+        public virtual async Task<IActionResult> Update([FromBody] List<TEntity> entities)
+        {
+            await _baseBL.UpdateAsync(entities);
             return Ok(ApiResponseDto.Success());
         }
 
         [HttpPost("delete")] 
         public virtual async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
-            await _baseBL.Delete(request);
+            await _baseBL.DeleteAsync(request);
             return Ok(ApiResponseDto.Success());
         }
     }

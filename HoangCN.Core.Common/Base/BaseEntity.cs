@@ -41,12 +41,12 @@ namespace HoangCN.Core.Common.Base
         [BindNever]
         public DateTime? ModifiedDate { get; set; }
 
-        /// <summary>
-        /// Trạng thái của entity
-        /// </summary>
-        [NotMapped]
-        [JsonIgnore]
-        public ModelState State { get; set; } = ModelState.None;
+        ///// <summary>
+        ///// Trạng thái của entity
+        ///// </summary>
+        //[NotMapped]
+        //[JsonIgnore]
+        //public ModelState State { get; set; } = ModelState.None;
 
         /// <summary>
         /// Đã xóa mềm

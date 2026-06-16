@@ -1,5 +1,4 @@
 using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Enums;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -73,40 +72,49 @@ namespace HoangCN.Core.DL.Implementation
         }
 
         /// <summary>
-        /// Lưu danh sách entity dựa trên trạng thái State của từng đối tượng
+        /// Thêm danh sách entity vào database
         /// </summary>
-        public async Task SaveEntitiesAsync<TEntity>(List<TEntity> entities) where TEntity : BaseEntity
+        public async Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
         {
-            if (entities == null || entities.Count == 0) return;
+            if (entities == null || !entities.Any()) return;
+            await _context.Set<TEntity>().AddRangeAsync(entities);
+            await SaveChangesAsync();
+        }
 
+        /// <summary>
+        /// Cập nhật danh sách entity trong database
+        /// </summary>
+        public async Task UpdateRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        {
+            if (entities == null || !entities.Any()) return;
             foreach (var entity in entities)
             {
-                switch (entity.State)
+                _context.Entry(entity).State = EntityState.Modified;
+                _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
+                _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
+            }
+            await SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
+        /// </summary>
+        public async Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        {
+            if (entities == null || !entities.Any()) return;
+            foreach (var entity in entities)
+            {
+                if (entity.IsDeleted)
                 {
-                    case ModelState.Insert:
-                        _context.Entry(entity).State = EntityState.Added;
-                        break;
-                    case ModelState.Update:
-                        _context.Entry(entity).State = EntityState.Modified;
-                        _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
-                        _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
-                        break;
-                    case ModelState.Delete:
-                        // Nếu đã được đánh dấu là xóa mềm, ta cập nhật Entity ở trạng thái Modified
-                        if (entity.IsDeleted)
-                        {
-                            _context.Entry(entity).State = EntityState.Modified;
-                            _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
-                            _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
-                        }
-                        else
-                        {
-                            _context.Entry(entity).State = EntityState.Deleted;
-                        }
-                        break;
+                    _context.Entry(entity).State = EntityState.Modified;
+                    _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
+                    _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
+                }
+                else
+                {
+                    _context.Set<TEntity>().Remove(entity);
                 }
             }
-
             await SaveChangesAsync();
         }
     }

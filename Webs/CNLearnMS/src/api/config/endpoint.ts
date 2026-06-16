@@ -4,6 +4,7 @@
 export const endpoints = {
   categories: {
     getAll: "/api/categories",
+    paging: "/api/categories/paging",
     save: "/api/categories",
     delete: "/api/categories/delete",
   },

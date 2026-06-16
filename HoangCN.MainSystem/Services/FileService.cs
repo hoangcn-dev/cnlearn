@@ -1,7 +1,8 @@
-﻿using HoangCN.Core.BL.Base;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.Requests;
 using HoangCN.MainSystem.Entities;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Interfaces;
@@ -27,8 +28,9 @@ namespace HoangCN.MainSystem.Services
         public FileService(
             IBaseReadDL baseReadDL, 
             IBaseWriteDL baseWriteDL, 
+            IHttpContextAccessor httpContextAccessor,
             IWebHostEnvironment webHostEnvironment, 
-            ILogger<FileService> logger) : base(baseReadDL, baseWriteDL)
+            ILogger<FileService> logger) : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -73,11 +75,10 @@ namespace HoangCN.MainSystem.Services
                 Type = file.ContentType,
                 Size = file.Length,
                 Url = $"/upload/{uniqueFileName}",
-                State = ModelState.Insert,
                 CreatedBy = "System"
             };
 
-            await Save(new List<ResourceFile> { resourceFile });
+            await InsertAsync(new List<ResourceFile> { resourceFile });
             _logger.LogInformation("Lưu file thành công. FileId: {FileId}, Url: {Url}", fileId, resourceFile.Url);
 
             return resourceFile;
@@ -140,8 +141,7 @@ namespace HoangCN.MainSystem.Services
                 _logger.LogError(ex, "Lỗi xảy ra khi xóa file vật lý tại: {Path}", physicalPath);
             }
 
-            file.State = ModelState.Delete;
-            await Save(new List<ResourceFile> { file });
+            await DeleteAsync(new DeleteRequest { Ids = new List<Guid> { fileId } });
             _logger.LogInformation("Đã xóa bản ghi ResourceFile khỏi CSDL cho FileId: {FileId}", fileId);
         }
 

@@ -1,5 +1,7 @@
+using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
+using HoangCN.LearnMS.Enums;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -75,5 +77,16 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Đã đưa vào ngân hàng")]
         public bool IsInBank { get; set; } = false;
+
+        /// <summary>
+        /// Định danh danh mục câu hỏi (Khóa ngoại)
+        /// </summary>
+        [DisplayName("Danh mục")]
+        [Required(ErrorMessage = "{0} không được phép để trống.")]
+        [CheckExist(MustExist = true, TargetEntity = typeof(QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
+        public Guid QuestionCategoryId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.ForeignKey("QuestionCategoryId")]
+        public virtual QuestionCategory? QuestionCategory { get; set; }
     }
 }

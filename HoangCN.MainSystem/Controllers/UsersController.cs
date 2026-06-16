@@ -96,9 +96,16 @@ namespace HoangCN.MainSystem.Controllers
 
         [HttpPost]
         [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> Save([FromBody] List<User> entities)
+        public override async Task<IActionResult> Insert([FromBody] List<User> entities)
         {
-            return await base.Save(entities);
+            return await base.Insert(entities);
+        }
+
+        [HttpPut]
+        [Authorize(Roles = nameof(RoleNames.Admin))]
+        public override async Task<IActionResult> Update([FromBody] List<User> entities)
+        {
+            return await base.Update(entities);
         }
 
         [HttpPost("delete")]

@@ -1,4 +1,4 @@
-namespace ZLearn.Application.Common.Utils
+namespace HoangCN.Core.Common.Utils
 {
     public abstract class EnvUtil
     {

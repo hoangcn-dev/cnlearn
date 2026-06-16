@@ -63,7 +63,7 @@ namespace HoangCN.LearnMS.Controllers
 
             if (existing.Items.Count > 0)
             {
-                await _savedQuestionBL.Delete(new DeleteRequest
+                await _savedQuestionBL.DeleteAsync(new DeleteRequest
                 {
                     Ids = new List<Guid> { existing.Items[0].UserSavedQuestionId }
                 });
@@ -77,10 +77,9 @@ namespace HoangCN.LearnMS.Controllers
                     UserId = userId,
                     QuestionId = id,
                     CreatedBy = userId.ToString(),
-                    CreatedDate = DateTime.Now,
-                    State = HoangCN.Core.Common.Enums.ModelState.Insert
+                    CreatedDate = DateTime.Now
                 };
-                await _savedQuestionBL.Save(new List<UserSavedQuestion> { newBookmark });
+                await _savedQuestionBL.InsertAsync(new List<UserSavedQuestion> { newBookmark });
                 return Ok(ApiResponseDto.Success(true)); // Đã lưu
             }
         }
@@ -106,7 +105,7 @@ namespace HoangCN.LearnMS.Controllers
 
             if (existing.Items.Count > 0)
             {
-                await _savedExamBL.Delete(new DeleteRequest
+                await _savedExamBL.DeleteAsync(new DeleteRequest
                 {
                     Ids = new List<Guid> { existing.Items[0].UserSavedExamId }
                 });
@@ -120,10 +119,9 @@ namespace HoangCN.LearnMS.Controllers
                     UserId = userId,
                     ExamId = id,
                     CreatedBy = userId.ToString(),
-                    CreatedDate = DateTime.Now,
-                    State = HoangCN.Core.Common.Enums.ModelState.Insert
+                    CreatedDate = DateTime.Now
                 };
-                await _savedExamBL.Save(new List<UserSavedExam> { newBookmark });
+                await _savedExamBL.InsertAsync(new List<UserSavedExam> { newBookmark });
                 return Ok(ApiResponseDto.Success(true)); // Đã lưu
             }
         }

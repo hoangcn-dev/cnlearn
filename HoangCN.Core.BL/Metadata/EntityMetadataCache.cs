@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Attributes;
+using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -22,6 +22,7 @@ namespace HoangCN.Core.BL.Metadata
         public StringLengthAttribute? StringLengthAttr { get; set; }
         public CheckExistAttribute? CheckExistAttr { get; set; }
         public ForeignTableAttribute? ForeignTableAttr { get; set; }
+        public List<ValidationAttribute> ValidationAttrs { get; set; } = new();
     }
 
     /// <summary>
@@ -89,7 +90,8 @@ namespace HoangCN.Core.BL.Metadata
                         RequiredAttr = prop.GetCustomAttribute<RequiredAttribute>(true),
                         StringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>(true),
                         CheckExistAttr = prop.GetCustomAttribute<CheckExistAttribute>(true),
-                        ForeignTableAttr = prop.GetCustomAttribute<ForeignTableAttribute>(true)
+                        ForeignTableAttr = prop.GetCustomAttribute<ForeignTableAttribute>(true),
+                        ValidationAttrs = prop.GetCustomAttributes<ValidationAttribute>(true).ToList()
                     };
                     
                     metadata.Properties.Add(propMeta);

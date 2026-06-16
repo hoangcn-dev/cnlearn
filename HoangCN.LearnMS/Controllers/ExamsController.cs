@@ -66,13 +66,7 @@ namespace HoangCN.LearnMS.Controllers
         [HttpGet("question-counts")]
         public async Task<IActionResult> GetQuestionCounts()
         {
-            var eqRequest = new GetRequest { IsPaging = false };
-            var eqResult = await _examQuestionBL.Get<ExamQuestion>(eqRequest);
-            
-            var counts = eqResult.Items
-                .GroupBy(eq => eq.ExamId)
-                .ToDictionary(g => g.Key, g => g.Count());
-
+            var counts = await _examService.GetQuestionCountsAsync();
             return Ok(ApiResponseDto.Success(counts));
         }
 

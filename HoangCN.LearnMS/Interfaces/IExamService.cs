@@ -22,5 +22,10 @@ namespace HoangCN.LearnMS.Interfaces
         /// Lấy danh sách đề thi kèm lọc phân quyền
         /// </summary>
         Task<ResultDto<Exam>> GetExamsPagingAsync(GetRequest request, Guid? currentUserId);
+
+        /// <summary>
+        /// Lấy số lượng câu hỏi của tất cả đề thi
+        /// </summary>
+        Task<Dictionary<Guid, int>> GetQuestionCountsAsync();
     }
 }

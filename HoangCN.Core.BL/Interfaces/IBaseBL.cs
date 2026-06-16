@@ -11,34 +11,39 @@ namespace HoangCN.Core.BL.Interfaces
     public interface IBaseBL<TEntity> where TEntity : BaseEntity
     {
         /// <summary>
-        /// Lưu danh sách thực thể dựa trên trạng thái State (Thêm/Sửa/Xóa)
+        /// Thêm mới danh sách thực thể
         /// </summary>
-        Task Save(List<TEntity> entities);
+        Task InsertAsync(List<TEntity> entities);
+
+        /// <summary>
+        /// Cập nhật danh sách thực thể
+        /// </summary>
+        Task UpdateAsync(List<TEntity> entities);
 
         /// <summary>
         /// Xóa các thực thể theo danh sách ID
         /// </summary>
-        Task Delete(DeleteRequest request);
+        Task DeleteAsync(DeleteRequest request);
 
         /// <summary>
         /// Lấy danh sách thực thể phân trang, sắp xếp và lọc động
         /// </summary>
-        Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null);
+        Task<ResultDto<TResult>> Get<TResult>(GetRequest request);
 
         /// <summary>
-        /// Lấy thông tin thực thể bằng ID
+        /// Lấy danh sách thực thể phân trang, sắp xếp và lọc động kèm điều kiện lambda chỉ định
         /// </summary>
-        Task<TResult?> GetById<TResult>(Guid id);
+        Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>> condition);
 
         /// <summary>
-        /// Lấy danh sách thực thể theo điều kiện chỉ định
+        /// Lấy danh sách thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)
         /// </summary>
         Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
 
         /// <summary>
-        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
+        /// Lấy chi tiết thực thể theo ID (chỉ dùng cho nội bộ)
         /// </summary>
-        IQueryable<TEntity> GetQueryable();
+        Task<TResult?> GetById<TResult>(Guid id);
     }
 }
 

@@ -45,12 +45,23 @@ namespace HoangCN.LearnMS.Controllers
             // Ép buộc LearnMsUserId của dữ liệu gửi lên phải khớp với Token đang đăng nhập để bảo mật
             userDto.LearnMsUserId = authUserId;
 
-            await _baseBL.Save(new List<LearnMsUser> { userDto });
-            
             var getResult = await _baseBL.Get<LearnMsUser>(HoangCN.Core.Common.Model.Requests.GetRequest.GetByIdRequest(authUserId));
-            if (getResult != null && getResult.Items.Count > 0)
+            if (getResult == null || getResult.Items.Count == 0)
             {
-                return Ok(ApiResponseDto.Success(getResult.Items[0]));
+                await _baseBL.InsertAsync(new List<LearnMsUser> { userDto });
+            }
+            else
+            {
+                var existingUser = getResult.Items[0];
+                existingUser.FullName = userDto.FullName;
+                // Chặn việc sửa đổi Email và UserId ở mức logic
+                await _baseBL.UpdateAsync(new List<LearnMsUser> { existingUser });
+            }
+            
+            var latestResult = await _baseBL.Get<LearnMsUser>(HoangCN.Core.Common.Model.Requests.GetRequest.GetByIdRequest(authUserId));
+            if (latestResult != null && latestResult.Items.Count > 0)
+            {
+                return Ok(ApiResponseDto.Success(latestResult.Items[0]));
             }
             
             return Ok(ApiResponseDto.Success(userDto));
@@ -80,7 +91,16 @@ namespace HoangCN.LearnMS.Controllers
             var authUserId = CheckAuth();
             userDto.LearnMsUserId = authUserId;
             
-            await _baseBL.Save(new List<LearnMsUser> { userDto });
+            var getResult = await _baseBL.Get<LearnMsUser>(HoangCN.Core.Common.Model.Requests.GetRequest.GetByIdRequest(authUserId));
+            if (getResult == null || getResult.Items.Count == 0)
+            {
+                throw new NotFoundException("Tài khoản chưa được khởi tạo trên hệ thống");
+            }
+
+            var existingUser = getResult.Items[0];
+            existingUser.FullName = userDto.FullName;
+
+            await _baseBL.UpdateAsync(new List<LearnMsUser> { existingUser });
             return Ok(ApiResponseDto.Success());
         }
     }

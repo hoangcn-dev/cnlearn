@@ -1,8 +1,9 @@
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.LearnMS.Entities;
-using HoangCN.LearnMS.DTOs;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
+using HoangCN.LearnMS.DTOs;
+using HoangCN.LearnMS.Entities;
+using HoangCN.LearnMS.Requests;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,13 +15,7 @@ namespace HoangCN.LearnMS.Interfaces
     /// </summary>
     public interface IQuestionService : IBaseBL<Question>
     {
-        /// <summary>
-        /// Thực hiện phân tích chuỗi JSON và tạo danh sách câu hỏi
-        /// </summary>
-        /// <param name="jsonContent">Chuỗi JSON câu hỏi</param>
-        /// <param name="currentUserId">ID người dùng sở hữu</param>
-        /// <returns>Số lượng câu hỏi import thành công</returns>
-        Task<int> ImportBulkFromJsonAsync(string jsonContent, Guid currentUserId);
+
 
         /// <summary>
         /// Lấy danh sách câu hỏi phân trang kèm chi tiết đáp án và danh mục
@@ -41,6 +36,11 @@ namespace HoangCN.LearnMS.Interfaces
         /// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật) kèm đáp án và danh mục
         /// </summary>
         Task SaveQuestionDetailsAsync(List<QuestionDetailsDto> questionsDto, Guid currentUserId);
+
+        /// <summary>
+        /// Lưu danh sách câu hỏi
+        /// </summary>
+        Task SaveListQuestions(SaveQuestionsRequest request, Guid currentUserId);
 
         /// <summary>
         /// Chấm điểm và trả về kết quả đáp án cho một câu hỏi

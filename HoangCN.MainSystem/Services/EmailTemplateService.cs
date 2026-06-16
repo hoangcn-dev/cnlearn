@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +10,8 @@ using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Interfaces;
 using Microsoft.Extensions.Logging;
 using HoangCN.Core.Common.Exceptions;
+using Microsoft.AspNetCore.Http;
+using HoangCN.Core.BL.Utils;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -23,7 +25,8 @@ namespace HoangCN.MainSystem.Services
         public EmailTemplateService(
             IBaseReadDL baseReadDL, 
             IBaseWriteDL baseWriteDL, 
-            ILogger<EmailTemplateService> logger) : base(baseReadDL, baseWriteDL)
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<EmailTemplateService> logger) : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -51,7 +54,6 @@ namespace HoangCN.MainSystem.Services
                         TemplateCode = "forgot_password",
                         Subject = "Yêu cầu khôi phục mật khẩu - HoangCN",
                         Content = "<html><body><h3>Chào {{DisplayName}},</h3><p>Hệ thống đã nhận được yêu cầu khôi phục mật khẩu của bạn.</p><p>Mật khẩu tạm thời mới của bạn là: <strong>{{TemporaryPassword}}</strong> (Hiệu lực trong vòng <strong>{{ExpireTime}}</strong>).</p><p>Vui lòng đăng nhập và tiến hành đổi mật khẩu ngay lập tức để bảo mật thông tin.</p><br/><p>Trân trọng,<br/>Đội ngũ HoangCN</p></body></html>",
-                        State = ModelState.Insert,
                         CreatedBy = "System"
                     };
                     await SaveTemplateAsync(defaultTemplate);
@@ -69,22 +71,7 @@ namespace HoangCN.MainSystem.Services
         /// </summary>
         public async Task SaveTemplateAsync(EmailTemplate template)
         {
-            if (template == null)
-            {
-                throw new ArgumentNullException(nameof(template));
-            }
-            if (string.IsNullOrWhiteSpace(template.TemplateCode))
-            {
-                throw new BadRequestException("Mã template không được để trống.");
-            }
-            if (string.IsNullOrWhiteSpace(template.Subject))
-            {
-                throw new BadRequestException("Tiêu đề email không được để trống.");
-            }
-            if (string.IsNullOrWhiteSpace(template.Content))
-            {
-                throw new BadRequestException("Nội dung template không được để trống.");
-            }
+            ValidateUtil.CommonValidate(new[] { template });
 
             var allowedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "forgot_password" };
             if (!allowedCodes.Contains(template.TemplateCode))
@@ -107,12 +94,11 @@ namespace HoangCN.MainSystem.Services
             {
                 existing.Subject = template.Subject.Trim();
                 existing.Content = template.Content.Trim();
-                existing.State = ModelState.Update;
                 existing.ModifiedBy = "Admin";
                 existing.ModifiedDate = DateTime.Now;
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", existing.TemplateCode);
-                await Save(new List<EmailTemplate> { existing });
+                await UpdateAsync(new List<EmailTemplate> { existing });
             }
             else
             {
@@ -120,12 +106,11 @@ namespace HoangCN.MainSystem.Services
                 {
                     template.FileResourceId = Guid.NewGuid();
                 }
-                template.State = ModelState.Insert;
                 template.CreatedBy = "System";
                 template.CreatedDate = DateTime.Now;
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", template.TemplateCode);
-                await Save(new List<EmailTemplate> { template });
+                await InsertAsync(new List<EmailTemplate> { template });
             }
         }
 

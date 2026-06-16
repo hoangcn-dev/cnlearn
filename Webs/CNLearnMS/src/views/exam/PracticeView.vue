@@ -112,14 +112,14 @@ import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import type { QuestionCategory } from '@/components/category'
-import { getAllCate } from '@/api/categories'
+import { getCategoriesPaging } from '@/api/categories'
 
 const router = useRouter()
 
 // State
 const categories = ref<QuestionCategory[]>([])
 const rootCategories = computed(() => {
-  const roots = categories.value.filter(c => !c.name.includes(' - '))
+  const roots = categories.value.filter(c => c.parentId === null || !c.parentId)
   if (roots.length === 0) {
     return categories.value
   }
@@ -202,23 +202,21 @@ const fetchCategories = async () => {
   loading.value = true
 
   try {
-    if (allFetchedCategories.value.length === 0) {
-      const res = await getAllCate()
-      if (res.isSuccess && res.data) {
-        allFetchedCategories.value = res.data.items || []
-      } else {
-        throw new Error("API response was unsuccessful")
-      }
+    const res = await getCategoriesPaging({
+      page: page.value,
+      size: size.value,
+      isPaging: true
+    })
+
+    if (res && res.isSuccess && res.data) {
+      const fetchedItems = res.data.items || []
+      categories.value.push(...fetchedItems)
+      totalCategories.value = res.data.total || 0
+      hasMore.value = categories.value.length < totalCategories.value
+      page.value++
+    } else {
+      throw new Error(res?.errorMessage || "API response was unsuccessful")
     }
-
-    const startIdx = (page.value - 1) * size.value
-    const endIdx = startIdx + size.value
-    const chunk = allFetchedCategories.value.slice(startIdx, endIdx)
-
-    categories.value.push(...chunk)
-    totalCategories.value = allFetchedCategories.value.length
-    hasMore.value = categories.value.length < allFetchedCategories.value.length
-    page.value++
   } catch (error) {
     console.error("Lỗi khi kết nối API:", error)
     errorMsg.value = "Không thể kết nối đến máy chủ API"

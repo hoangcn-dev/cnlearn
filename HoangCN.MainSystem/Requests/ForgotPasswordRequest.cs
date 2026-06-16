@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace HoangCN.MainSystem.Requests
@@ -12,6 +13,7 @@ namespace HoangCN.MainSystem.Requests
         /// </summary>
         [Required(ErrorMessage = "Email không được để trống.")]
         [EmailAddress(ErrorMessage = "Địa chỉ email không đúng định dạng.")]
+        [DisplayName("Email")]
         public string Email { get; set; } = string.Empty;
     }
 }

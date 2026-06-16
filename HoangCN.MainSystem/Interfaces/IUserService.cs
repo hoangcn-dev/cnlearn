@@ -11,9 +11,9 @@ namespace HoangCN.MainSystem.Interfaces
         Task SignUp(SignUpRequest request);
         Task SignIn(SignInRequest request);
         Task<LoginSessionInfoDto> GetLoginSessionInfo(Guid userId);
-        Task<Guid> CheckAuth(ClaimsPrincipal claimsPrincipal);
         Task ForgotPassword(ForgotPasswordRequest request);
         Task ChangePassword(Guid userId, ChangePasswordRequest request);
         Task SignOut();
+        Task<Guid> CheckAuth(ClaimsPrincipal principal);
     }
 }

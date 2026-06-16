@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Core.Common.Enums
+﻿namespace HoangCN.LearnMS.Enums
 {
     /// <summary>
     /// Loại câu hỏi trắc nghiệm

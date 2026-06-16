@@ -66,39 +66,6 @@ namespace HoangCN.LearnMS.Controllers
             return Ok(ApiResponseDto.Success(res));
         }
 
-        /// <summary>
-        /// Endpoint API nhận chuỗi JSON trực tiếp từ body để import ngân hàng câu hỏi hàng loạt
-        /// Đường dẫn: POST api/questions/bulk/json
-        /// </summary>
-        [HttpPost("bulk/json")]
-        public async Task<IActionResult> ImportBulkFromJsonBody([FromBody] JsonElement jsonBody)
-        {
-            var userId = CheckAuth();
-            var jsonContent = jsonBody.GetRawText();
-            var count = await _questionService.ImportBulkFromJsonAsync(jsonContent, userId);
-            return Ok(ApiResponseDto.Success(new { ImportedCount = count }));
-        }
-
-        /// <summary>
-        /// Endpoint API nhận file .json upload lên để import ngân hàng câu hỏi hàng loạt
-        /// Đường dẫn: POST api/questions/bulk/json-file
-        /// </summary>
-        [HttpPost("bulk/json-file")]
-        public async Task<IActionResult> ImportBulkFromFile(IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-            {
-                throw new BadRequestException("File tải lên không hợp lệ hoặc bị rỗng.");
-            }
-
-            var userId = CheckAuth();
-            using (var reader = new StreamReader(file.OpenReadStream()))
-            {
-                var jsonContent = await reader.ReadToEndAsync();
-                var count = await _questionService.ImportBulkFromJsonAsync(jsonContent, userId);
-                return Ok(ApiResponseDto.Success(new { ImportedCount = count }));
-            }
-        }
 
         /// <summary>
         /// Lấy danh sách câu hỏi phân trang kèm chi tiết đáp án và danh mục

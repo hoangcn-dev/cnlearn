@@ -7,6 +7,8 @@ using HoangCN.Core.DL.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
+
 namespace HoangCN.LearnMS.Services
 {
     /// <summary>
@@ -14,11 +16,24 @@ namespace HoangCN.LearnMS.Services
     /// </summary>
     public class QuestionCategoryService : BaseBL<QuestionCategory>
     {
-        public QuestionCategoryService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL) : base(baseReadDL, baseWriteDL)
+        public QuestionCategoryService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL, IHttpContextAccessor httpContextAccessor) 
+            : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
         }
 
-        protected override async Task BeforeSave(List<QuestionCategory> entities)
+        protected override async Task BeforeInsert(List<QuestionCategory> entities)
+        {
+            await base.BeforeInsert(entities);
+            GenerateSlugForCategories(entities);
+        }
+
+        protected override async Task BeforeUpdate(List<QuestionCategory> entities)
+        {
+            await base.BeforeUpdate(entities);
+            GenerateSlugForCategories(entities);
+        }
+
+        private void GenerateSlugForCategories(List<QuestionCategory> entities)
         {
             foreach (var entity in entities)
             {
@@ -35,8 +50,6 @@ namespace HoangCN.LearnMS.Services
                     entity.Slug = SlugUtil.GenerateSlug(entity.Slug);
                 }
             }
-
-            await base.BeforeSave(entities);
         }
     }
 }

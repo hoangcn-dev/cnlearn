@@ -18,6 +18,9 @@ namespace HoangCN.LearnMS.Utils
         /// </summary>
         public static IServiceCollection AddLearnMS(this IServiceCollection services, IConfiguration configuration)
         {
+            // Đăng ký HttpContextAccessor để hỗ trợ lấy thông tin HttpContext trong các Service
+            services.AddHttpContextAccessor();
+
             // Đăng ký dịch vụ nghiệp vụ lõi Core.BL (BaseBL)
             services.AddCoreBL();
 

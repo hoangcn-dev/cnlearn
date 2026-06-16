@@ -21,6 +21,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text.Json;
 using System.Threading.Tasks;
+using HoangCN.LearnMS.Requests;
+using HoangCN.LearnMS.Enums;
+
+using Microsoft.AspNetCore.Http;
 
 namespace HoangCN.LearnMS.Services
 {
@@ -36,13 +40,26 @@ namespace HoangCN.LearnMS.Services
             IBaseReadDL baseReadDL, 
             IBaseWriteDL baseWriteDL,
             IBaseBL<QuestionCategory> categoryService, 
-            ILogger<QuestionService> logger) : base(baseReadDL, baseWriteDL)
+            ILogger<QuestionService> logger,
+            IHttpContextAccessor httpContextAccessor) : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
             _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        protected override async Task BeforeSave(List<Question> entities)
+        protected override async Task BeforeInsert(List<Question> entities)
+        {
+            await base.BeforeInsert(entities);
+            GenerateSlugForQuestions(entities);
+        }
+
+        protected override async Task BeforeUpdate(List<Question> entities)
+        {
+            await base.BeforeUpdate(entities);
+            GenerateSlugForQuestions(entities);
+        }
+
+        private void GenerateSlugForQuestions(List<Question> entities)
         {
             foreach (var entity in entities)
             {
@@ -62,202 +79,14 @@ namespace HoangCN.LearnMS.Services
                     entity.Slug = SlugUtil.GenerateSlug(entity.Slug);
                 }
             }
-
-            await base.BeforeSave(entities);
         }
 
-        /// <summary>
-        /// Thực hiện phân tích chuỗi JSON và tạo danh sách câu hỏi kèm đáp án, gán nhiều danh mục theo ID trong một Transaction duy nhất
-        /// </summary>
-        public async Task<int> ImportBulkFromJsonAsync(string jsonContent, Guid currentUserId)
-        {
-            // Kiểm tra quy tắc Rule 1: Throw exception nếu chuỗi null hoặc rỗng
-            if (string.IsNullOrWhiteSpace(jsonContent))
-            {
-                throw new BadRequestException("Nội dung file JSON import không được phép để trống.");
-            }
 
-            // Kiểm tra UserId người sở hữu không được rỗng
-            if (currentUserId == Guid.Empty)
-            {
-                throw new BadRequestException("Mã định danh tài khoản sở hữu không hợp lệ.");
-            }
-
-            List<BulkQuestionImportDto> questionsDto;
-            try
-            {
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    AllowTrailingCommas = true
-                };
-                questionsDto = JsonSerializer.Deserialize<List<BulkQuestionImportDto>>(jsonContent, options)
-                               ?? throw new BadRequestException("Định dạng file JSON không hợp lệ.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi phân tích cú pháp JSON câu hỏi.");
-                throw new BadRequestException($"Lỗi cú pháp file JSON: {ex.Message}");
-            }
-
-            if (questionsDto.Count == 0)
-            {
-                throw new BadRequestException("Không tìm thấy danh sách câu hỏi nào trong file JSON.");
-            }
-
-            var questionsToInsert = new List<Question>();
-            var relationsToInsert = new List<QuestionInCategory>();
-            var answersToInsert = new List<QuestionAnswer>();
-
-            // Bắt đầu một Transaction duy nhất thông qua _baseWriteDL
-            await _baseWriteDL.BeginTransactionAsync();
-            try
-            {
-                foreach (var qDto in questionsDto)
-                {
-                    if (string.IsNullOrWhiteSpace(qDto.StringContent))
-                    {
-                        throw new BadRequestException("Nội dung câu hỏi không được phép để trống.");
-                    }
-                    if (qDto.CategoryIds == null || qDto.CategoryIds.Count == 0)
-                    {
-                        throw new BadRequestException($"Câu hỏi '{qDto.StringContent}' phải được gán ít nhất một ID danh mục (CategoryIds).");
-                    }
-                    if (qDto.Answers == null || qDto.Answers.Count == 0)
-                    {
-                        throw new BadRequestException($"Câu hỏi '{qDto.StringContent}' phải có ít nhất một đáp án lựa chọn.");
-                    }
-
-                    // 1. Kiểm tra toàn bộ danh mục phải tồn tại trước (Rule 4) bằng _categoryService (Rule 6 - Tối đa hóa tái sử dụng)
-                    foreach (var catId in qDto.CategoryIds)
-                    {
-                        var existingCats = await _categoryService.GetByCondition<QuestionCategory>(c => c.QuestionCategoryId == catId && !c.IsDeleted);
-                        if (!existingCats.Any())
-                        {
-                            throw new BadRequestException($"Danh mục với ID '{catId}' chưa tồn tại trong hệ thống. Vui lòng tạo danh mục trước.");
-                        }
-                    }
-
-                    // 2. Tạo Slug tự động bằng tiện ích SlugUtil trong Common
-                    string slug = string.IsNullOrWhiteSpace(qDto.Slug)
-                        ? SlugUtil.GenerateSlug(qDto.StringContent)
-                        : SlugUtil.GenerateSlug(qDto.Slug);
-
-                    if (string.IsNullOrWhiteSpace(slug))
-                    {
-                        throw new BadRequestException($"Không thể tạo đường dẫn SEO (Slug) hợp lệ cho câu hỏi: '{qDto.StringContent}'");
-                    }
-
-                    // Kiểm tra câu hỏi trùng slug bằng GetByCondition (Rule 6)
-                    var existingQs = await GetByCondition<Question>(q => q.Slug == slug && !q.IsDeleted);
-                    if (existingQs.Any())
-                    {
-                        _logger.LogWarning("Bỏ qua câu hỏi đã tồn tại với Slug: {Slug}", slug);
-                        continue; // Trùng thì bỏ qua câu hỏi này
-                    }
-
-                    // Khởi tạo đối tượng câu hỏi
-                    var questionId = Guid.NewGuid();
-                    var question = new Question
-                    {
-                        QuestionId = questionId,
-                        Slug = slug,
-                        StringContent = qDto.StringContent.Trim(),
-                        Explaination = qDto.Explaination?.Trim(),
-                        AttemptCount = 0,
-                        Level = (QuestionLevel)qDto.Level,
-                        Type = (QuestionType)qDto.Type,
-                        UserId = currentUserId, // Tài khoản sở hữu
-                        AccessType = (QuestionAccessType)qDto.AccessType, // Quyền truy cập
-                        CreatedBy = "System Bulk Import",
-                        CreatedDate = DateTime.Now,
-                        State = ModelState.Insert
-                    };
-                    questionsToInsert.Add(question);
-
-                    // Khởi tạo bảng trung gian cho từng danh mục được liên kết (Truyền nhiều danh mục)
-                    for (int i = 0; i < qDto.CategoryIds.Count; i++)
-                    {
-                        var catId = qDto.CategoryIds[i];
-                        var relation = new QuestionInCategory
-                        {
-                            QuestionId = questionId,
-                            QuestionCategoryId = catId,
-                            OrderInList = i + 1, // Thứ tự liên kết bắt đầu từ 1 dựa trên thứ tự xuất hiện trong danh sách CategoryIds
-                            CreatedBy = "System Bulk Import",
-                            CreatedDate = DateTime.Now,
-                            State = ModelState.Insert
-                        };
-                        relationsToInsert.Add(relation);
-                    }
-
-                    // 3. Duyệt đáp án
-                    var hasCorrectAnswer = false;
-                    for (int j = 0; j < qDto.Answers.Count; j++)
-                    {
-                        var aDto = qDto.Answers[j];
-                        if (string.IsNullOrWhiteSpace(aDto.StringContent))
-                        {
-                            throw new BadRequestException($"Nội dung đáp án cho câu hỏi '{qDto.StringContent}' không được phép để trống.");
-                        }
-
-                        var answer = new QuestionAnswer
-                        {
-                            QuestionAnswerId = Guid.NewGuid(),
-                            QuestionId = questionId,
-                            StringContent = aDto.StringContent.Trim(),
-                            IsCorrectAnswer = aDto.IsCorrectAnswer,
-                            OrderInList = j + 1, // Thứ tự của câu trả lời tự động gán từ 1 dựa trên vị trí mảng
-                            CreatedBy = "System Bulk Import",
-                            CreatedDate = DateTime.Now,
-                            State = ModelState.Insert
-                        };
-                        answersToInsert.Add(answer);
-
-                        if (aDto.IsCorrectAnswer)
-                        {
-                            hasCorrectAnswer = true;
-                        }
-                    }
-
-                    if (!hasCorrectAnswer)
-                    {
-                        throw new BadRequestException($"Câu hỏi '{qDto.StringContent}' không có phương án nào được đánh dấu là đúng.");
-                    }
-                }
-
-                // 4. Lưu tất cả các danh sách trong transaction
-                if (questionsToInsert.Count > 0)
-                {
-                    await _baseWriteDL.SaveEntitiesAsync(questionsToInsert);
-                }
-
-                if (relationsToInsert.Count > 0)
-                {
-                    await _baseWriteDL.SaveEntitiesAsync(relationsToInsert);
-                }
-
-                if (answersToInsert.Count > 0)
-                {
-                    await _baseWriteDL.SaveEntitiesAsync(answersToInsert);
-                }
-
-                await _baseWriteDL.CommitTransactionAsync();
-            }
-            catch (Exception ex)
-            {
-                await _baseWriteDL.RollbackTransactionAsync();
-                _logger.LogError(ex, "Thất bại khi thực thi ImportBulkFromJson. Đã rollback.");
-                throw;
-            }
-
-            return questionsToInsert.Count;
-        }
 
         /// <summary>
         /// Tiền xử lý xóa - thực hiện xóa mềm/cascade các thực thể liên quan
         /// </summary>
-        public override async Task Delete(DeleteRequest request)
+        public override async Task DeleteAsync(DeleteRequest request)
         {
             var res = await Get<Question>(new GetRequest { Ids = request.Ids });
             if (res.Items.Count == 0) return;
@@ -266,7 +95,6 @@ namespace HoangCN.LearnMS.Services
             var questionIds = entities.Select(q => q.QuestionId).ToList();
 
             var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
-            var queryableRel = _baseWriteDL.GetQueryable<QuestionInCategory>();
 
             // 1. Xóa mềm đáp án
             var answers = queryableAns
@@ -275,32 +103,22 @@ namespace HoangCN.LearnMS.Services
             foreach (var a in answers)
             {
                 a.IsDeleted = true;
-                a.State = ModelState.Delete;
             }
-
-            // 2. Xóa mềm liên kết danh mục
-            var relations = queryableRel
-                .Where(r => questionIds.Contains(r.QuestionId) && !r.IsDeleted)
-                .ToList();
-            foreach (var r in relations)
-            {
-                r.IsDeleted = true;
-                r.State = ModelState.Delete;
-            }
-
-            base.BeforeDelete(entities);
 
             await _baseWriteDL.BeginTransactionAsync();
             try
             {
-                await base.Save(entities);
-                if (answers.Count > 0) await _baseWriteDL.SaveEntitiesAsync(answers);
-                if (relations.Count > 0) await _baseWriteDL.SaveEntitiesAsync(relations);
+                if (answers.Count > 0)
+                {
+                    await _baseWriteDL.DeleteRangeAsync(answers);
+                }
+                await _baseWriteDL.DeleteRangeAsync(entities);
                 await _baseWriteDL.CommitTransactionAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 await _baseWriteDL.RollbackTransactionAsync();
+                _logger.LogError(ex, "Thất bại khi thực thi Delete. Đã rollback.");
                 throw;
             }
         }
@@ -440,40 +258,11 @@ namespace HoangCN.LearnMS.Services
                 }
             }
 
-            // Xử lý bộ lọc CategoryId
+            // Xử lý bộ lọc CategoryId: Đổi tên thuộc tính để khớp với trường QuestionCategoryId trên bảng Question
             var categoryFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "CategoryId", StringComparison.OrdinalIgnoreCase));
             if (categoryFilter != null)
             {
-                request.Filters.Remove(categoryFilter);
-
-                if (Guid.TryParse(categoryFilter.Value?.ToString(), out Guid catId))
-                {
-                    var sql = QuestionSqlUtil.BuildQueryQuestionIdsByCategory(catId, out var catParams);
-                    var relationsForCategory = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(sql, catParams);
-                    var questionIdsForCategory = (relationsForCategory ?? Enumerable.Empty<QuestionInCategory>())
-                        .Where(r => r != null)
-                        .Select(r => r.QuestionId)
-                        .ToList();
-
-                    if (questionIdsForCategory.Count == 0)
-                    {
-                        return result; // Trả về danh sách rỗng nếu không có câu hỏi nào trong danh mục này
-                    }
-
-                    if (request.Ids.Count > 0)
-                    {
-                        request.Ids = request.Ids.Intersect(questionIdsForCategory).ToList();
-                    }
-                    else
-                    {
-                        request.Ids = questionIdsForCategory;
-                    }
-
-                    if (request.Ids.Count == 0)
-                    {
-                        return result; // Trả về danh sách rỗng sau khi giao nhau
-                    }
-                }
+                categoryFilter.Property = "QuestionCategoryId";
             }
 
             var questionsResult = await Get<Question>(request, condition);
@@ -505,26 +294,16 @@ namespace HoangCN.LearnMS.Services
             var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
             var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
 
-            // Lấy danh sách liên kết danh mục qua raw SQL tập trung
-            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionIds(questionIds, out var relParams);
-            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
-
             var answerGroup = (answers ?? Enumerable.Empty<QuestionAnswer>())
                 .Where(a => a != null)
                 .GroupBy(a => a.QuestionId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(a => a.OrderInList).ToList());
-
-            var relationGroup = (relations ?? Enumerable.Empty<QuestionInCategory>())
-                .Where(r => r != null)
-                .GroupBy(r => r.QuestionId)
-                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.OrderInList).Select(r => r.QuestionCategoryId).ToList());
 
             foreach (var q in questionsResult.Items)
             {
                 if (q == null) continue;
 
                 answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
-                relationGroup.TryGetValue(q.QuestionId, out var qCategoryIds);
 
                 result.Items.Add(new QuestionDetailsDto
                 {
@@ -536,7 +315,7 @@ namespace HoangCN.LearnMS.Services
                     Type = (int)q.Type,
                     AccessType = (int)q.AccessType,
                     IsMyCreated = q.UserId == currentUserId,
-                    CategoryIds = qCategoryIds ?? new List<Guid>(),
+                    QuestionCategoryId = q.QuestionCategoryId,
                     Answers = qAnswers?.Select(a => new AnswerDetailsDto
                     {
                         QuestionAnswerId = a.QuestionAnswerId,
@@ -562,10 +341,6 @@ namespace HoangCN.LearnMS.Services
             var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionId(id, out var ansParams);
             var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
 
-            // Lấy danh sách liên kết danh mục qua raw SQL tập trung
-            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionId(id, out var relParams);
-            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
-
             int correctCount = answers?.Count(a => a.IsCorrectAnswer) ?? 0;
             int determinedType = correctCount > 1 ? 1 : 0;
 
@@ -579,7 +354,7 @@ namespace HoangCN.LearnMS.Services
                 Type = determinedType,
                 AccessType = (int)q.AccessType,
                 IsMyCreated = q.UserId == currentUserId,
-                CategoryIds = relations.Select(r => r.QuestionCategoryId).ToList(),
+                QuestionCategoryId = q.QuestionCategoryId,
                 Answers = answers.Select(a => new AnswerDetailsDto
                 {
                     QuestionAnswerId = a.QuestionAnswerId,
@@ -615,22 +390,14 @@ namespace HoangCN.LearnMS.Services
             var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
             var answers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams);
 
-            var relSql = QuestionSqlUtil.BuildQueryCategoriesByQuestionIds(questionIds, out var relParams);
-            var relations = await _baseReadDL.ExecuteQueryText<QuestionInCategory>(relSql, relParams);
-
             var answerGroup = (answers ?? Enumerable.Empty<QuestionAnswer>())
                 .GroupBy(a => a.QuestionId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(a => a.OrderInList).ToList());
-
-            var relationGroup = (relations ?? Enumerable.Empty<QuestionInCategory>())
-                .GroupBy(r => r.QuestionId)
-                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.OrderInList).Select(r => r.QuestionCategoryId).ToList());
 
             var result = new List<QuestionDetailsDto>();
             foreach (var q in questions)
             {
                 answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
-                relationGroup.TryGetValue(q.QuestionId, out var qCategoryIds);
 
                 bool isOwner = q.UserId == currentUserId;
                 int correctCount = qAnswers?.Count(a => a.IsCorrectAnswer) ?? 0;
@@ -646,7 +413,7 @@ namespace HoangCN.LearnMS.Services
                     Type = determinedType,
                     AccessType = (int)q.AccessType,
                     IsMyCreated = isOwner,
-                    CategoryIds = qCategoryIds ?? new List<Guid>(),
+                    QuestionCategoryId = q.QuestionCategoryId,
                     Answers = qAnswers?.Select(a => new AnswerDetailsDto
                     {
                         QuestionAnswerId = a.QuestionAnswerId,
@@ -669,11 +436,18 @@ namespace HoangCN.LearnMS.Services
                 throw new BadRequestException("Dữ liệu trống hoặc sai định dạng");
             }
 
-            var questionsToSave = new List<Question>();
-            var answersToSave = new List<QuestionAnswer>();
-            var relationsToSave = new List<QuestionInCategory>();
+            // Validate dữ liệu đầu vào
+            ValidateUtil.CommonValidate(questionsDto);
+
+            // Kiểm tra tồn tại danh mục câu hỏi (CheckExist)
+            await ValidateUtil.CheckExist(questionsDto, _baseReadDL);
+
+            var questionsToInsert = new List<Question>();
+            var questionsToUpdate = new List<Question>();
+            var answersToInsert = new List<QuestionAnswer>();
+            var answersToUpdate = new List<QuestionAnswer>();
             var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
-            var queryableRel = _baseWriteDL.GetQueryable<QuestionInCategory>();
+
             foreach (var qDto in questionsDto)
             {
                 var isNew = qDto.Id == Guid.Empty;
@@ -694,9 +468,9 @@ namespace HoangCN.LearnMS.Services
                     q = new Question
                     {
                         QuestionId = questionId,
-                        UserId = currentUserId,
-                        State = ModelState.Insert
+                        UserId = currentUserId
                     };
+                    questionsToInsert.Add(q);
                 }
                 else
                 {
@@ -707,13 +481,13 @@ namespace HoangCN.LearnMS.Services
                         q = new Question
                         {
                             QuestionId = questionId,
-                            UserId = currentUserId,
-                            State = ModelState.Insert
+                            UserId = currentUserId
                         };
+                        questionsToInsert.Add(q);
                     }
                     else
                     {
-                        q.State = ModelState.Update;
+                        questionsToUpdate.Add(q);
                     }
                 }
 
@@ -723,7 +497,7 @@ namespace HoangCN.LearnMS.Services
                 q.Level = (QuestionLevel)qDto.Level;
                 q.Type = (QuestionType)qDto.Type;
                 q.AccessType = (QuestionAccessType)qDto.AccessType;
-                questionsToSave.Add(q);
+                q.QuestionCategoryId = qDto.QuestionCategoryId;
 
                 // Load answers hiện tại
                 var existingAnswers = new List<QuestionAnswer>();
@@ -741,8 +515,7 @@ namespace HoangCN.LearnMS.Services
                     if (!inputAnswerIds.Contains(ea.QuestionAnswerId))
                     {
                         ea.IsDeleted = true;
-                        ea.State = ModelState.Delete;
-                        answersToSave.Add(ea);
+                        answersToUpdate.Add(ea);
                     }
                 }
 
@@ -757,9 +530,9 @@ namespace HoangCN.LearnMS.Services
                         ans = new QuestionAnswer
                         {
                             QuestionAnswerId = Guid.NewGuid(),
-                            QuestionId = questionId,
-                            State = ModelState.Insert
+                            QuestionId = questionId
                         };
+                        answersToInsert.Add(ans);
                     }
                     else
                     {
@@ -769,64 +542,19 @@ namespace HoangCN.LearnMS.Services
                             ans = new QuestionAnswer
                             {
                                 QuestionAnswerId = ansDto.QuestionAnswerId,
-                                QuestionId = questionId,
-                                State = ModelState.Insert
+                                QuestionId = questionId
                             };
+                            answersToInsert.Add(ans);
                         }
                         else
                         {
-                            ans.State = ModelState.Update;
+                            answersToUpdate.Add(ans);
                         }
                     }
 
                     ans.StringContent = ansDto.StringContent?.Trim();
                     ans.IsCorrectAnswer = ansDto.IsCorrectAnswer;
                     ans.OrderInList = i + 1;
-                    answersToSave.Add(ans);
-                }
-
-                // Load danh mục hiện tại của câu hỏi
-                var existingRelations = new List<QuestionInCategory>();
-                if (!isNew)
-                {
-                    existingRelations = queryableRel
-                        .Where(r => r.QuestionId == questionId && !r.IsDeleted)
-                        .ToList();
-                }
-
-                // Xóa các liên kết cũ không dùng nữa
-                foreach (var er in existingRelations)
-                {
-                    if (!qDto.CategoryIds.Contains(er.QuestionCategoryId))
-                    {
-                        er.IsDeleted = true;
-                        er.State = ModelState.Delete;
-                        relationsToSave.Add(er);
-                    }
-                }
-
-                // Thêm hoặc cập nhật liên kết mới
-                for (int i = 0; i < qDto.CategoryIds.Count; i++)
-                {
-                    var catId = qDto.CategoryIds[i];
-                    var rel = existingRelations.FirstOrDefault(r => r.QuestionCategoryId == catId);
-                    if (rel == null)
-                    {
-                        rel = new QuestionInCategory
-                        {
-                            QuestionId = questionId,
-                            QuestionCategoryId = catId,
-                            OrderInList = i + 1,
-                            State = ModelState.Insert
-                        };
-                        relationsToSave.Add(rel);
-                    }
-                    else
-                    {
-                        rel.State = ModelState.Update;
-                        rel.OrderInList = i + 1;
-                        relationsToSave.Add(rel);
-                    }
                 }
             }
 
@@ -837,41 +565,37 @@ namespace HoangCN.LearnMS.Services
                 var now = DateTime.Now;
 
                 // Điền thông tin Audit
-                foreach (var q in questionsToSave)
+                foreach (var q in questionsToInsert)
                 {
-                    if (q.State == ModelState.Insert)
-                    {
-                        q.CreatedBy = "Hoàng Cao Nguyên";
-                        q.CreatedDate = now;
-                    }
+                    q.CreatedBy = "Hoàng Cao Nguyên";
+                    q.CreatedDate = now;
                     q.ModifiedBy = "Hoàng Cao Nguyên";
                     q.ModifiedDate = now;
                 }
-                await _baseWriteDL.SaveEntitiesAsync(questionsToSave);
-
-                foreach (var ans in answersToSave)
+                foreach (var q in questionsToUpdate)
                 {
-                    if (ans.State == ModelState.Insert)
-                    {
-                        ans.CreatedBy = "Hoàng Cao Nguyên";
-                        ans.CreatedDate = now;
-                    }
+                    q.ModifiedBy = "Hoàng Cao Nguyên";
+                    q.ModifiedDate = now;
+                }
+
+                foreach (var ans in answersToInsert)
+                {
+                    ans.CreatedBy = "Hoàng Cao Nguyên";
+                    ans.CreatedDate = now;
                     ans.ModifiedBy = "Hoàng Cao Nguyên";
                     ans.ModifiedDate = now;
                 }
-                await _baseWriteDL.SaveEntitiesAsync(answersToSave);
-
-                foreach (var rel in relationsToSave)
+                foreach (var ans in answersToUpdate)
                 {
-                    if (rel.State == ModelState.Insert)
-                    {
-                        rel.CreatedBy = "Hoàng Cao Nguyên";
-                        rel.CreatedDate = now;
-                    }
-                    rel.ModifiedBy = "Hoàng Cao Nguyên";
-                    rel.ModifiedDate = now;
+                    ans.ModifiedBy = "Hoàng Cao Nguyên";
+                    ans.ModifiedDate = now;
                 }
-                await _baseWriteDL.SaveEntitiesAsync(relationsToSave);
+
+                // Thực thi ghi DB
+                if (questionsToInsert.Count > 0) await _baseWriteDL.InsertRangeAsync(questionsToInsert);
+                if (questionsToUpdate.Count > 0) await _baseWriteDL.UpdateRangeAsync(questionsToUpdate);
+                if (answersToInsert.Count > 0) await _baseWriteDL.InsertRangeAsync(answersToInsert);
+                if (answersToUpdate.Count > 0) await _baseWriteDL.UpdateRangeAsync(answersToUpdate);
 
                 await _baseWriteDL.CommitTransactionAsync();
             }
@@ -879,6 +603,106 @@ namespace HoangCN.LearnMS.Services
             {
                 await _baseWriteDL.RollbackTransactionAsync();
                 _logger.LogError(ex, "Thất bại khi thực thi SaveQuestionDetails. Đã rollback.");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Lưu danh sách câu hỏi 
+        /// </summary>
+        public async Task SaveListQuestions(SaveQuestionsRequest request, Guid currentUserId)
+        {
+            // Đảm bảo có dữ liệu để lưu
+            if (request.Questions.Count == 0)
+            {
+                throw new BadRequestException("Dữ liệu trống hoặc sai định dạng");
+            }
+
+            // Validate đơn giản
+            ValidateUtil.CommonValidate(request.Questions);
+
+            // Kiểm tra tồn tại
+            await ValidateUtil.CheckExist(request.Questions, _baseReadDL);
+
+            // Đảm bảo mỗi câu hỏi có ít nhất 1 đáp án đúng
+            foreach (var q in request.Questions)
+            {
+                if (q.Answers == null || q.Answers.Count == 0 || !q.Answers.Any(a => a.IsCorrectAnswer))
+                {
+                    throw new BadRequestException("Mỗi câu hỏi phải có ít nhất một đáp án đúng.");
+                }
+            }
+
+            // Tạo danh sách thực thể để lưu
+            var questionsToInsert = new List<Question>();
+            var answersToInsert = new List<QuestionAnswer>();
+            Func<SaveQuestionsDto, QuestionType> getQuestionType = (q) =>
+            {
+                var correctCount = q.Answers.Count(a => a.IsCorrectAnswer);
+                if (correctCount == 0)
+                {
+                    throw new BadRequestException("Mỗi câu hỏi phải có ít nhất một đáp án đúng.");
+                }
+                else if (correctCount == 1)
+                {
+                    return QuestionType.SingleChoice;
+                }
+                else
+                {
+                    return QuestionType.MultipleChoice;
+                }
+            };
+            foreach (var q in request.Questions)
+            {
+                questionsToInsert.Add(new Question
+                {
+                    QuestionId = Guid.NewGuid(),
+                    Slug = SlugUtil.GenerateSlug(q.StringContent.Trim()),
+                    StringContent = q.StringContent?.Trim(),
+                    Explaination = q.Explaination?.Trim(),
+                    Level = q.Level,
+                    Type = getQuestionType(q),
+                    AccessType = request.AccessType,
+                    IsInBank = request.IsInBank,
+                    UserId = currentUserId,
+                    QuestionCategoryId = q.QuestionCategoryId,
+                    AttemptCount = 0
+                });
+
+                // Điền thông tin đáp án
+                var now = DateTime.Now;
+                for (int i = 0; i < q.Answers.Count; i++)
+                {
+                    answersToInsert.Add(new QuestionAnswer
+                    {
+                        QuestionAnswerId = Guid.NewGuid(),
+                        QuestionId = questionsToInsert.Last().QuestionId,
+                        StringContent = q.Answers[i].StringContent?.Trim(),
+                        IsCorrectAnswer = q.Answers[i].IsCorrectAnswer,
+                        OrderInList = i + 1,
+                        CreatedBy = currentUserId.ToString(),
+                        CreatedDate = now,
+                        ModifiedBy = currentUserId.ToString(),
+                        ModifiedDate = now,
+                        IsDeleted = false
+                    });
+                }
+            }
+
+            // Ghi nhận thay đổi trong Transaction
+            await _baseWriteDL.BeginTransactionAsync();
+            try
+            {
+                await BeforeInsert(questionsToInsert);
+
+                // Thực thi ghi DB
+                if (questionsToInsert.Count > 0) await _baseWriteDL.InsertRangeAsync(questionsToInsert);
+                if (answersToInsert.Count > 0) await _baseWriteDL.InsertRangeAsync(answersToInsert);
+                await _baseWriteDL.CommitTransactionAsync();
+            }
+            catch (Exception ex)
+            {
+                await _baseWriteDL.RollbackTransactionAsync();
                 throw;
             }
         }

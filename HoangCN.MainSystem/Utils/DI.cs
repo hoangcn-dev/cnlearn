@@ -6,7 +6,7 @@ using HoangCN.MainSystem.Utils;
 using HoangCN.Core.BL;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ZLearn.Application.Common.Utils;
+using HoangCN.Core.Common.Utils;
 
 namespace HoangCN.MainSystem.Utils
 {

@@ -15,7 +15,9 @@ namespace HoangCN.LearnMS.DTOs
         public int Level { get; set; }
         public int Type { get; set; }
         public int AccessType { get; set; }
-        public List<Guid> CategoryIds { get; set; } = new();
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Danh mục không được phép để trống.")]
+        [HoangCN.Core.Common.Attributes.CheckExist(MustExist = true, TargetEntity = typeof(HoangCN.LearnMS.Entities.QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
+        public Guid QuestionCategoryId { get; set; }
         public List<AnswerDetailsDto> Answers { get; set; } = new();
         public bool IsMyCreated { get; set; }
     }

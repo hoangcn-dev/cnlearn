@@ -12,11 +12,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
+
 namespace HoangCN.LearnMS.Services
 {
     public class ExamAttemptService : BaseBL<ExamAttempt>, IExamAttemptService
     {
-        public ExamAttemptService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL) : base(baseReadDL, baseWriteDL)
+        public ExamAttemptService(IBaseReadDL baseReadDL, IBaseWriteDL baseWriteDL, IHttpContextAccessor httpContextAccessor) 
+            : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
         }
 
@@ -120,21 +123,16 @@ namespace HoangCN.LearnMS.Services
                 StartedDate = DateTime.Now.AddSeconds(-result.Duration),
                 FinishedDate = DateTime.Now,
                 CreatedBy = userId.ToString(),
-                CreatedDate = DateTime.Now,
-                State = HoangCN.Core.Common.Enums.ModelState.Insert
+                CreatedDate = DateTime.Now
             };
 
             await _baseWriteDL.BeginTransactionAsync();
             try
             {
-                await _baseWriteDL.SaveEntitiesAsync(new List<ExamAttempt> { examAttempt });
+                await _baseWriteDL.InsertRangeAsync(new List<ExamAttempt> { examAttempt });
                 if (attemptDetailsToInsert.Count > 0)
                 {
-                    foreach (var d in attemptDetailsToInsert)
-                    {
-                        d.State = HoangCN.Core.Common.Enums.ModelState.Insert;
-                    }
-                    await _baseWriteDL.SaveEntitiesAsync(attemptDetailsToInsert);
+                    await _baseWriteDL.InsertRangeAsync(attemptDetailsToInsert);
                 }
                 await _baseWriteDL.CommitTransactionAsync();
             }
