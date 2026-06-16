@@ -1341,14 +1341,27 @@ const handleImportExam = async () => {
 
       let count = 0
       examQuestions.forEach((q: any) => {
-        const copyQ = JSON.parse(JSON.stringify(q)) // deep copy
-        copyQ.id = 'imported_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
+        const normalizedQ: Question = {
+          id: 'imported_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          slug: q.slug || '',
+          stringContent: q.stringContent || '',
+          explanation: q.explanation || q.explaination || '',
+          level: q.level || 0,
+          type: q.type || 0,
+          accessType: q.accessType || 1,
+          categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
+          answers: (q.answers || q.Answers || []).map((ans: any) => ({
+            questionAnswerId: ans.questionAnswerId || '',
+            stringContent: ans.stringContent || '',
+            isCorrectAnswer: ans.isCorrectAnswer || false
+          }))
+        }
         
         if (importExamFilter.shuffleOptions) {
-          shuffleChoices(copyQ)
+          shuffleChoices(normalizedQ)
         }
 
-        questionsList.value.push(copyQ)
+        questionsList.value.push(normalizedQ)
         count++
       })
 
