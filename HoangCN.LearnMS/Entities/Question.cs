@@ -86,7 +86,6 @@ namespace HoangCN.LearnMS.Entities
         [CheckExist(MustExist = true, TargetEntity = typeof(QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
         public Guid QuestionCategoryId { get; set; }
 
-        [System.ComponentModel.DataAnnotations.Schema.ForeignKey("QuestionCategoryId")]
-        public virtual QuestionCategory? QuestionCategory { get; set; }
+
     }
 }
