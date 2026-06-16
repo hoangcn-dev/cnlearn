@@ -463,6 +463,7 @@ namespace HoangCN.LearnMS.Services
                     : SlugUtil.GenerateSlug(qDto.Slug);
 
                 Question q;
+                bool isInsertingQuestion = false;
                 if (isNew)
                 {
                     q = new Question
@@ -471,11 +472,12 @@ namespace HoangCN.LearnMS.Services
                         UserId = currentUserId
                     };
                     questionsToInsert.Add(q);
+                    isInsertingQuestion = true;
                 }
                 else
                 {
                     var existingList = await GetByCondition<Question>(x => x.QuestionId == questionId);
-                    q = existingList.FirstOrDefault();
+                    q = existingList.FirstOrDefault()!;
                     if (q == null)
                     {
                         q = new Question
@@ -484,6 +486,7 @@ namespace HoangCN.LearnMS.Services
                             UserId = currentUserId
                         };
                         questionsToInsert.Add(q);
+                        isInsertingQuestion = true;
                     }
                     else
                     {
@@ -498,10 +501,11 @@ namespace HoangCN.LearnMS.Services
                 q.Type = (QuestionType)qDto.Type;
                 q.AccessType = (QuestionAccessType)qDto.AccessType;
                 q.QuestionCategoryId = qDto.QuestionCategoryId;
+                q.IsInBank = false;
 
                 // Load answers hiện tại
                 var existingAnswers = new List<QuestionAnswer>();
-                if (!isNew)
+                if (!isInsertingQuestion)
                 {
                     existingAnswers = queryableAns
                         .Where(a => a.QuestionId == questionId && !a.IsDeleted)
@@ -523,7 +527,7 @@ namespace HoangCN.LearnMS.Services
                 for (int i = 0; i < qDto.Answers.Count; i++)
                 {
                     var ansDto = qDto.Answers[i];
-                    var isNewAns = ansDto.QuestionAnswerId == Guid.Empty;
+                    var isNewAns = isInsertingQuestion || ansDto.QuestionAnswerId == Guid.Empty;
                     QuestionAnswer ans;
                     if (isNewAns)
                     {

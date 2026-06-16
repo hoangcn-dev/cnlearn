@@ -79,6 +79,16 @@ namespace HoangCN.LearnMS.Services
                 throw new BadRequestException("Tên đề thi không được phép để trống.");
             }
 
+            if (dto.Questions == null)
+            {
+                throw new BadRequestException("Danh sách câu hỏi không được phép để trống.");
+            }
+
+            if (dto.Questions.Count > 100)
+            {
+                throw new BadRequestException("Số lượng câu hỏi trong một đề thi không được vượt quá 100 câu.");
+            }
+
             var isNew = !dto.ExamId.HasValue || dto.ExamId.Value == Guid.Empty;
             var examId = isNew ? Guid.NewGuid() : dto.ExamId!.Value;
 

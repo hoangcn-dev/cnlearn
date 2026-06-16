@@ -1,3 +1,4 @@
+#nullable enable
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ namespace HoangCN.Core.DL.Implementation
     {
         private readonly DbContext _context;
         private IDbContextTransaction? _transaction;
+        private int _transactionCount = 0;
 
         public BaseWriteDL(DbContext context)
         {
@@ -35,6 +37,7 @@ namespace HoangCN.Core.DL.Implementation
             {
                 _transaction = await _context.Database.BeginTransactionAsync();
             }
+            _transactionCount++;
         }
 
         /// <summary>
@@ -42,11 +45,15 @@ namespace HoangCN.Core.DL.Implementation
         /// </summary>
         public async Task CommitTransactionAsync()
         {
-            if (_transaction != null)
+            if (_transactionCount > 0)
             {
-                await _transaction.CommitAsync();
-                await _transaction.DisposeAsync();
-                _transaction = null;
+                _transactionCount--;
+                if (_transactionCount == 0 && _transaction != null)
+                {
+                    await _transaction.CommitAsync();
+                    await _transaction.DisposeAsync();
+                    _transaction = null;
+                }
             }
         }
 
@@ -61,6 +68,7 @@ namespace HoangCN.Core.DL.Implementation
                 await _transaction.DisposeAsync();
                 _transaction = null;
             }
+            _transactionCount = 0;
         }
 
         /// <summary>

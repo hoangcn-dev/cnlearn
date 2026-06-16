@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

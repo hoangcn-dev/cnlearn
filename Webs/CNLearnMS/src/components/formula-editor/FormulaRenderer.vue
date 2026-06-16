@@ -66,7 +66,7 @@ const renderedHTML = computed(() => {
   })
 
   // 3. Render Markdown từ văn bản đã tách công thức
-  let htmlResult = md.render(text)
+  let htmlResult = props.inline ? md.renderInline(text) : md.render(text)
 
   mathTokens.forEach((mathHtml, index) => {
     const token = `%%MATH_TOKEN_${index}%%`

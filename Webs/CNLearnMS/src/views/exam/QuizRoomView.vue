@@ -818,14 +818,17 @@ const submitExam = (bypassConfirm = false) => {
 }
 
 .nav-q-btn {
+  width: 100% !important;
+  aspect-ratio: 1 / 1;
   font-size: 0.8rem;
-  padding: 8px 0;
+  padding: 0 !important;
+  min-width: 0 !important;
   border: 1px solid #cbd5e1;
 }
 
 .sticky-sidebar {
   position: sticky;
-  top: 88px;
+  top: 20px; /* Closer to top since there is no sticky header navbar in this mode */
   z-index: 10;
 }
 

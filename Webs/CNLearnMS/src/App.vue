@@ -18,10 +18,10 @@
               <router-link to="/practice" class="nav-link px-3 py-2 rounded" active-class="nav-active">Luyện tập</router-link>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link px-3 py-2 rounded">Khóa học</a>
+              <a href="#" class="nav-link px-3 py-2 rounded" @click.prevent="showMaintenanceToast('Khóa học')">Khóa học</a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link px-3 py-2 rounded">Tài liệu</a>
+              <a href="#" class="nav-link px-3 py-2 rounded" @click.prevent="showMaintenanceToast('Tài liệu')">Tài liệu</a>
             </li>
           </ul>
           <div class="d-flex align-items-center gap-3">
@@ -139,6 +139,10 @@ const isLoggedIn = ref(false)
 const userName = ref('')
 const userInitials = ref('')
 const isInitialized = ref(false)
+
+const showMaintenanceToast = (moduleName: string) => {
+  message.info(`Tính năng "${moduleName}" đang được phát triển và bảo trì. Vui lòng quay lại sau!`)
+}
 
 const checkLoginStatus = async () => {
   if (isInitialized.value) {

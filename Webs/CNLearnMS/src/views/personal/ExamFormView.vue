@@ -198,7 +198,7 @@
               </button>
             </div>
             <div class="col-sm-3 col-6">
-              <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="pdfModalOpen = true">
+              <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="showPdfMaintenanceToast">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Phân tích từ PDF</span>
               </button>
@@ -1351,7 +1351,7 @@ const handleImportExam = async () => {
           accessType: q.accessType || 1,
           categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
           answers: (q.answers || q.Answers || []).map((ans: any) => ({
-            questionAnswerId: ans.questionAnswerId || '',
+            questionAnswerId: '',
             stringContent: ans.stringContent || '',
             isCorrectAnswer: ans.isCorrectAnswer || false
           }))
@@ -1475,7 +1475,8 @@ const saveSingleQuestion = () => {
       existingQ.level = singleQuestionForm.level
       existingQ.categoryIds = [...singleQuestionForm.categoryIds]
       existingQ.answers = cleanAnswers
-      // Note: we KEEP the existing ID! We do NOT generate a new ID!
+      // Reset ID to temporary ID so that it duplicates rather than overwriting bank questions
+      existingQ.id = 'manual_edited_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
       message.success('Đã cập nhật câu hỏi!')
     }
   }
@@ -1488,10 +1489,19 @@ const ensureGuid = (id: string): string => {
   return isGuid ? id : '00000000-0000-0000-0000-000000000000'
 }
 
+const showPdfMaintenanceToast = () => {
+  message.info('Tính năng "Phân tích đề từ PDF/Word" đang được phát triển và bảo trì. Vui lòng quay lại sau!')
+}
+
 // Global Save Form Action
 const saveForm = async (isDraft = false) => {
   if (!formData.name.trim()) {
     message.error('Vui lòng nhập tên đề/kỳ thi!')
+    return
+  }
+
+  if (questionsList.value.length > 100) {
+    message.error('Mỗi đề thi chỉ được phép chứa tối đa 100 câu hỏi. Vui lòng giảm số lượng câu hỏi!')
     return
   }
 
@@ -1572,7 +1582,17 @@ const saveForm = async (isDraft = false) => {
             examId: ensureGuid(savedExamId),
             startDate: startDateVal,
             endDate: endDateVal,
-            isDraft: isDraft
+            isDraft: isDraft,
+            lockBrowser: formData.antiCheat.lockBrowser,
+            shuffleQuestions: formData.antiCheat.shuffleQuestions,
+            disableCopyPaste: formData.antiCheat.disableCopyPaste,
+            fullscreen: formData.antiCheat.fullscreen,
+            webcam: formData.antiCheat.webcam,
+            ipLimit: formData.antiCheat.ipLimit,
+            allowLateJoin: formData.allowLateJoin,
+            allowLateSubmit: formData.allowLateSubmit,
+            publicLeaderboard: formData.publicLeaderboard,
+            sendEmailReport: formData.sendEmailReport
           }
 
           const qres = await saveQuizDetails(quizPayload)
@@ -1602,7 +1622,17 @@ const saveForm = async (isDraft = false) => {
             examId: ensureGuid(savedExamId),
             startDate: startDateVal,
             endDate: endDateVal,
-            isDraft: isDraft
+            isDraft: isDraft,
+            lockBrowser: formData.antiCheat.lockBrowser,
+            shuffleQuestions: formData.antiCheat.shuffleQuestions,
+            disableCopyPaste: formData.antiCheat.disableCopyPaste,
+            fullscreen: formData.antiCheat.fullscreen,
+            webcam: formData.antiCheat.webcam,
+            ipLimit: formData.antiCheat.ipLimit,
+            allowLateJoin: formData.allowLateJoin,
+            allowLateSubmit: formData.allowLateSubmit,
+            publicLeaderboard: formData.publicLeaderboard,
+            sendEmailReport: formData.sendEmailReport
           }
 
           const qres = await saveQuizDetails(quizPayload)

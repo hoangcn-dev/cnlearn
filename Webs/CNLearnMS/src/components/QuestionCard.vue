@@ -1,38 +1,38 @@
 <template>
   <div 
-    class="question-card mb-4 border-0 rounded-4 shadow-sm bg-white overflow-hidden"
+    class="question-card border rounded-3 shadow-sm bg-white overflow-hidden"
     :class="cardBorderClass"
   >
     <!-- Question Header -->
-    <div class="px-4 py-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="d-flex align-items-center gap-2">
-        <a-tag color="blue" class="fw-bold px-3 py-1 fs-7 rounded-3 m-0">
+        <a-tag color="blue" class="fw-bold px-2 py-0.5 fs-8 rounded-2 m-0">
           Câu {{ index }}
         </a-tag>
-        <a-tag v-if="question.level !== undefined" :color="getLevelColor(question.level)" class="m-0 fw-semibold">
+        <a-tag v-if="question.level !== undefined" :color="getLevelColor(question.level)" class="m-0 fw-semibold px-2 py-0.5 fs-8 rounded-2">
           {{ getLevelText(question.level) }}
         </a-tag>
-        <a-tag v-if="isMultipleChoice" color="purple" class="m-0">
+        <a-tag v-if="isMultipleChoice" color="purple" class="m-0 px-2 py-0.5 fs-8 rounded-2">
           Chọn nhiều đáp án
         </a-tag>
       </div>
       
       <!-- Result Badge (Result Mode) -->
       <div v-if="mode === 'result'" class="ms-auto">
-        <a-tag :color="isCorrectResult ? 'success' : 'error'" class="m-0 px-3 py-1 fw-bold fs-7 rounded-pill">
+        <a-tag :color="isCorrectResult ? 'success' : 'error'" class="m-0 px-2.5 py-0.5 fw-bold fs-8 rounded-pill">
           {{ isCorrectResult ? '✓ Trả lời Đúng' : '✗ Trả lời Sai' }}
         </a-tag>
       </div>
     </div>
 
     <!-- Question Content -->
-    <div class="p-4">
-      <div class="question-text mb-4 text-dark-blue fs-6 fw-semibold leading-relaxed">
+    <div class="p-3">
+      <div class="question-text mb-3 text-dark-blue fw-semibold leading-relaxed">
         <FormulaRenderer :content="question.stringContent" />
       </div>
 
       <!-- Options Container -->
-      <div :class="mode === 'result' ? 'row g-3 mb-4' : 'd-flex flex-column gap-3 mb-4'">
+      <div :class="mode === 'result' ? 'row g-2 mb-3' : 'd-flex flex-column gap-2 mb-3'">
         <div 
           v-for="(ans, aIdx) in question.answers" 
           :key="ans.id || ans.questionAnswerId || aIdx" 
@@ -42,7 +42,7 @@
           ]"
         >
           <div 
-            class="option-item-box p-3 rounded-3 border d-flex align-items-center gap-3 transition hover-pointer h-100"
+            class="option-item-box py-2 px-3 rounded-3 border d-flex align-items-center gap-2 transition hover-pointer h-100"
             :class="getOptionBoxClass(ans, aIdx)"
             @click="handleSelect(ans, aIdx)"
           >
@@ -63,7 +63,7 @@
             </div>
 
             <!-- Option Text -->
-            <div class="option-content-text text-dark flex-grow-1 ps-1 mb-0 small">
+            <div class="option-content-text d-flex align-items-center text-dark flex-grow-1 ps-1 mb-0">
               <span class="fw-bold text-dark-blue me-1">{{ getIndexChar(ans, aIdx) }}.</span>
               <FormulaRenderer :content="ans.stringContent" :inline="true" />
             </div>
@@ -104,13 +104,13 @@
       <!-- Explanation Box -->
       <div 
         v-if="shouldShowExplanation && explanationContent"
-        class="explanation-box p-4 rounded-4 border-start border-4 bg-light"
+        class="explanation-box p-3 rounded-3 border-start border-4 bg-light"
         style="border-left-color: var(--ant-primary-color, #4f46e5) !important;"
       >
-        <div class="fw-bold text-indigo mb-2 d-flex align-items-center gap-2 fs-6">
+        <div class="fw-bold text-indigo mb-2 d-flex align-items-center gap-2 fs-7">
           <span>💡</span> Hướng dẫn giải chi tiết:
         </div>
-        <div class="text-secondary leading-relaxed fs-7">
+        <div class="text-secondary leading-relaxed fs-8">
           <FormulaRenderer :content="explanationContent" />
         </div>
       </div>
@@ -337,7 +337,28 @@ const handleSelect = (ans: Answer, aIdx: number) => {
   line-height: 1.5;
 }
 
+.question-text {
+  font-size: 0.925rem;
+}
+
+.option-content-text {
+  font-size: 0.85rem;
+}
+
+.option-content-text :deep(p) {
+  margin-bottom: 0 !important;
+  display: inline;
+}
+
+.fs-7 {
+  font-size: 0.85rem;
+}
+
+.fs-8 {
+  font-size: 0.78rem;
+}
+
 .fs-9 {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 </style>
