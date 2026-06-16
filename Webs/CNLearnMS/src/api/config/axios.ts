@@ -53,9 +53,10 @@ axiosInstance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       const pathname = window.location.pathname;
       if (pathname.includes('/practice') || pathname.includes('/room')) {
-        const url = import.meta.env.VITE_MAIN_URL || 'http://localhost:5173';
-        message.warning('Phiên đăng nhập hết hạn! Hệ thống đã mở Tab mới để đăng nhập lại. Hãy QUAY LẠI ĐÂY nộp bài sau khi xong.', 8);
-        window.open(`${url}/auth/login`, '_blank');
+        const idServerUrl = import.meta.env.VITE_ID_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5173' : 'https://id.hoangcn.com');
+        const successUrl = encodeURIComponent(window.location.origin + '/auth-success');
+        message.warning('Phiên đăng nhập đã hết hạn. Hệ thống sẽ mở Tab mới để bạn đăng nhập lại. Sau khi đăng nhập thành công, hãy QUAY LẠI ĐÂY (không tải lại trang) để nộp bài.', 10);
+        window.open(`${idServerUrl}/auth?mode=login&return_url=${successUrl}`, '_blank');
       } else {
         window.dispatchEvent(new CustomEvent('auth-required'));
       }

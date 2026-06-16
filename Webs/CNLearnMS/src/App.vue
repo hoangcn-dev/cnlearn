@@ -122,8 +122,9 @@ const handleAuthRequiredEvent = () => {
     ]),
     onOk: () => {
       if (route.name === 'quiz-practice' || route.name === 'quiz-room') {
-        const url = import.meta.env.VITE_MAIN_URL || 'http://localhost:5173'
-        window.open(`${url}/auth/login`, '_blank')
+        const idServerUrl = import.meta.env.VITE_ID_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5173' : 'https://id.hoangcn.com');
+        const successUrl = encodeURIComponent(window.location.origin + '/auth-success');
+        window.open(`${idServerUrl}/auth?mode=login&return_url=${successUrl}`, '_blank');
       } else {
         redirectToAuth('login')
       }
