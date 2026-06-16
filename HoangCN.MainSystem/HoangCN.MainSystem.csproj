@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -9,11 +9,19 @@
   <ItemGroup>
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.1.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HoangCN.Common\HoangCN.Common.csproj" />
-    <ProjectReference Include="..\HoangCN.BL\HoangCN.BL.csproj" />
+    <ProjectReference Include="..\HoangCN.Core.Common\HoangCN.Core.Common.csproj" />
+    <ProjectReference Include="..\HoangCN.Core.DL\HoangCN.Core.DL.csproj" />
+    <ProjectReference Include="..\HoangCN.Core.BL\HoangCN.Core.BL.csproj" />
   </ItemGroup>
 
 </Project>
+

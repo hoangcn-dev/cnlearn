@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { getLoginInfo } from '@/api/user';
 import { useAuthStore } from '@/stores/auth';
+import { getErrorMessage } from '@/api/config/axios';
 
 const router = useRouter();
 const route = useRoute();
@@ -45,22 +46,34 @@ onMounted(async () => {
       setTimeout(() => {
         loading.value = false;
         message.success('Đăng nhập hệ thống thành công.');
-        router.push(returnUrl);
+        if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+          window.location.href = returnUrl;
+        } else {
+          router.push(returnUrl);
+        }
       }, 800);
     } else {
-      throw new Error(res.data?.UserMsg || 'Không thể lấy thông tin đăng nhập.');
+      throw new Error(getErrorMessage(res, 'Không thể lấy thông tin đăng nhập.'));
     }
   } catch (error: any) {
     console.error('Lỗi xác thực Callback SSO:', error);
-    const apiError = error.response?.data;
-    const errorMsg = apiError?.Data?.UserMsg || error.message || 'Phiên làm việc hết hạn hoặc không hợp lệ!';
+    const errorMsg = getErrorMessage(error, 'Phiên làm việc hết hạn hoặc không hợp lệ!');
     
     message.error(errorMsg);
     loadingText.value = 'Xác thực thất bại. Đang quay lại trang đăng nhập...';
     
     setTimeout(() => {
       loading.value = false;
-      router.push('/login');
+      const idUrl = import.meta.env.VITE_ID_URL;
+      const currentOrigin = window.location.origin;
+      
+      if (idUrl && currentOrigin !== idUrl) {
+        // Trả ngược về trang Login của ID Server
+        const fallbackUrl = `${currentOrigin}/auth-callback?return_url=${encodeURIComponent(route.query.return_url as string || '/dashboard')}`;
+        window.location.href = `${idUrl}/auth?return_url=${encodeURIComponent(fallbackUrl)}`;
+      } else {
+        router.push('/auth');
+      }
     }, 1500);
   }
 });

@@ -10,6 +10,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons-vue';
 import { getTemplateByCode, saveTemplate, type EmailTemplate } from '@/api/emailTemplate';
+import { getErrorMessage } from '@/api/config/axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -98,12 +99,12 @@ const loadTemplate = async () => {
       editingTemplate.subject = res.data.subject;
       editingTemplate.content = formatHtml(res.data.content);
     } else {
-      message.error(res.data?.UserMsg || 'Không thể tải thông tin mẫu email.');
+      message.error(getErrorMessage(res, 'Không thể tải thông tin mẫu email.'));
       router.push({ name: 'email-templates' });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading template:', error);
-    message.error('Lỗi khi tải dữ liệu mẫu email.');
+    message.error(getErrorMessage(error, 'Lỗi khi tải dữ liệu mẫu email.'));
     router.push({ name: 'email-templates' });
   } finally {
     loading.value = false;
@@ -185,11 +186,11 @@ const handleSave = async () => {
       message.success('Lưu mẫu email thành công!');
       router.push({ name: 'email-templates' });
     } else {
-      message.error(res.data?.UserMsg || 'Lưu thất bại.');
+      message.error(getErrorMessage(res, 'Lưu thất bại.'));
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving template:', error);
-    message.error('Có lỗi xảy ra khi lưu mẫu email.');
+    message.error(getErrorMessage(error, 'Có lỗi xảy ra khi lưu mẫu email.'));
   } finally {
     isSaving.value = false;
   }

@@ -20,15 +20,34 @@ message.config({
 let lastErrorMessage = "";
 let lastErrorTime = 0;
 
+/**
+ * Trích xuất thông tin thông báo lỗi chuẩn hóa từ API response hoặc Axios error
+ */
+export const getErrorMessage = (error: any, defaultMsg: string = "Đã xảy ra lỗi, vui lòng thử lại!"): string => {
+  if (!error) return defaultMsg;
+
+  // 1. Lỗi từ Axios (catch block)
+  const apiError = error.response?.data;
+  if (apiError?.Data) {
+    return apiError.Data.UserMsg || defaultMsg;
+  }
+
+  // 2. Response trả về trực tiếp (res)
+  if (error?.Data) {
+    return error.Data.UserMsg || defaultMsg;
+  }
+
+  // 3. Fallback cuối cùng
+  return error.message || defaultMsg;
+};
+
 // Response interceptor để xử lý tập trung phản hồi và lỗi từ API
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   (error: any) => {
-    // Trích xuất thông tin lỗi chuẩn hóa từ CatchExceptionMiddleware
-    const apiError = error.response?.data;
-    const msg = apiError?.Data?.UserMsg || apiError?.Data?.DevMsg || "Đã xảy ra lỗi, vui lòng thử lại!";
+    const msg = getErrorMessage(error);
     
     // Chỉ hiển thị toast lỗi nếu không phải là endpoint kiểm tra auth
     if (error.config && !error.config.url.endsWith('/users/me')) {

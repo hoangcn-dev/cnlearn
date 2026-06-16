@@ -26,11 +26,17 @@ const breadcrumbText = computed(() => {
 
 const handleLogout = () => {
   authStore.clearLoginSession();
-  router.push('/login');
+  const idUrl = import.meta.env.VITE_ID_URL;
+  const currentOrigin = window.location.origin;
+  if (idUrl && currentOrigin !== idUrl) {
+    window.location.href = `${idUrl}/auth`;
+  } else {
+    router.push('/auth');
+  }
 };
 
 const showChangePasswordModal = () => {
-  router.push('/login?mode=changepass');
+  router.push('/auth?mode=changepass');
 };
 </script>
 

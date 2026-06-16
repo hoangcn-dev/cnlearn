@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { message, notification } from 'ant-design-vue';
 import { login, register, forgotPassword, changePassword } from '@/api/user';
 import { useAuthStore } from '@/stores/auth';
+import { getErrorMessage } from '@/api/config/axios';
 
 const router = useRouter();
 const route = useRoute();
@@ -61,7 +62,9 @@ const forgotPasswordState = reactive({
 watch(
   () => route.query.mode,
   (newMode) => {
-    if (newMode === 'register' || newMode === 'changepass' || newMode === 'forgotpass') {
+    if (newMode === 'register' || newMode === 'regis') {
+      currentMode.value = 'register';
+    } else if (newMode === 'changepass' || newMode === 'forgotpass') {
       currentMode.value = newMode;
       if (newMode === 'changepass' && authStore.user) {
         changePasswordState.username = authStore.user.userName || authStore.user.email || '';
@@ -165,17 +168,22 @@ const handleFinish = async (values: any) => {
 
     if (res.isSuccess) {
       message.success(`Đăng nhập thành công! Đang xác thực thông tin...`);
-      router.push({
-        path: '/auth-callback',
-        query: { return_url: '/users' }
-      });
+      const targetUrl = (route.query.return_url as string) || '/users';
+      
+      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        window.location.href = targetUrl;
+      } else {
+        router.push({
+          path: '/auth-callback',
+          query: { return_url: targetUrl }
+        });
+      }
     } else {
-      message.error(res.data?.UserMsg || res.data?.DevMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác!');
+      message.error(getErrorMessage(res, 'Tên đăng nhập hoặc mật khẩu không chính xác!'));
     }
   } catch (error: any) {
     console.error(error);
-    const apiError = error.response?.data;
-    message.error(apiError?.Data?.UserMsg || apiError?.Data?.DevMsg || 'Đăng nhập thất bại, vui lòng kiểm tra lại!');
+    message.error(getErrorMessage(error, 'Đăng nhập thất bại, vui lòng kiểm tra lại!'));
   } finally {
     loading.value = false;
   }
@@ -212,12 +220,11 @@ const handleRegister = async () => {
       setMode('login');
       formState.username = trimmedUsername;
     } else {
-      message.error(res.data?.UserMsg || res.data?.DevMsg || 'Đăng ký thất bại, vui lòng thử lại!');
+      message.error(getErrorMessage(res, 'Đăng ký thất bại, vui lòng thử lại!'));
     }
   } catch (error: any) {
     console.error(error);
-    const apiError = error.response?.data;
-    message.error(apiError?.Data?.UserMsg || apiError?.Data?.DevMsg || 'Tài khoản hoặc Email đã tồn tại trên hệ thống!');
+    message.error(getErrorMessage(error, 'Tài khoản hoặc Email đã tồn tại trên hệ thống!'));
   } finally {
     loading.value = false;
   }
@@ -264,12 +271,11 @@ const handleChangePassword = async () => {
       // Switch to login mode
       setMode('login');
     } else {
-      message.error(res.data?.UserMsg || res.data?.DevMsg || 'Đổi mật khẩu thất bại!');
+      message.error(getErrorMessage(res, 'Đổi mật khẩu thất bại!'));
     }
   } catch (error: any) {
     console.error(error);
-    const apiError = error.response?.data;
-    message.error(apiError?.Data?.UserMsg || apiError?.Data?.DevMsg || 'Mật khẩu hiện tại không chính xác!');
+    message.error(getErrorMessage(error, 'Mật khẩu hiện tại không chính xác!'));
   } finally {
     loading.value = false;
   }
@@ -288,7 +294,7 @@ const handleForgotPasswordSubmit = async () => {
     if (res.isSuccess) {
       notification.success({
         message: 'Gửi mật khẩu tạm thời thành công',
-        description: res.data?.UserMsg || 'Mật khẩu tạm thời đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư.',
+        description: getErrorMessage(res, 'Mật khẩu tạm thời đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư.'),
         duration: 8,
         placement: 'topRight',
       });
@@ -298,12 +304,11 @@ const handleForgotPasswordSubmit = async () => {
       formState.username = forgotPasswordState.email.trim();
       forgotPasswordState.email = '';
     } else {
-      message.error(res.data?.UserMsg || res.data?.DevMsg || 'Gửi mật khẩu tạm thời thất bại, vui lòng thử lại!');
+      message.error(getErrorMessage(res, 'Gửi mật khẩu tạm thời thất bại, vui lòng thử lại!'));
     }
   } catch (error: any) {
     console.error(error);
-    const apiError = error.response?.data;
-    message.error(apiError?.Data?.UserMsg || apiError?.Data?.DevMsg || 'Không tìm thấy tài khoản với Email này trên hệ thống!');
+    message.error(getErrorMessage(error, 'Không tìm thấy tài khoản với Email này trên hệ thống!'));
   } finally {
     loading.value = false;
   }

@@ -6,6 +6,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons-vue';
 import type { User } from '@/model/user/User';
 import type { Role } from '@/model/user/Role';
 import { getAllRoles, getUserById, saveUsers } from '@/api/user';
+import { getErrorMessage } from '@/api/config/axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -75,12 +76,12 @@ onMounted(async () => {
       if (res && res.isSuccess && res.data) {
         Object.assign(formState, res.data);
       } else {
-        message.error('Không tìm thấy người dùng!');
+        message.error(getErrorMessage(res, 'Không tìm thấy người dùng!'));
         router.push('/users');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi tải chi tiết người dùng:', error);
-      message.error('Có lỗi xảy ra khi tải dữ liệu người dùng.');
+      message.error(getErrorMessage(error, 'Có lỗi xảy ra khi tải dữ liệu người dùng.'));
       router.push('/users');
     }
   }
@@ -135,11 +136,11 @@ const handleSave = () => {
           message.success('Lưu thông tin thành viên thành công!');
           router.push('/users');
         } else {
-          message.error(res.data?.UserMsg || 'Lưu thông tin thất bại.');
+          message.error(getErrorMessage(res, 'Lưu thông tin thất bại.'));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Lỗi khi lưu người dùng:', error);
-        message.error('Có lỗi xảy ra khi lưu thông tin thành viên.');
+        message.error(getErrorMessage(error, 'Có lỗi xảy ra khi lưu thông tin thành viên.'));
       }
     })
     .catch((error: any) => {

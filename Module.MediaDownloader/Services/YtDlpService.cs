@@ -1,34 +1,27 @@
-﻿using Core.Exceptions;
-using Core.Utilities;
-using Hangfire;
-using Module.MediaDownloader.Models;
+﻿using Module.MediaDownloader.Models;
 using System.Diagnostics;
-using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace Module.MediaDownloader.Services
 {
     public interface IYtDlpService
     {
-        Task<MediaInfo> GetMediaInfoAsync(string url);
+        Task<MediaInfo> GetMediaInfoAsync(string url, string? cookiesPath = null);
         Task StartDownloadMediaAsync(
             string mediaUrl, string? videoFormatId, 
             string? audioFormatId,
-            string saveFilePath, string jobId);
+            string saveFilePath);
     }
 
     public class YtDlpService : IYtDlpService
     {
         private readonly string _ytDlpPath;
         private readonly string _ffmpegPath;
-        private readonly IManageProgressService _manageProgressService;
 
-        public YtDlpService(IManageProgressService manageProgressService)
+        public YtDlpService()
         {
-            _manageProgressService = manageProgressService;
-
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 _ytDlpPath = Path.Combine(AppContext.BaseDirectory, "yt-dlp.exe");
@@ -41,31 +34,25 @@ namespace Module.MediaDownloader.Services
             }
             else
             {
-                throw new ServerErrorException("OS Platform not supported");
+                throw new Exception("OS Platform not supported");
             }
         }
 
-        [AutomaticRetry(Attempts = 0)]
         public async Task StartDownloadMediaAsync(
             string mediaUrl, string? videoFormatId, string? audioFormatId,
-            string saveFilePath,string jobId)
+            string saveFilePath)
         {
             try
             {
-                if (await _manageProgressService.GetProgressAsync(jobId) is null)
-                {
-                    throw new ServerErrorException($"Update unknown progress for job {jobId}");
-                }
-
                 if (string.IsNullOrEmpty(videoFormatId) && string.IsNullOrEmpty(audioFormatId))
                 {
-                    throw new BadRequestException(StringUtil.ApiMessages.RequiredFormatId);
+                    throw new Exception("Format không hợp lệ");
                 }
 
-                string cmd;
+                string cmd = "--cookies-from-browser chrome ";
                 if (!string.IsNullOrEmpty(videoFormatId) && !string.IsNullOrEmpty(audioFormatId))
                 {
-                    cmd = 
+                    cmd += 
                         $"-f {videoFormatId}+{audioFormatId} " +
                         $"--ffmpeg-location {_ffmpegPath} " +
                         $"--merge-output-format mp4 " +
@@ -73,7 +60,7 @@ namespace Module.MediaDownloader.Services
                 }
                 else if (!string.IsNullOrEmpty(audioFormatId))
                 {
-                    cmd = 
+                    cmd +=
                         $"-f {audioFormatId} " +
                         $"--ffmpeg-location {_ffmpegPath} " +
                         $"--extract-audio --audio-format mp3 " +
@@ -81,7 +68,7 @@ namespace Module.MediaDownloader.Services
                 }
                 else
                 {
-                    cmd =
+                    cmd +=
                         $"-f {videoFormatId} " +
                         $"--ffmpeg-location {_ffmpegPath} " +
                         $"--merge-output-format mp4 " +
@@ -90,27 +77,43 @@ namespace Module.MediaDownloader.Services
                 await RunCommandWithTrackingAsync(cmd, async progressLine =>
                 {
                     Console.WriteLine(progressLine);
-                    var match = Regex.Match(progressLine, @"(\d+(?:\.\d+)?)%");
-                    if (match.Success)
-                    {
-                        double progress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-                        await _manageProgressService.UpdateProgressAsync(jobId, progress);
-                    }
+                    //var match = Regex.Match(progressLine, @"(\d+(?:\.\d+)?)%");
+                    //if (match.Success)
+                    //{
+                    //    double progress = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                    //    await _manageProgressService.UpdateProgressAsync(jobId, progress);
+                    //}
                 });
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
-            finally
-            {
-                await _manageProgressService.CompleteProgressAsync(jobId);
-            }
         }
 
-        public async Task<MediaInfo> GetMediaInfoAsync(string url)
+        public async Task<MediaInfo> GetMediaInfoAsync(string url, string? cookiesPath = null)
         {
-            string json = await RunCommandAsync($"--dump-json \"{url}\"");
+            var args = new List<string>
+            {
+                "--dump-json",
+                "--no-warnings",           
+                "--retries", "3",            
+                "--fragment-retries", "3",
+                "--sleep-requests", "1",
+                "--user-agent", "\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36\"",  // Sửa ở đây: thêm \"...\"                "--extractor-args", "douyin:api_retry_sleep=2"
+            };
+
+            if (!string.IsNullOrWhiteSpace(cookiesPath) && File.Exists(cookiesPath))
+            {
+                args.Add("--cookies");
+                args.Add($"\"{cookiesPath}\"");
+            }
+
+            args.Add($"\"{url}\"");
+
+            string cmd = string.Join(" ", args);
+
+            string json = await RunCommandAsync(cmd);
             var data = JsonDocument.Parse(json).RootElement;
 
             var formats = data.GetProperty("formats").EnumerateArray()
@@ -160,19 +163,41 @@ namespace Module.MediaDownloader.Services
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 },
+                EnableRaisingEvents = true
+            };
+
+            var outputBuilder = new StringBuilder();
+            var errorBuilder = new StringBuilder();
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.WriteLine("[yt-dlp] " + e.Data); // log ra console
+                    outputBuilder.AppendLine(e.Data);       // lưu vào string
+                }
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.WriteLine("[yt-dlp ERROR] " + e.Data); // log lỗi
+                    errorBuilder.AppendLine(e.Data);
+                }
             };
 
             process.Start();
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
             await process.WaitForExitAsync();
 
             if (process.ExitCode != 0)
-                throw new Exception("yt-dlp error: " + error);
+                throw new Exception("yt-dlp error: " + errorBuilder.ToString());
 
-            return output;
+            return outputBuilder.ToString();
         }
 
         private async Task RunCommandWithTrackingAsync(string args, Action<string>? onProgress = null)
