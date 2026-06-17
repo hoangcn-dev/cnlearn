@@ -316,8 +316,8 @@ namespace HoangCN.MainSystem.Services
 
             foreach (var user in entities)
             {
-                // Chặn tạo tài khoản mới gán vai trò Admin
-                if (adminRole != null && user.RoleId == adminRole.RoleId)
+                // Chặn tạo tài khoản mới gán vai trò Admin (chỉ áp dụng đối với các request gọi từ API)
+                if (_accesstor.HttpContext != null && adminRole != null && user.RoleId == adminRole.RoleId)
                 {
                     throw new BadRequestException("Không được phép tạo tài khoản với quyền Admin.");
                 }
@@ -363,6 +363,20 @@ namespace HoangCN.MainSystem.Services
                 {
                     if (dbUserMap.TryGetValue(user.UserId, out var dbUser))
                     {
+                        // Giữ nguyên mật khẩu và muối nếu client không truyền mật khẩu mới
+                        if (string.IsNullOrWhiteSpace(user.Password))
+                        {
+                            user.Password = dbUser.Password;
+                            user.PasswordSalt = dbUser.PasswordSalt;
+                        }
+                        else if (user.Password != dbUser.Password)
+                        {
+                            // Nếu truyền mật khẩu thô mới, tiến hành băm bảo mật
+                            var (hash, salt) = PasswordUtil.HashPassword(user.Password);
+                            user.Password = hash;
+                            user.PasswordSalt = salt;
+                        }
+
                         // 1. Chặn nâng cấp tài khoản thường lên Admin
                         if (adminRole != null && user.RoleId == adminRole.RoleId && dbUser.RoleId != adminRole.RoleId)
                         {

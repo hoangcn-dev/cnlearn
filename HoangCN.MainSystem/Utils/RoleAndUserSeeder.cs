@@ -1,11 +1,14 @@
-using HoangCN.Core.DL;
+using HoangCN.Core.Common.Utils;
+using HoangCN.Core.BL.Interfaces;
 using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Enums;
+using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Utils;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,12 +30,15 @@ namespace HoangCN.MainSystem.Utils
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<DynamicDbContext>();
+                var roleBL = scope.ServiceProvider.GetRequiredService<IBaseBL<Role>>();
+                var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
                 // 1. Seed Roles nếu chưa tồn tại
-                var roles = dbContext.Set<Role>();
-                var adminRole = await roles.FirstOrDefaultAsync(r => r.RoleName == nameof(RoleNames.Admin), cancellationToken);
-                var userRole = await roles.FirstOrDefaultAsync(r => r.RoleName == nameof(RoleNames.User), cancellationToken);
+                var adminRoles = await roleBL.GetByCondition<Role>(r => r.RoleName == nameof(RoleNames.Admin));
+                var userRoles = await roleBL.GetByCondition<Role>(r => r.RoleName == nameof(RoleNames.User));
+
+                var adminRole = adminRoles.FirstOrDefault();
+                var userRole = userRoles.FirstOrDefault();
 
                 if (adminRole == null)
                 {
@@ -44,7 +50,7 @@ namespace HoangCN.MainSystem.Utils
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await roles.AddAsync(adminRole, cancellationToken);
+                    await roleBL.InsertAsync(new List<Role> { adminRole });
                 }
 
                 if (userRole == null)
@@ -57,18 +63,16 @@ namespace HoangCN.MainSystem.Utils
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await roles.AddAsync(userRole, cancellationToken);
+                    await roleBL.InsertAsync(new List<Role> { userRole });
                 }
 
-                await dbContext.SaveChangesAsync(cancellationToken);
-
                 // 2. Seed Admin User nếu chưa tồn tại
-                var users = dbContext.Set<User>();
-                var hasAdmin = await users.AnyAsync(u => u.UserName == "admin" || u.Email == "admin@hoangcn.com", cancellationToken);
+                var users = await userService.GetByCondition<User>(u => u.UserName == "admin" || u.Email == "admin@hoangcn.com");
+                var hasAdmin = users.Count > 0;
+                
                 if (!hasAdmin)
                 {
-                    var adminPassword = EnvKeyUtil.GetValue(EnvKeyUtil.DEFAULT_ADMIN_PASSWORD);
-                    var (hash, salt) = PasswordUtil.HashPassword(adminPassword);
+                    var adminPassword = EnvUtil.GetValue(EnvKeys.DEFAULT_ADMIN_PASSWORD);
                     var adminUser = new User
                     {
                         UserId = Guid.NewGuid(),
@@ -76,18 +80,16 @@ namespace HoangCN.MainSystem.Utils
                         UserCode = "ADMIN001",
                         DisplayName = "Administrator",
                         Email = "admin@hoangcn.com",
-                        Password = hash,
-                        PasswordSalt = salt,
+                        Password = adminPassword,
+                        RoleId = adminRole.RoleId,
                         IsActive = true,
                         IsVerified = true,
-                        RoleId = adminRole.RoleId,
                         LastLogin = DateTime.UtcNow,
                         CreatedBy = "System",
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await users.AddAsync(adminUser, cancellationToken);
-                    await dbContext.SaveChangesAsync(cancellationToken);
+                    await userService.InsertAsync(new List<User> { adminUser });
                 }
             }
         }
