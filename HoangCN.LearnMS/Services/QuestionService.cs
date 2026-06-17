@@ -368,7 +368,7 @@ namespace HoangCN.LearnMS.Services
                 SELECT q.* 
                 FROM Question q
                 INNER JOIN ExamQuestion eq ON q.QuestionId = eq.QuestionId
-                WHERE eq.ExamId = @ExamId AND q.IsDeleted = 0 AND eq.IsDeleted = 0
+                WHERE eq.ExamId = @ExamId
                 ORDER BY eq.SortOrder";
 
             var questions = (await _baseReadDL.ExecuteQueryText<Question>(sql, parameters))?.ToList();
@@ -682,7 +682,12 @@ namespace HoangCN.LearnMS.Services
                 });
 
                 // Điền thông tin đáp án
-                var now = DateTime.Now;
+                var user = _httpContextAccessor.HttpContext?.User;
+                var currentUserName = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? HoangCN.Core.Common.Utils.ClaimUtil.GetUserName(user)
+                    : currentUserId.ToString();
+                var now = DateTime.UtcNow;
+
                 for (int i = 0; i < q.Answers.Count; i++)
                 {
                     answersToInsert.Add(new QuestionAnswer
@@ -692,11 +697,10 @@ namespace HoangCN.LearnMS.Services
                         StringContent = q.Answers[i].StringContent?.Trim(),
                         IsCorrectAnswer = q.Answers[i].IsCorrectAnswer,
                         OrderInList = i + 1,
-                        CreatedBy = currentUserId.ToString(),
+                        CreatedBy = currentUserName,
                         CreatedDate = now,
-                        ModifiedBy = currentUserId.ToString(),
-                        ModifiedDate = now,
-                        IsDeleted = false
+                        ModifiedBy = currentUserName,
+                        ModifiedDate = now
                     });
                 }
             }

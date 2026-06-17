@@ -172,7 +172,7 @@ namespace HoangCN.LearnMS.Services
             var sqlCount = @"
                 SELECT COUNT(1) 
                 FROM ExamAttempt 
-                WHERE UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice') AND IsDeleted = 0";
+                WHERE UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice')";
 
             var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, parameters);
 
@@ -190,7 +190,7 @@ namespace HoangCN.LearnMS.Services
                 FROM ExamAttempt ea
                 LEFT JOIN Exam e ON ea.ExamId = e.ExamId
                 LEFT JOIN Quiz q ON ea.QuizId = q.QuizId
-                WHERE ea.UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice') AND ea.IsDeleted = 0
+                WHERE ea.UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice')
                 ORDER BY ea.FinishedDate DESC
                 LIMIT @PageSize OFFSET @Offset";
 
@@ -216,7 +216,7 @@ namespace HoangCN.LearnMS.Services
             var sqlCount = @"
                 SELECT COUNT(1) 
                 FROM ExamAttempt 
-                WHERE UserId = @UserId AND AttemptType = 'question' AND IsDeleted = 0";
+                WHERE UserId = @UserId AND AttemptType = 'question'";
 
             var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, parameters);
 
@@ -233,7 +233,7 @@ namespace HoangCN.LearnMS.Services
                     ea.Duration
                 FROM ExamAttempt ea
                 LEFT JOIN Question q ON ea.QuestionId = q.QuestionId
-                WHERE ea.UserId = @UserId AND AttemptType = 'question' AND ea.IsDeleted = 0
+                WHERE ea.UserId = @UserId AND AttemptType = 'question'
                 ORDER BY ea.FinishedDate DESC
                 LIMIT @PageSize OFFSET @Offset";
 
