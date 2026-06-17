@@ -27,12 +27,7 @@ namespace HoangCN.MainSystem
             builder.ConfigCommon(config);
 
             // Đăng ký Core.DL thế hệ mới (EF Core Write, Dapper Read) cho MainSystem
-            var connectionString = builder.Configuration.GetConnectionString("MySQL");
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new InvalidOperationException("Connection string 'MySQL' is null or empty.");
-            }
-
+            var connectionString = EnvUtil.GetValue(EnvKeys.CONNNECTION_STRING_MYSQL_MAIN_SYSTEM);
             builder.Services.AddCoreDL(
                 writeConnectionString: connectionString,
                 readConnectionString: connectionString,

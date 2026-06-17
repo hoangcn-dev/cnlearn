@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using HoangCN.MainSystem.Interfaces;
+using HoangCN.Core.Common.Utils;
+using HoangCN.MainSystem.Utils;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -18,12 +20,7 @@ namespace HoangCN.MainSystem.Services
         public RedisService(IConfiguration configuration, ILogger<RedisService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
-            var envConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING");
-            _connectionString = envConnectionString 
-                ?? configuration.GetConnectionString("Redis") 
-                ?? configuration["RedisConnection"] 
-                ?? "localhost:6379";
+            _connectionString = EnvUtil.GetValue(EnvKeys.CONNNECTION_STRING_REDIS);
 
             try
             {

@@ -29,9 +29,9 @@ namespace HoangCN.MainSystem.Utils
                 configuration.GetSection("EmailSettings").Bind(options);
 
                 // Nạp email và password bắt buộc từ Environment Variables sử dụng EnvKeyUtil
-                options.SenderEmail = EnvKeyUtil.GetValue(EnvKeyUtil.HOANGCN_EMAIL_BOT_APP_EMAIL);
-                options.Username = EnvKeyUtil.GetValue(EnvKeyUtil.HOANGCN_EMAIL_BOT_APP_EMAIL);
-                options.Password = EnvKeyUtil.GetValue(EnvKeyUtil.HOANGCN_EMAIL_BOT_APP_PASSWORD);
+                options.SenderEmail = EnvUtil.GetValue(EnvKeys.HOANGCN_EMAIL_BOT_APP_EMAIL);
+                options.Username = EnvUtil.GetValue(EnvKeys.HOANGCN_EMAIL_BOT_APP_EMAIL);
+                options.Password = EnvUtil.GetValue(EnvKeys.HOANGCN_EMAIL_BOT_APP_PASSWORD);
             });
 
             // Đăng ký cấu hình JwtConfig

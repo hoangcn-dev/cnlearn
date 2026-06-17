@@ -36,7 +36,7 @@ namespace HoangCN.MainSystem.Utils
                 new Claim(nameof(user.UserName), user.UserName),
             ];
 
-            byte[] bytes = Encoding.UTF8.GetBytes(EnvKeyUtil.GetValue(EnvKeyUtil.JWT_SECRET_KEY));
+            byte[] bytes = Encoding.UTF8.GetBytes(EnvUtil.GetValue(EnvKeys.JWT_SECRET_KEY));
             SymmetricSecurityKey tokenKey = new(bytes);
 
             DateTime expireAt = DateTime.UtcNow.AddMinutes(_jwtConfig.AccessTokenTTL);
@@ -72,7 +72,7 @@ namespace HoangCN.MainSystem.Utils
 
         public ClaimsPrincipal? ValidateAccessToken(string accessToken)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(EnvKeyUtil.GetValue(EnvKeyUtil.JWT_SECRET_KEY));
+            byte[] bytes = Encoding.UTF8.GetBytes(EnvUtil.GetValue(EnvKeys.JWT_SECRET_KEY));
             SymmetricSecurityKey key = new(bytes);
             TokenValidationParameters param = new()
             {

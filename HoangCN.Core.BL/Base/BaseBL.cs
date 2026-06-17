@@ -270,7 +270,10 @@ namespace HoangCN.Core.BL.Base
                     }
                 }
 
-                entity.CreatedBy = ClaimUtil.GetUserName(_httpContextAccessor.HttpContext?.User);
+                var user = _httpContextAccessor.HttpContext?.User;
+                entity.CreatedBy = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? ClaimUtil.GetUserName(user)
+                    : "System";
                 entity.CreatedDate = now;
                 entity.ModifiedDate = now;
                 entity.IsDeleted = false;
@@ -286,7 +289,10 @@ namespace HoangCN.Core.BL.Base
             var now = DateTime.Now;
             foreach (var entity in entities)
             {
-                entity.ModifiedBy = ClaimUtil.GetUserName(_httpContextAccessor.HttpContext?.User);
+                var user = _httpContextAccessor.HttpContext?.User;
+                entity.ModifiedBy = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? ClaimUtil.GetUserName(user)
+                    : "System";
                 entity.ModifiedDate = now;
             }
         }
