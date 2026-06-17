@@ -75,9 +75,7 @@ namespace HoangCN.LearnMS.Controllers
                 {
                     UserSavedQuestionId = Guid.NewGuid(),
                     UserId = userId,
-                    QuestionId = id,
-                    CreatedBy = userId.ToString(),
-                    CreatedDate = DateTime.Now
+                    QuestionId = id
                 };
                 await _savedQuestionBL.InsertAsync(new List<UserSavedQuestion> { newBookmark });
                 return Ok(ApiResponseDto.Success(true)); // Đã lưu
@@ -117,9 +115,7 @@ namespace HoangCN.LearnMS.Controllers
                 {
                     UserSavedExamId = Guid.NewGuid(),
                     UserId = userId,
-                    ExamId = id,
-                    CreatedBy = userId.ToString(),
-                    CreatedDate = DateTime.Now
+                    ExamId = id
                 };
                 await _savedExamBL.InsertAsync(new List<UserSavedExam> { newBookmark });
                 return Ok(ApiResponseDto.Success(true)); // Đã lưu

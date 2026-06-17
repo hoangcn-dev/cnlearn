@@ -257,7 +257,7 @@ namespace HoangCN.Core.BL.Base
             var pkPropName = metadata.PrimaryKeyName;
             var pkProp = metadata.Properties.FirstOrDefault(p => p.PropertyName == pkPropName);
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             foreach (var entity in entities)
             {
                 // Đảm bảo thêm mới ID nếu chưa có (chỉ áp dụng cho PK kiểu GUID)
@@ -286,7 +286,7 @@ namespace HoangCN.Core.BL.Base
         /// </summary>
         protected virtual async Task BeforeUpdate(List<TEntity> entities)
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             foreach (var entity in entities)
             {
                 var user = _httpContextAccessor.HttpContext?.User;

@@ -95,7 +95,6 @@ namespace HoangCN.MainSystem.Services
                 existing.Subject = template.Subject.Trim();
                 existing.Content = template.Content.Trim();
                 existing.ModifiedBy = "Admin";
-                existing.ModifiedDate = DateTime.Now;
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", existing.TemplateCode);
                 await UpdateAsync(new List<EmailTemplate> { existing });
@@ -107,7 +106,6 @@ namespace HoangCN.MainSystem.Services
                     template.FileResourceId = Guid.NewGuid();
                 }
                 template.CreatedBy = "System";
-                template.CreatedDate = DateTime.Now;
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", template.TemplateCode);
                 await InsertAsync(new List<EmailTemplate> { template });

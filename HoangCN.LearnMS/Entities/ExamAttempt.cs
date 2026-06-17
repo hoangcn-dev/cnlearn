@@ -81,7 +81,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Thời gian bắt đầu")]
-        public DateTime StartedDate { get; set; } = DateTime.Now;
+        public DateTime StartedDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// Thời điểm kết thúc / nộp bài
