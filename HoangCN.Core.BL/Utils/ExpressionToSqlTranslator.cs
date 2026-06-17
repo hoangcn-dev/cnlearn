@@ -2,6 +2,7 @@ using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace HoangCN.Core.BL.Utils
 {
@@ -163,6 +164,36 @@ namespace HoangCN.Core.BL.Utils
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
+            if (node.Method.Name == "Contains")
+            {
+                Expression? listNode = null;
+                Expression? itemNode = null;
+
+                if (node.Object != null && node.Arguments.Count == 1)
+                {
+                    // Instance method: list.Contains(item)
+                    listNode = node.Object;
+                    itemNode = node.Arguments[0];
+                }
+                else if (node.Object == null && node.Arguments.Count == 2)
+                {
+                    // Extension method: Enumerable.Contains(list, item)
+                    listNode = node.Arguments[0];
+                    itemNode = node.Arguments[1];
+                }
+
+                if (listNode != null && itemNode != null && HasParameter(itemNode) && !HasParameter(listNode))
+                {
+                    Visit(itemNode);
+                    _sqlParts.Add("IN");
+                    var listValue = Evaluate(listNode);
+                    var paramName = $"p_{_paramCounter++}";
+                    _parameters.Add(paramName, listValue);
+                    _sqlParts.Add($"@{paramName}");
+                    return node;
+                }
+            }
+
             if (node.Method.DeclaringType == typeof(string))
             {
                 if (node.Method.Name == "Contains" && node.Object != null)
@@ -229,8 +260,28 @@ namespace HoangCN.Core.BL.Utils
             return false;
         }
 
-        private object Evaluate(Expression node)
+        private object? Evaluate(Expression node)
         {
+            if (node == null) return null;
+
+            if (node is ConstantExpression constExpr)
+            {
+                return constExpr.Value;
+            }
+
+            if (node is MemberExpression memberExpr)
+            {
+                var container = memberExpr.Expression != null ? Evaluate(memberExpr.Expression) : null;
+                if (memberExpr.Member is FieldInfo fieldInfo)
+                {
+                    return fieldInfo.GetValue(container);
+                }
+                if (memberExpr.Member is PropertyInfo propInfo)
+                {
+                    return propInfo.GetValue(container);
+                }
+            }
+
             var objectMember = Expression.Convert(node, typeof(object));
             var getterLambda = Expression.Lambda<Func<object>>(objectMember);
             var getter = getterLambda.Compile();

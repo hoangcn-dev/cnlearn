@@ -140,8 +140,9 @@ namespace HoangCN.Core.BL.Utils
             var columnNames = metadata.ColumnNames;
             var conditions = new List<string>();
 
-            foreach (var filter in filters)
+            for (int i = 0; i < filters.Count; i++)
             {
+                var filter = filters[i];
                 // Tìm property khớp không phân biệt hoa thường từ Cache
                 var matchedProp = columnNames.FirstOrDefault(c => c.Equals(filter.Property, StringComparison.OrdinalIgnoreCase));
                 if (matchedProp == null)
@@ -156,20 +157,21 @@ namespace HoangCN.Core.BL.Utils
                     throw new BadRequestException("Toán tử không hợp lệ");
                 }
 
-                var condition = filter.Operator.ToSQLKeyword($"`{metadata.EntityType.Name}`.`{filter.Property}`", $"{filter.Property}");
+                var paramName = $"{filter.Property}_{i}";
+                var condition = filter.Operator.ToSQLKeyword($"`{metadata.EntityType.Name}`.`{filter.Property}`", paramName);
 
                 // Gán tham số dựa trên kiểu dữ liệu lọc
                 if (filter.Type == FilterType.Number)
                 {
-                    parameters.Add($"@{filter.Property}", int.Parse(filter.Value.ToString()!));
+                    parameters.Add(paramName, int.Parse(filter.Value.ToString()!));
                 }
                 else if (filter.Type == FilterType.String)
                 {
-                    parameters.Add($"@{filter.Property}", filter.Value.ToString()!);
+                    parameters.Add(paramName, filter.Value.ToString()!);
                 }
                 else if (filter.Type == FilterType.Bool)
                 {
-                    parameters.Add($"@{filter.Property}", bool.Parse(filter.Value.ToString()!));
+                    parameters.Add(paramName, bool.Parse(filter.Value.ToString()!));
                 }
                 else
                 {
