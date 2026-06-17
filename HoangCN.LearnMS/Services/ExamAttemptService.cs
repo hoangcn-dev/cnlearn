@@ -39,11 +39,15 @@ namespace HoangCN.LearnMS.Services
 
             if (questionIds.Count > 0)
             {
-                var queryableAnswers = _baseWriteDL.GetQueryable<QuestionAnswer>();
-                dbAnswers = queryableAnswers.Where(a => questionIds.Contains(a.QuestionId) && !a.IsDeleted).ToList();
+                var ansParams = new DynamicParameters();
+                ansParams.Add("QuestionIds", questionIds);
+                dbAnswers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(
+                    "SELECT * FROM QuestionAnswer WHERE QuestionId IN @QuestionIds", ansParams)).ToList();
 
-                var queryableQuestions = _baseWriteDL.GetQueryable<Question>();
-                dbQuestions = queryableQuestions.Where(q => questionIds.Contains(q.QuestionId) && !q.IsDeleted).ToList();
+                var qParams = new DynamicParameters();
+                qParams.Add("QuestionIds", questionIds);
+                dbQuestions = (await _baseReadDL.ExecuteQueryText<Question>(
+                    "SELECT * FROM Question WHERE QuestionId IN @QuestionIds", qParams)).ToList();
             }
 
             var result = new ExamAttemptResultDto
@@ -81,6 +85,12 @@ namespace HoangCN.LearnMS.Services
                     correctCount++;
                 }
 
+                var user = _httpContextAccessor.HttpContext?.User;
+                var currentUserName = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? HoangCN.Core.Common.Utils.ClaimUtil.GetUserName(user)
+                    : userId.ToString();
+                var now = DateTime.UtcNow;
+
                 var detail = new ExamAttemptDetail
                 {
                     ExamAttemptDetailId = Guid.NewGuid(),
@@ -88,8 +98,8 @@ namespace HoangCN.LearnMS.Services
                     QuestionId = userAns.QuestionId,
                     SelectedAnswerIds = userAns.SelectedAnswerIds != null ? string.Join(",", userAns.SelectedAnswerIds) : "",
                     IsCorrect = isCorrect,
-                    CreatedBy = userId.ToString(),
-                    CreatedDate = DateTime.Now
+                    CreatedBy = currentUserName,
+                    CreatedDate = now
                 };
 
                 attemptDetailsToInsert.Add(detail);
@@ -109,6 +119,12 @@ namespace HoangCN.LearnMS.Services
             result.CorrectCount = correctCount;
             result.Score = result.TotalQuestions > 0 ? (decimal)correctCount / result.TotalQuestions * 10 : 0;
 
+            var userAuth = _httpContextAccessor.HttpContext?.User;
+            var userName = (userAuth != null && userAuth.Identity?.IsAuthenticated == true)
+                ? HoangCN.Core.Common.Utils.ClaimUtil.GetUserName(userAuth)
+                : userId.ToString();
+            var finishedDate = DateTime.UtcNow;
+
             var examAttempt = new ExamAttempt
             {
                 ExamAttemptId = result.ExamAttemptId,
@@ -120,10 +136,10 @@ namespace HoangCN.LearnMS.Services
                 TotalQuestions = result.TotalQuestions,
                 CorrectCount = result.CorrectCount,
                 Duration = result.Duration,
-                StartedDate = DateTime.Now.AddSeconds(-result.Duration),
-                FinishedDate = DateTime.Now,
-                CreatedBy = userId.ToString(),
-                CreatedDate = DateTime.Now
+                StartedDate = finishedDate.AddSeconds(-result.Duration),
+                FinishedDate = finishedDate,
+                CreatedBy = userName,
+                CreatedDate = finishedDate
             };
 
             await _baseWriteDL.BeginTransactionAsync();
@@ -139,7 +155,7 @@ namespace HoangCN.LearnMS.Services
             catch (Exception ex)
             {
                 await _baseWriteDL.RollbackTransactionAsync();
-                throw new Exception("Lỗi lưu lịch sử làm bài: " + ex.Message);
+                throw new BadRequestException("Lỗi lưu lịch sử làm bài: " + ex.Message);
             }
 
             return result;

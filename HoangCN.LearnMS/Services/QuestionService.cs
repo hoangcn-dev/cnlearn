@@ -94,16 +94,10 @@ namespace HoangCN.LearnMS.Services
             var entities = res.Items;
             var questionIds = entities.Select(q => q.QuestionId).ToList();
 
-            var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
-
-            // 1. Xóa mềm đáp án
-            var answers = queryableAns
-                .Where(a => questionIds.Contains(a.QuestionId) && !a.IsDeleted)
-                .ToList();
-            foreach (var a in answers)
-            {
-                a.IsDeleted = true;
-            }
+            var ansParams = new DynamicParameters();
+            ansParams.Add("QuestionIds", questionIds);
+            var answers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(
+                "SELECT * FROM QuestionAnswer WHERE QuestionId IN @QuestionIds", ansParams)).ToList();
 
             await _baseWriteDL.BeginTransactionAsync();
             try
@@ -446,7 +440,21 @@ namespace HoangCN.LearnMS.Services
             var questionsToUpdate = new List<Question>();
             var answersToInsert = new List<QuestionAnswer>();
             var answersToUpdate = new List<QuestionAnswer>();
-            var queryableAns = _baseWriteDL.GetQueryable<QuestionAnswer>();
+            var answersToDelete = new List<QuestionAnswer>();
+
+            // Lấy danh sách ID câu hỏi hiện có trong payload để truy vấn toàn bộ đáp án của chúng (tránh N+1)
+            var questionIds = questionsDto.Select(q => q.Id).Where(id => id != Guid.Empty).ToList();
+            var existingAnswersMap = new Dictionary<Guid, List<QuestionAnswer>>();
+            if (questionIds.Count > 0)
+            {
+                var ansParams = new DynamicParameters();
+                ansParams.Add("QuestionIds", questionIds);
+                var allExistingAnswers = await _baseReadDL.ExecuteQueryText<QuestionAnswer>(
+                    "SELECT * FROM QuestionAnswer WHERE QuestionId IN @QuestionIds", ansParams);
+                existingAnswersMap = allExistingAnswers
+                    .GroupBy(a => a.QuestionId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+            }
 
             foreach (var qDto in questionsDto)
             {
@@ -503,23 +511,20 @@ namespace HoangCN.LearnMS.Services
                 q.QuestionCategoryId = qDto.QuestionCategoryId;
                 q.IsInBank = false;
 
-                // Load answers hiện tại
+                // Load answers hiện tại từ cache map
                 var existingAnswers = new List<QuestionAnswer>();
-                if (!isInsertingQuestion)
+                if (!isInsertingQuestion && existingAnswersMap.TryGetValue(questionId, out var cachedAnswers))
                 {
-                    existingAnswers = queryableAns
-                        .Where(a => a.QuestionId == questionId && !a.IsDeleted)
-                        .ToList();
+                    existingAnswers = cachedAnswers;
                 }
 
-                // Xóa mềm đáp án cũ không còn trong danh sách mới
+                // Thu thập đáp án cũ cần xoá cứng khỏi DB
                 var inputAnswerIds = qDto.Answers.Select(a => a.QuestionAnswerId).Where(id => id != Guid.Empty).ToList();
                 foreach (var ea in existingAnswers)
                 {
                     if (!inputAnswerIds.Contains(ea.QuestionAnswerId))
                     {
-                        ea.IsDeleted = true;
-                        answersToUpdate.Add(ea);
+                        answersToDelete.Add(ea);
                     }
                 }
 
@@ -566,32 +571,36 @@ namespace HoangCN.LearnMS.Services
             await _baseWriteDL.BeginTransactionAsync();
             try
             {
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
+                var user = _httpContextAccessor.HttpContext?.User;
+                var currentUserName = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? HoangCN.Core.Common.Utils.ClaimUtil.GetUserName(user)
+                    : "System";
 
                 // Điền thông tin Audit
                 foreach (var q in questionsToInsert)
                 {
-                    q.CreatedBy = "Hoàng Cao Nguyên";
+                    q.CreatedBy = currentUserName;
                     q.CreatedDate = now;
-                    q.ModifiedBy = "Hoàng Cao Nguyên";
+                    q.ModifiedBy = currentUserName;
                     q.ModifiedDate = now;
                 }
                 foreach (var q in questionsToUpdate)
                 {
-                    q.ModifiedBy = "Hoàng Cao Nguyên";
+                    q.ModifiedBy = currentUserName;
                     q.ModifiedDate = now;
                 }
 
                 foreach (var ans in answersToInsert)
                 {
-                    ans.CreatedBy = "Hoàng Cao Nguyên";
+                    ans.CreatedBy = currentUserName;
                     ans.CreatedDate = now;
-                    ans.ModifiedBy = "Hoàng Cao Nguyên";
+                    ans.ModifiedBy = currentUserName;
                     ans.ModifiedDate = now;
                 }
                 foreach (var ans in answersToUpdate)
                 {
-                    ans.ModifiedBy = "Hoàng Cao Nguyên";
+                    ans.ModifiedBy = currentUserName;
                     ans.ModifiedDate = now;
                 }
 
@@ -600,6 +609,7 @@ namespace HoangCN.LearnMS.Services
                 if (questionsToUpdate.Count > 0) await _baseWriteDL.UpdateRangeAsync(questionsToUpdate);
                 if (answersToInsert.Count > 0) await _baseWriteDL.InsertRangeAsync(answersToInsert);
                 if (answersToUpdate.Count > 0) await _baseWriteDL.UpdateRangeAsync(answersToUpdate);
+                if (answersToDelete.Count > 0) await _baseWriteDL.DeleteRangeAsync(answersToDelete);
 
                 await _baseWriteDL.CommitTransactionAsync();
             }

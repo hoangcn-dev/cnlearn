@@ -95,8 +95,6 @@ namespace HoangCN.LearnMS.Services
             await _baseWriteDL.BeginTransactionAsync();
             try
             {
-                var queryableExam = _baseWriteDL.GetQueryable<Exam>();
-
                 // 1. Lưu thông tin đề thi
                 Exam exam;
                 if (isNew)
@@ -109,7 +107,8 @@ namespace HoangCN.LearnMS.Services
                 }
                 else
                 {
-                    var existing = await queryableExam.FirstOrDefaultAsync(e => e.ExamId == examId && !e.IsDeleted);
+                    var existingList = await GetByCondition<Exam>(e => e.ExamId == examId);
+                    var existing = existingList.FirstOrDefault();
                     if (existing == null)
                     {
                         exam = new Exam
@@ -134,17 +133,22 @@ namespace HoangCN.LearnMS.Services
                 exam.IsDraft = dto.IsDraft;
                 exam.ContributeToBank = dto.ContributeToBank;
 
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
+                var user = _httpContextAccessor.HttpContext?.User;
+                var currentUserName = (user != null && user.Identity?.IsAuthenticated == true)
+                    ? HoangCN.Core.Common.Utils.ClaimUtil.GetUserName(user)
+                    : "System";
+
                 if (isNew)
                 {
-                    exam.CreatedBy = currentUserId.ToString();
+                    exam.CreatedBy = currentUserName;
                     exam.CreatedDate = now;
-                    exam.ModifiedBy = currentUserId.ToString();
+                    exam.ModifiedBy = currentUserName;
                     exam.ModifiedDate = now;
                 }
                 else
                 {
-                    exam.ModifiedBy = currentUserId.ToString();
+                    exam.ModifiedBy = currentUserName;
                     exam.ModifiedDate = now;
                 }
 
@@ -179,14 +183,10 @@ namespace HoangCN.LearnMS.Services
                 }
 
                 // 3. Xoá các mối liên kết đề thi - câu hỏi cũ
-                var existingRelations = await _baseWriteDL.GetQueryable<ExamQuestion>()
-                    .Where(eq => eq.ExamId == examId && !eq.IsDeleted)
-                    .ToListAsync();
-
-                foreach (var relation in existingRelations)
-                {
-                    relation.IsDeleted = true;
-                }
+                var relParams = new DynamicParameters();
+                relParams.Add("ExamId", examId);
+                var existingRelations = (await _baseReadDL.ExecuteQueryText<ExamQuestion>(
+                    "SELECT * FROM ExamQuestion WHERE ExamId = @ExamId", relParams)).ToList();
 
                 if (existingRelations.Count > 0)
                 {
@@ -204,9 +204,9 @@ namespace HoangCN.LearnMS.Services
                         ExamId = examId,
                         QuestionId = qDto.Id,
                         SortOrder = i + 1,
-                        CreatedBy = currentUserId.ToString(),
+                        CreatedBy = currentUserName,
                         CreatedDate = now,
-                        ModifiedBy = currentUserId.ToString(),
+                        ModifiedBy = currentUserName,
                         ModifiedDate = now
                     };
                     newRelations.Add(relation);
@@ -238,7 +238,7 @@ namespace HoangCN.LearnMS.Services
         /// </summary>
         public async Task<Dictionary<Guid, int>> GetQuestionCountsAsync()
         {
-            var sql = "SELECT ExamId, COUNT(*) as Count FROM ExamQuestion WHERE IsDeleted = 0 GROUP BY ExamId";
+            var sql = "SELECT ExamId, COUNT(*) as Count FROM ExamQuestion GROUP BY ExamId";
             var queryResult = await _baseReadDL.ExecuteQueryText<ExamQuestionCountQueryResult>(sql);
             return queryResult.ToDictionary(x => x.ExamId, x => x.Count);
         }

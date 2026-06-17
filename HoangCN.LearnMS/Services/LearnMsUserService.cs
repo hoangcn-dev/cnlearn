@@ -37,8 +37,6 @@ namespace HoangCN.LearnMS.Services
                 entity.CreatedBy = "System";
                 entity.ModifiedBy = "System";
             }
-            ValidateUtil.CommonValidate(entities);
-            await ValidateUtil.CheckExist(entities, _baseReadDL);
         }
 
         protected override async Task BeforeUpdate(List<LearnMsUser> entities)
@@ -48,8 +46,6 @@ namespace HoangCN.LearnMS.Services
             {
                 entity.ModifiedBy = "System";
             }
-            ValidateUtil.CommonValidate(entities);
-            await ValidateUtil.CheckExist(entities, _baseReadDL);
         }
     }
 }
