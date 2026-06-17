@@ -39,15 +39,11 @@ namespace HoangCN.LearnMS.Services
 
             if (questionIds.Count > 0)
             {
-                var ansParams = new DynamicParameters();
-                ansParams.Add("QuestionIds", questionIds);
-                dbAnswers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(
-                    "SELECT * FROM QuestionAnswer WHERE QuestionId IN @QuestionIds", ansParams)).ToList();
+                var ansSql = HoangCN.LearnMS.Utils.QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
+                dbAnswers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams)).ToList();
 
-                var qParams = new DynamicParameters();
-                qParams.Add("QuestionIds", questionIds);
-                dbQuestions = (await _baseReadDL.ExecuteQueryText<Question>(
-                    "SELECT * FROM Question WHERE QuestionId IN @QuestionIds", qParams)).ToList();
+                var qSql = HoangCN.LearnMS.Utils.QuestionSqlUtil.BuildQueryQuestionsByIds(questionIds, out var qParams);
+                dbQuestions = (await _baseReadDL.ExecuteQueryText<Question>(qSql, qParams)).ToList();
             }
 
             var result = new ExamAttemptResultDto
@@ -164,37 +160,11 @@ namespace HoangCN.LearnMS.Services
         public async Task<ResultDto<AttemptHistoryDto>> GetExamAttemptHistoryAsync(Guid userId, int pageIndex, int pageSize)
         {
             var offset = (pageIndex - 1) * pageSize;
-            var parameters = new DynamicParameters();
-            parameters.Add("UserId", userId);
-            parameters.Add("Offset", offset);
-            parameters.Add("PageSize", pageSize);
+            var sqlCount = HoangCN.LearnMS.Utils.ExamAttemptSqlUtil.BuildQueryExamHistoryCount(userId, out var countParams);
+            var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, countParams);
 
-            var sqlCount = @"
-                SELECT COUNT(1) 
-                FROM ExamAttempt 
-                WHERE UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice')";
-
-            var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, parameters);
-
-            var sqlData = @"
-                SELECT 
-                    ea.ExamAttemptId,
-                    COALESCE(q.Title, e.Name, 'Đề thi không xác định') AS Title,
-                    ea.AttemptType,
-                    COALESCE(ea.QuizId, ea.ExamId) AS RelatedId,
-                    ea.FinishedDate,
-                    ea.CorrectCount,
-                    ea.TotalQuestions,
-                    ea.Score,
-                    ea.Duration
-                FROM ExamAttempt ea
-                LEFT JOIN Exam e ON ea.ExamId = e.ExamId
-                LEFT JOIN Quiz q ON ea.QuizId = q.QuizId
-                WHERE ea.UserId = @UserId AND AttemptType IN ('exam', 'quiz', 'practice')
-                ORDER BY ea.FinishedDate DESC
-                LIMIT @PageSize OFFSET @Offset";
-
-            var items = await _baseReadDL.ExecuteQueryText<AttemptHistoryDto>(sqlData, parameters);
+            var sqlData = HoangCN.LearnMS.Utils.ExamAttemptSqlUtil.BuildQueryExamHistoryPaging(userId, pageSize, offset, out var dataParams);
+            var items = await _baseReadDL.ExecuteQueryText<AttemptHistoryDto>(sqlData, dataParams);
 
             return new ResultDto<AttemptHistoryDto>
             {
@@ -208,36 +178,11 @@ namespace HoangCN.LearnMS.Services
         public async Task<ResultDto<AttemptHistoryDto>> GetQuestionAttemptHistoryAsync(Guid userId, int pageIndex, int pageSize)
         {
             var offset = (pageIndex - 1) * pageSize;
-            var parameters = new DynamicParameters();
-            parameters.Add("UserId", userId);
-            parameters.Add("Offset", offset);
-            parameters.Add("PageSize", pageSize);
+            var sqlCount = HoangCN.LearnMS.Utils.ExamAttemptSqlUtil.BuildQueryQuestionHistoryCount(userId, out var countParams);
+            var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, countParams);
 
-            var sqlCount = @"
-                SELECT COUNT(1) 
-                FROM ExamAttempt 
-                WHERE UserId = @UserId AND AttemptType = 'question'";
-
-            var totalItems = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(sqlCount, parameters);
-
-            var sqlData = @"
-                SELECT 
-                    ea.ExamAttemptId,
-                    COALESCE(q.StringContent, 'Câu hỏi không xác định') AS Title,
-                    ea.AttemptType,
-                    ea.QuestionId AS RelatedId,
-                    ea.FinishedDate,
-                    ea.CorrectCount,
-                    ea.TotalQuestions,
-                    ea.Score,
-                    ea.Duration
-                FROM ExamAttempt ea
-                LEFT JOIN Question q ON ea.QuestionId = q.QuestionId
-                WHERE ea.UserId = @UserId AND AttemptType = 'question'
-                ORDER BY ea.FinishedDate DESC
-                LIMIT @PageSize OFFSET @Offset";
-
-            var items = await _baseReadDL.ExecuteQueryText<AttemptHistoryDto>(sqlData, parameters);
+            var sqlData = HoangCN.LearnMS.Utils.ExamAttemptSqlUtil.BuildQueryQuestionHistoryPaging(userId, pageSize, offset, out var dataParams);
+            var items = await _baseReadDL.ExecuteQueryText<AttemptHistoryDto>(sqlData, dataParams);
 
             return new ResultDto<AttemptHistoryDto>
             {

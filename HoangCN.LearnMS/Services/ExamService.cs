@@ -184,10 +184,8 @@ namespace HoangCN.LearnMS.Services
                 }
 
                 // 3. Xoá các mối liên kết đề thi - câu hỏi cũ
-                var relParams = new DynamicParameters();
-                relParams.Add("ExamId", examId);
-                var existingRelations = (await _baseReadDL.ExecuteQueryText<ExamQuestion>(
-                    "SELECT * FROM ExamQuestion WHERE ExamId = @ExamId", relParams)).ToList();
+                var relSql = HoangCN.LearnMS.Utils.ExamSqlUtil.BuildQueryExamQuestionsByExamId(examId, out var relParams);
+                var existingRelations = (await _baseReadDL.ExecuteQueryText<ExamQuestion>(relSql, relParams)).ToList();
 
                 if (existingRelations.Count > 0)
                 {
@@ -239,8 +237,8 @@ namespace HoangCN.LearnMS.Services
         /// </summary>
         public async Task<Dictionary<Guid, int>> GetQuestionCountsAsync()
         {
-            var sql = "SELECT ExamId, COUNT(*) as Count FROM ExamQuestion GROUP BY ExamId";
-            var queryResult = await _baseReadDL.ExecuteQueryText<ExamQuestionCountQueryResult>(sql);
+            var sql = HoangCN.LearnMS.Utils.ExamSqlUtil.BuildQueryQuestionCounts(out var parameters);
+            var queryResult = await _baseReadDL.ExecuteQueryText<ExamQuestionCountQueryResult>(sql, parameters);
             return queryResult.ToDictionary(x => x.ExamId, x => x.Count);
         }
     }

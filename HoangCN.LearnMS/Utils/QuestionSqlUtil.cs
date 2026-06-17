@@ -98,5 +98,15 @@ namespace HoangCN.LearnMS.Utils
             }
             return "SELECT QuestionId FROM Question WHERE AccessType = 0";
         }
+
+        /// <summary>
+        /// Tạo câu lệnh SQL lấy danh sách câu hỏi theo danh sách QuestionId
+        /// </summary>
+        public static string BuildQueryQuestionsByIds(List<Guid> questionIds, out DynamicParameters parameters)
+        {
+            parameters = new DynamicParameters();
+            parameters.Add("Ids", questionIds);
+            return "SELECT * FROM Question WHERE QuestionId IN @Ids";
+        }
     }
 }
