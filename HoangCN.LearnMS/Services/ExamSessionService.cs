@@ -14,11 +14,11 @@ using Microsoft.AspNetCore.Http;
 
 namespace HoangCN.LearnMS.Services
 {
-    public class ExamSessionBL : BaseBL<ExamSession>, IExamSessionBL
+    public class ExamSessionService : BaseBL<ExamSession>, IExamSessionService
     {
         private readonly IBaseBL<ExamCheatLog> _cheatLogBL;
 
-        public ExamSessionBL(IBaseReadDL readDL, IBaseWriteDL writeDL, IBaseBL<ExamCheatLog> cheatLogBL, IHttpContextAccessor httpContextAccessor) 
+        public ExamSessionService(IBaseReadDL readDL, IBaseWriteDL writeDL, IBaseBL<ExamCheatLog> cheatLogBL, IHttpContextAccessor httpContextAccessor) 
             : base(readDL, writeDL, httpContextAccessor)
         {
             _cheatLogBL = cheatLogBL;

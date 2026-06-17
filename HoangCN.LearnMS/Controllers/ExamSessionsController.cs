@@ -14,11 +14,11 @@ namespace HoangCN.LearnMS.Controllers
     [ApiController]
     public class ExamSessionsController : BaseController<ExamSession>
     {
-        private readonly IExamSessionBL _examSessionBL;
+        private readonly IExamSessionService _examSessionService;
 
-        public ExamSessionsController(IExamSessionBL examSessionBL) : base(examSessionBL)
+        public ExamSessionsController(IExamSessionService examSessionService) : base(examSessionService)
         {
-            _examSessionBL = examSessionBL;
+            _examSessionService = examSessionService;
         }
 
         private Guid GetCurrentUserId()
@@ -36,7 +36,7 @@ namespace HoangCN.LearnMS.Controllers
         public async Task<IActionResult> StartSession([FromBody] ExamSessionStartRequest request)
         {
             var candidateId = GetCurrentUserId();
-            var sessionId = await _examSessionBL.StartSessionAsync(candidateId, request);
+            var sessionId = await _examSessionService.StartSessionAsync(candidateId, request);
             return Ok(ApiResponseDto.Success(sessionId));
         }
 
@@ -45,7 +45,7 @@ namespace HoangCN.LearnMS.Controllers
         public async Task<IActionResult> Heartbeat(Guid sessionId, [FromBody] ExamSessionHeartbeatRequest request)
         {
             var candidateId = GetCurrentUserId();
-            await _examSessionBL.ProcessHeartbeatAsync(sessionId, candidateId, request);
+            await _examSessionService.ProcessHeartbeatAsync(sessionId, candidateId, request);
             return Ok(ApiResponseDto.Success(true));
         }
 
@@ -54,7 +54,7 @@ namespace HoangCN.LearnMS.Controllers
         public async Task<IActionResult> LogCheat(Guid sessionId, [FromBody] ExamCheatLogRequest request)
         {
             var candidateId = GetCurrentUserId();
-            await _examSessionBL.LogCheatAsync(sessionId, candidateId, request);
+            await _examSessionService.LogCheatAsync(sessionId, candidateId, request);
             return Ok(ApiResponseDto.Success(true));
         }
 
@@ -63,7 +63,7 @@ namespace HoangCN.LearnMS.Controllers
         public async Task<IActionResult> SubmitSession(Guid sessionId)
         {
             var candidateId = GetCurrentUserId();
-            await _examSessionBL.SubmitSessionAsync(sessionId, candidateId);
+            await _examSessionService.SubmitSessionAsync(sessionId, candidateId);
             return Ok(ApiResponseDto.Success(true));
         }
     }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Interfaces
 {
-    public interface IExamSessionBL : IBaseBL<ExamSession>
+    public interface IExamSessionService : IBaseBL<ExamSession>
     {
         Task<Guid> StartSessionAsync(Guid candidateId, ExamSessionStartRequest request);
         Task ProcessHeartbeatAsync(Guid sessionId, Guid candidateId, ExamSessionHeartbeatRequest request);
