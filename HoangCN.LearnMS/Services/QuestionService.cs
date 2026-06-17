@@ -94,10 +94,8 @@ namespace HoangCN.LearnMS.Services
             var entities = res.Items;
             var questionIds = entities.Select(q => q.QuestionId).ToList();
 
-            var ansParams = new DynamicParameters();
-            ansParams.Add("QuestionIds", questionIds);
-            var answers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(
-                "SELECT * FROM QuestionAnswer WHERE QuestionId IN @QuestionIds", ansParams)).ToList();
+            var ansSql = QuestionSqlUtil.BuildQueryAnswersByQuestionIds(questionIds, out var ansParams);
+            var answers = (await _baseReadDL.ExecuteQueryText<QuestionAnswer>(ansSql, ansParams)).ToList();
 
             await _baseWriteDL.BeginTransactionAsync();
             try
