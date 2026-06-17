@@ -848,7 +848,7 @@ const parseImportFile = (file: File) => {
             categoryIds: (() => {
               const ids = Array.isArray(item.categoryIds) ? item.categoryIds : (Array.isArray(item.CategoryIds) ? item.CategoryIds : []);
               // Lọc các ID thực sự tồn tại trong danh mục hệ thống
-              const validIds = ids.filter(id => categories.value.some(c => c.questionCategoryId.toLowerCase() === id.toLowerCase()));
+              const validIds = ids.filter((id: any) => typeof id === 'string' && categories.value.some(c => c.questionCategoryId.toLowerCase() === id.toLowerCase()));
               if (validIds.length > 0) {
                 return validIds;
               }

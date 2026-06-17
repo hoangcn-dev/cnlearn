@@ -440,9 +440,10 @@ namespace HoangCN.LearnMS.Services
             var answersToUpdate = new List<QuestionAnswer>();
             var answersToDelete = new List<QuestionAnswer>();
 
-            // Lấy danh sách ID câu hỏi hiện có trong payload để truy vấn toàn bộ đáp án của chúng (tránh N+1)
+            // Lấy danh sách ID câu hỏi hiện có trong payload để truy vấn toàn bộ câu hỏi và đáp án của chúng (tránh N+1)
             var questionIds = questionsDto.Select(q => q.Id).Where(id => id != Guid.Empty).ToList();
             var existingAnswersMap = new Dictionary<Guid, List<QuestionAnswer>>();
+            var existingQuestionsMap = new Dictionary<Guid, Question>();
             if (questionIds.Count > 0)
             {
                 var ansParams = new DynamicParameters();
@@ -452,6 +453,9 @@ namespace HoangCN.LearnMS.Services
                 existingAnswersMap = allExistingAnswers
                     .GroupBy(a => a.QuestionId)
                     .ToDictionary(g => g.Key, g => g.ToList());
+
+                var allExistingQuestions = await GetByCondition<Question>(q => questionIds.Contains(q.QuestionId));
+                existingQuestionsMap = allExistingQuestions.ToDictionary(q => q.QuestionId, q => q);
             }
 
             foreach (var qDto in questionsDto)
@@ -482,9 +486,12 @@ namespace HoangCN.LearnMS.Services
                 }
                 else
                 {
-                    var existingList = await GetByCondition<Question>(x => x.QuestionId == questionId);
-                    q = existingList.FirstOrDefault()!;
-                    if (q == null)
+                    if (existingQuestionsMap.TryGetValue(questionId, out var existingQuestion))
+                    {
+                        q = existingQuestion;
+                        questionsToUpdate.Add(q);
+                    }
+                    else
                     {
                         q = new Question
                         {
@@ -493,10 +500,6 @@ namespace HoangCN.LearnMS.Services
                         };
                         questionsToInsert.Add(q);
                         isInsertingQuestion = true;
-                    }
-                    else
-                    {
-                        questionsToUpdate.Add(q);
                     }
                 }
 
