@@ -167,30 +167,30 @@ namespace HoangCN.MainSystem.Tests
         }
 
         [Fact]
-        public void FilterConstructor_BothValueAndColumnToComparePopulated_ShouldThrowException()
-        {
-            // Act & Assert
-            var ex = Assert.Throws<BadRequestException>(() => 
-                new Filter("ModifiedDate", FilterOperator.GreaterThan, DateTime.UtcNow, FilterType.Date, "CreatedDate")
-            );
-            Assert.Equal("Không thể thiết lập đồng thời cả Value và ColumnToCompare.", ex.Message);
-        }
-
-        [Fact]
-        public void FilterPropertySetters_BothValueAndColumnToComparePopulated_ShouldThrowException()
+        public void BuildWhereClaude_NullValueFilter_ShouldAllowNullValue()
         {
             // Arrange
-            var filter = new Filter
+            var request = new GetRequest
             {
-                Property = "ModifiedDate",
-                Operator = FilterOperator.GreaterThan,
-                Type = FilterType.Date
+                AdvancedFilterGroup = new AdvancedFilterGroup
+                {
+                    GroupType = FilterGroupType.And,
+                    Filters = new List<Filter>
+                    {
+                        new Filter("DisplayName", FilterOperator.Equal, null, FilterType.String),
+                        new Filter("Email", FilterOperator.NotEqual, null, FilterType.String)
+                    }
+                }
             };
+            var parameters = new DynamicParameters();
 
-            // Act & Assert
-            filter.Value = DateTime.UtcNow;
-            var ex = Assert.Throws<BadRequestException>(() => filter.ColumnToCompare = "CreatedDate");
-            Assert.Equal("Không thể thiết lập đồng thời cả Value và ColumnToCompare.", ex.Message);
+            // Act
+            var sql = BuildSQLUtil.BuildWhereClaude<User, UserAuthDto>(request, parameters);
+
+            // Assert
+            Assert.Contains("`User`.`DisplayName` IS NULL", sql);
+            Assert.Contains("`User`.`Email` IS NOT NULL", sql);
+            Assert.Empty(parameters.ParameterNames);
         }
 
         #endregion

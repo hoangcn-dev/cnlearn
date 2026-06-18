@@ -265,7 +265,7 @@ namespace HoangCN.Core.BL.Utils
                         throw new BadRequestException("Toán tử không hợp lệ cho kiểu dữ liệu lọc");
                     }
 
-                    if (filter.ColumnToCompare != null)
+                    if (!string.IsNullOrEmpty(filter.ColumnToCompare))
                     {
                         // So sánh cột với cột
                         var sqlColumn2 = ResolveSqlColumn<TEntity, TResult>(filter.ColumnToCompare, out var matchedPropName2);
@@ -281,36 +281,49 @@ namespace HoangCN.Core.BL.Utils
                     }
                     else
                     {
-                        // So sánh cột với giá trị
-                        var paramName = $"af_{matchedPropName}_{paramCounter++}";
-                        var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
-
-                        if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                        if (filter.Value == null)
                         {
-                            parameters.Add(paramName, filter.Value);
-                        }
-                        else if (filter.Type == FilterType.Number)
-                        {
-                            parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
-                        }
-                        else if (filter.Type == FilterType.Bool)
-                        {
-                            parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
-                        }
-                        else if (filter.Type == FilterType.Date)
-                        {
-                            parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
-                        }
-                        else if (filter.Type == FilterType.String)
-                        {
-                            parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                            var condition = filter.Operator switch
+                            {
+                                FilterOperator.Equal => $"{sqlColumn} IS NULL",
+                                FilterOperator.NotEqual => $"{sqlColumn} IS NOT NULL",
+                                _ => throw new BadRequestException($"Toán tử '{filter.Operator}' không hợp lệ cho giá trị NULL.")
+                            };
+                            conditions.Add(condition);
                         }
                         else
                         {
-                            throw new BadRequestException("Kiểu dữ liệu lọc không được hỗ trợ");
-                        }
+                            // So sánh cột với giá trị
+                            var paramName = $"af_{matchedPropName}_{paramCounter++}";
+                            var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
 
-                        conditions.Add(condition);
+                            if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                            {
+                                parameters.Add(paramName, filter.Value);
+                            }
+                            else if (filter.Type == FilterType.Number)
+                            {
+                                parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                            }
+                            else if (filter.Type == FilterType.Bool)
+                            {
+                                parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                            }
+                            else if (filter.Type == FilterType.Date)
+                            {
+                                parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                            }
+                            else if (filter.Type == FilterType.String)
+                            {
+                                parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                            }
+                            else
+                            {
+                                throw new BadRequestException("Kiểu dữ liệu lọc không được hỗ trợ");
+                            }
+
+                            conditions.Add(condition);
+                        }
                     }
                 }
             }
@@ -354,7 +367,7 @@ namespace HoangCN.Core.BL.Utils
                     throw new BadRequestException("Toán tử không hợp lệ");
                 }
 
-                if (filter.ColumnToCompare != null)
+                if (!string.IsNullOrEmpty(filter.ColumnToCompare))
                 {
                     var sqlColumn2 = ResolveSqlColumn<TEntity, TResult>(filter.ColumnToCompare, out var matchedPropName2);
                     filter.ColumnToCompare = matchedPropName2;
@@ -368,35 +381,48 @@ namespace HoangCN.Core.BL.Utils
                 }
                 else
                 {
-                    var paramName = $"{filter.Property}_{i}";
-                    var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
-
-                    if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                    if (filter.Value == null)
                     {
-                        parameters.Add(paramName, filter.Value);
-                    }
-                    else if (filter.Type == FilterType.Number)
-                    {
-                        parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
-                    }
-                    else if (filter.Type == FilterType.Bool)
-                    {
-                        parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
-                    }
-                    else if (filter.Type == FilterType.Date)
-                    {
-                        parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
-                    }
-                    else if (filter.Type == FilterType.String)
-                    {
-                        parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                        var condition = filter.Operator switch
+                        {
+                            FilterOperator.Equal => $"{sqlColumn} IS NULL",
+                            FilterOperator.NotEqual => $"{sqlColumn} IS NOT NULL",
+                            _ => throw new BadRequestException($"Toán tử '{filter.Operator}' không hợp lệ cho giá trị NULL.")
+                        };
+                        conditions.Add(condition);
                     }
                     else
                     {
-                        throw new InvalidDataException("Kiểu lọc chưa hỗ trợ");
-                    }
+                        var paramName = $"{filter.Property}_{i}";
+                        var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
 
-                    conditions.Add(condition);
+                        if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                        {
+                            parameters.Add(paramName, filter.Value);
+                        }
+                        else if (filter.Type == FilterType.Number)
+                        {
+                            parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                        }
+                        else if (filter.Type == FilterType.Bool)
+                        {
+                            parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                        }
+                        else if (filter.Type == FilterType.Date)
+                        {
+                            parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                        }
+                        else if (filter.Type == FilterType.String)
+                        {
+                            parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                        }
+                        else
+                        {
+                            throw new InvalidDataException("Kiểu lọc chưa hỗ trợ");
+                        }
+
+                        conditions.Add(condition);
+                    }
                 }
             }
 

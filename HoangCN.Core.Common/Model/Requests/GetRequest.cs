@@ -94,9 +94,6 @@ namespace HoangCN.Core.Common.Model.Requests
     /// </summary>
     public class Filter
     {
-        private object? _value;
-        private string? _columnToCompare;
-
         /// <summary>
         /// Tên thuộc tính cần lọc
         /// </summary>
@@ -110,15 +107,7 @@ namespace HoangCN.Core.Common.Model.Requests
         /// <summary>
         /// Giá trị lọc
         /// </summary>
-        public object? Value
-        {
-            get => _value;
-            set
-            {
-                _value = value;
-                Validate();
-            }
-        }
+        public object? Value { get; set; }
 
         /// <summary>
         /// Kiểu giá trị của cột cần lọc
@@ -129,15 +118,7 @@ namespace HoangCN.Core.Common.Model.Requests
         /// <summary>
         /// Tên cột cần so sánh (nếu có so sánh cột với cột)
         /// </summary>
-        public string? ColumnToCompare
-        {
-            get => _columnToCompare;
-            set
-            {
-                _columnToCompare = value;
-                Validate();
-            }
-        }
+        public string? ColumnToCompare { get; set; }
 
         public Filter()
         {
@@ -147,18 +128,9 @@ namespace HoangCN.Core.Common.Model.Requests
         {
             Property = property;
             Operator = @operator;
-            _value = value;
+            Value = value;
             Type = type;
-            _columnToCompare = columnToCompare;
-            Validate();
-        }
-
-        private void Validate()
-        {
-            if (_columnToCompare != null && _value != null)
-            {
-                throw new HoangCN.Core.Common.Exceptions.BadRequestException("Không thể thiết lập đồng thời cả Value và ColumnToCompare.");
-            }
+            ColumnToCompare = columnToCompare;
         }
     }
 }
