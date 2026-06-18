@@ -1,21 +1,13 @@
-using HoangCN.LearnMS.Entities;
-using HoangCN.Core.Common.Model.DTOs;
-using HoangCN.Core.Common.Exceptions;
-using HoangCN.Core.Common.Model.Requests;
-using HoangCN.Core.Common.Enums;
-using HoangCN.LearnMS.Interfaces;
-using HoangCN.LearnMS.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Security.Claims;
-using System.Text.Json;
-using System.Threading.Tasks;
-
 using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.DTOs;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.LearnMS.DTOs;
+using HoangCN.LearnMS.Entities;
+using HoangCN.LearnMS.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HoangCN.LearnMS.Controllers
 {
@@ -144,7 +136,7 @@ namespace HoangCN.LearnMS.Controllers
         /// Đường dẫn: POST api/questions/save-details
         /// </summary>
         [HttpPost("save-details")]
-        public async Task<IActionResult> SaveDetails([FromBody] List<QuestionDetailsDto> questionsDto)
+        public async Task<IActionResult> SaveDetails([FromBody] List<QuestionDetailDto> questionsDto)
         {
             var userId = CheckAuth();
             await _questionService.SaveQuestionDetailsAsync(questionsDto, userId);

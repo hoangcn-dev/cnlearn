@@ -163,18 +163,18 @@ namespace HoangCN.LearnMS.Services
                 }
 
                 // 2. Lưu thông tin các câu hỏi trắc nghiệm liên quan
-                var questionsToSave = new List<QuestionDetailsDto>();
+                var questionsToSave = new List<QuestionDetailDto>();
 
                 for (int i = 0; i < dto.Questions.Count; i++)
                 {
                     var qDto = dto.Questions[i];
-                    var isGuid = Guid.TryParse(qDto.Id.ToString(), out Guid questionGuid);
+                    var isGuid = Guid.TryParse(qDto.QuestionId.ToString(), out Guid questionGuid);
                     if (!isGuid || questionGuid == Guid.Empty)
                     {
                         questionGuid = Guid.NewGuid();
                     }
 
-                    qDto.Id = questionGuid;
+                    qDto.QuestionId = questionGuid;
                     questionsToSave.Add(qDto);
                 }
 
@@ -201,7 +201,7 @@ namespace HoangCN.LearnMS.Services
                     {
                         ExamQuestionId = Guid.NewGuid(),
                         ExamId = examId,
-                        QuestionId = qDto.Id,
+                        QuestionId = qDto.QuestionId,
                         SortOrder = i + 1,
                         CreatedBy = currentUserName,
                         CreatedDate = now,

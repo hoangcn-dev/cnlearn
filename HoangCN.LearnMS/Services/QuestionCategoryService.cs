@@ -40,14 +40,14 @@ namespace HoangCN.LearnMS.Services
                 if (entity == null) continue;
 
                 // Nếu Slug rỗng hoặc null, tự động sinh slug từ Name
-                if (string.IsNullOrWhiteSpace(entity.Slug))
+                if (string.IsNullOrWhiteSpace(entity.QuestionCategorySlug))
                 {
-                    entity.Slug = SlugUtil.GenerateSlug(entity.Name);
+                    entity.QuestionCategorySlug = SlugUtil.GenerateSlug(entity.QuestionCategoryName);
                 }
                 else
                 {
                     // Nếu đã nhập slug thủ công, vẫn chuẩn hóa bằng SlugUtil để làm sạch chuỗi
-                    entity.Slug = SlugUtil.GenerateSlug(entity.Slug);
+                    entity.QuestionCategorySlug = SlugUtil.GenerateSlug(entity.QuestionCategorySlug);
                 }
             }
         }

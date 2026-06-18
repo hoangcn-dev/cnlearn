@@ -3,6 +3,7 @@ using System;
 using HoangCN.Core.DL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HoangCN.LearnMS.Migrations
 {
     [DbContext(typeof(DynamicDbContext))]
-    partial class DynamicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618065920_ChangeNameOfCategory")]
+    partial class ChangeNameOfCategory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -401,7 +404,7 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<Guid>("QuestionCategoryId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("QuestionSlug")
+                    b.Property<string>("Slug")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 

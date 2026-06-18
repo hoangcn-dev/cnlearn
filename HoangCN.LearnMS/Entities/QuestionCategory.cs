@@ -21,7 +21,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Đường dẫn SEO (Slug)")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string? Slug { get; set; }
+        public string? QuestionCategorySlug { get; set; }
 
         /// <summary>
         /// Tên danh mục câu hỏi
@@ -29,7 +29,7 @@ namespace HoangCN.LearnMS.Entities
         [DisplayName("Tên danh mục")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string Name { get; set; } = string.Empty;
+        public string QuestionCategoryName { get; set; } = string.Empty;
 
         /// <summary>
         /// Mã danh mục cha (để phân cấp danh mục)

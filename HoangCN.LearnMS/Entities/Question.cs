@@ -1,8 +1,6 @@
 using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Enums;
 using HoangCN.LearnMS.Enums;
-using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -24,7 +22,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Đường dẫn thân thiện (Slug)")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string? Slug { get; set; }
+        public string? QuestionSlug { get; set; }
 
         /// <summary>
         /// Nội dung câu hỏi bằng chữ
