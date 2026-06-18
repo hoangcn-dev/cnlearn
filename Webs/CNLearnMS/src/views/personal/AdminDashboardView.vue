@@ -150,7 +150,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { CategorySelect, type CategoryNode, type QuestionCategory, buildCategoryTree } from '@/components/category'
-import { getAllCate, saveCategories, deleteCategories } from '@/api/categories'
+import { getAllCate, addCategories, updateCategories, deleteCategories } from '@/api/categories'
 
 // State variables
 const activeTab = ref('categories')
@@ -322,7 +322,7 @@ const handleSave = async () => {
   }
 
   try {
-    const res = await saveCategories([payloadItem])
+    const res = isEditing.value ? await updateCategories([payloadItem]) : await addCategories([payloadItem])
     if (res.isSuccess) {
       message.success(isEditing.value ? 'Cập nhật danh mục thành công!' : 'Tạo danh mục mới thành công!')
       await fetchCategories()

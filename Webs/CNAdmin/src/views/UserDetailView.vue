@@ -5,12 +5,12 @@ import { message } from 'ant-design-vue';
 import { ArrowLeftOutlined } from '@ant-design/icons-vue';
 import type { User } from '@/model/user/User';
 import type { Role } from '@/model/user/Role';
-import { getAllRoles, getUserById, saveUsers } from '@/api/user';
+import { addUsers, getAllRoles, getUserById, udpateUsers  } from '@/api/user';
 import { getErrorMessage } from '@/api/config/axios';
 
 const route = useRoute();
 const router = useRouter();
-
+const isCreate = ref<boolean>(route.params.id === 'new' || route.params.id === 'create');
 const roles = ref<Role[]>([]);
 
 const formState = reactive<User>({
@@ -124,14 +124,14 @@ const handleSave = () => {
       try {
         const payload = { ...formState };
         // Nếu tạo mới, loại bỏ hoàn toàn trường userId để Backend tự sinh tự động
-        if (route.params.id === 'new' || route.params.id === 'create') {
+        if (isCreate.value) {
           delete payload.userId;
         }
         // Loại bỏ avatarImageFileId nếu rỗng để Backend gán null/mặc định hợp lệ
         if (!payload.avatarImageFileId) {
           delete payload.avatarImageFileId;
         }
-        const res = await saveUsers([payload]);
+        const res = isCreate.value ? await addUsers([payload]) : await udpateUsers([payload]);
         if (res && res.isSuccess) {
           message.success('Lưu thông tin thành viên thành công!');
           router.push('/users');

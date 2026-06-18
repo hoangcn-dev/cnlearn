@@ -1,4 +1,4 @@
-import { get, post } from '@/api/config/axios';
+import { get, post, put } from '@/api/config/axios';
 import { endpoints } from '@/api/config/endpoint';
 
 /**
@@ -9,11 +9,6 @@ export interface EmailTemplate {
   templateCode: string;
   subject: string;
   content: string;
-  createdBy?: string;
-  createdDate?: string;
-  modifiedBy?: string;
-  modifiedDate?: string;
-  isDeleted?: boolean;
 }
 
 /**
@@ -34,11 +29,21 @@ export const getTemplateById = async (id: string): Promise<any> => {
 };
 
 /**
- * Lưu mẫu email (Tự động thêm mới hoặc cập nhật)
+ * Thêm mới mẫu email
  */
-export const saveTemplate = async (template: EmailTemplate): Promise<any> => {
+export const addTemplate = async (template: EmailTemplate): Promise<any> => {
   if (!template) {
     throw new Error('Dữ liệu template không được phép để trống.');
   }
-  return await post(endpoints.emailTemplates.save, template);
+  return await post(endpoints.emailTemplates.save, [template]);
+};
+
+/**
+ * Cập nhật mẫu email
+ */
+export const updateTemplate = async (template: EmailTemplate): Promise<any> => {
+  if (!template) {
+    throw new Error('Dữ liệu template không được phép để trống.');
+  }
+  return await put(endpoints.emailTemplates.save, [template]);
 };

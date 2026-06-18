@@ -1,4 +1,4 @@
-import { get, post } from "./config/axios"
+import { get, post, put } from "./config/axios"
 import { endpoints } from "./config/endpoint"
 
 // Lấy danh sách danh mục
@@ -11,9 +11,14 @@ export const getCategoriesPaging = async (request: any) => {
     return await post(endpoints.categories.paging, request);
 }
 
-// Lưu danh sách danh mục (Thêm mới/Cập nhật)
-export const saveCategories = async (categories: any[]) => {
+// Thêm mới danh mục
+export const addCategories = async (categories: any[]) => {
     return await post(endpoints.categories.save, categories);
+}
+
+// Cập nhật danh mục
+export const updateCategories = async (categories: any[]) => {
+    return await put(endpoints.categories.save, categories);
 }
 
 // Xóa danh mục

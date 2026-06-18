@@ -21,6 +21,12 @@ const router = createRouter({
       component: () => import("@/views/static/ForbiddenView.vue")
     },
     {
+      path: '/login-success',
+      name: 'login-success',
+      component: () => import("@/views/static/LoginSuccessView.vue"),
+      meta: { title: 'Đăng Nhập Thành Công' }
+    },
+    {
       path: '/',
       name: 'main-layout',
       component: () => import("@/views/layouts/MainLayout.vue"),
@@ -51,7 +57,7 @@ const router = createRouter({
           meta: { title: 'Quản Lý Email Template', breadcrumb: 'Mẫu Email' }
         },
         {
-          path: 'email-templates/edit/:code',
+          path: 'email-templates/edit/:id',
           name: 'email-template-edit',
           component: () => import("@/views/EmailTemplateEditView.vue"),
           meta: { title: 'Chỉnh Sửa Email Template', breadcrumb: 'Chỉnh sửa Template' }
@@ -63,7 +69,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  const isPublicRoute = to.name === 'auth' || to.name === 'auth-callback' || to.name === 'forbidden'
+  const isPublicRoute = to.name === 'auth' || to.name === 'auth-callback' || to.name === 'forbidden' || to.name === 'login-success'
 
   // Mặc định khi mới vào web admin, sẽ vào trang callback để lấy login info
   if (!authStore.isInitialized && !isPublicRoute) {

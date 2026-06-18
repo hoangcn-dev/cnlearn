@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,19 +10,14 @@ namespace HoangCN.MainSystem.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "FileResourceId",
-                table: "EmailTemplate",
-                newName: "EmailTemplateId");
+            // Thay thế bằng SQL thô để tránh bug không tìm thấy metadata cột cũ trong RenameColumn của MySql.EntityFrameworkCore.
+            migrationBuilder.Sql("ALTER TABLE EmailTemplate CHANGE COLUMN FileResourceId EmailTemplateId char(36) NOT NULL;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "EmailTemplateId",
-                table: "EmailTemplate",
-                newName: "FileResourceId");
+            migrationBuilder.Sql("ALTER TABLE EmailTemplate CHANGE COLUMN EmailTemplateId FileResourceId char(36) NOT NULL;");
         }
     }
 }

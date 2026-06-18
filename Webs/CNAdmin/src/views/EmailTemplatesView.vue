@@ -103,10 +103,7 @@ const handleEdit = (record: EmailTemplate) => {
             </div>
 
             <!-- Card Bottom Metrics -->
-            <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-auto">
-              <div class="small text-muted">
-                Tạo bởi: <strong class="text-dark">{{ item.createdBy || 'Hệ thống' }}</strong>
-              </div>
+            <div class="d-flex justify-content-end align-items-center border-top pt-3 mt-auto">
               <div class="d-flex gap-2">
                 <a-button type="default" size="middle" class="d-flex align-items-center rounded-3 px-3" @click="handleEdit(item)">
                   <template #icon><EditOutlined class="text-primary" /></template> Sửa

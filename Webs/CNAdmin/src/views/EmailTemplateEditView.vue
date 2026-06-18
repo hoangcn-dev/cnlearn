@@ -9,12 +9,13 @@ import {
   CodeOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons-vue';
-import { getTemplateById, saveTemplate, type EmailTemplate } from '@/api/emailTemplate';
+import { getTemplateById, addTemplate, updateTemplate, type EmailTemplate } from '@/api/emailTemplate';
 import { getErrorMessage } from '@/api/config/axios';
 
 const route = useRoute();
 const router = useRouter();
 const templateIdParam = route.params.id as string;
+const isCreate = ref<boolean>(templateIdParam === 'new' || templateIdParam === 'create');
 
 const loading = ref(false);
 const isSaving = ref(false);
@@ -112,7 +113,9 @@ const loadTemplate = async () => {
 };
 
 onMounted(() => {
-  loadTemplate();
+  if (!isCreate.value) {
+    loadTemplate();
+  }
 });
 
 // Insert Placeholder Helper
@@ -181,7 +184,7 @@ const handleSave = async () => {
       content: editingTemplate.content.trim(),
     };
 
-    const res = await saveTemplate(dataToSave);
+    const res = isCreate.value ? await addTemplate(dataToSave) : await updateTemplate(dataToSave);
     if (res.isSuccess) {
       message.success('Lưu mẫu email thành công!');
       router.push({ name: 'email-templates' });

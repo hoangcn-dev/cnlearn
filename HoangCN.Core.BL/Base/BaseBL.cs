@@ -193,7 +193,7 @@ namespace HoangCN.Core.BL.Base
             }
 
             await BeforeUpdate(entities);
-            ValidateUtil.CommonValidate(entities);
+            ValidateUtil.CommonValidate(entities, [nameof(BaseEntity.CreatedBy), nameof(BaseEntity.CreatedDate)]);
             await ValidateUtil.ValidatePkExists(entities, _baseReadDL);
             await ValidateUtil.CheckExist(entities, _baseReadDL);
 
@@ -266,9 +266,9 @@ namespace HoangCN.Core.BL.Base
         protected virtual async Task BeforeUpdate(List<TEntity> entities)
         {
             var now = DateTime.UtcNow;
+            var user = _httpContextAccessor.HttpContext?.User;
             foreach (var entity in entities)
             {
-                var user = _httpContextAccessor.HttpContext?.User;
                 entity.ModifiedBy = (user != null && user.Identity?.IsAuthenticated == true)
                     ? ClaimUtil.GetUserName(user)
                     : "System";

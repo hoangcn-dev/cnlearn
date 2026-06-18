@@ -165,7 +165,7 @@ namespace HoangCN.Core.BL.Utils
         /// <summary>
         /// Kiểm tra null và đồ dài chuỗi dựa trên các thuộc tính [Required] và [StringLength] đã được định nghĩa trong lớp thực thể.
         /// </summary>
-        public static void CommonValidate(IEnumerable items)
+        public static void CommonValidate(IEnumerable items, params string[] excepts)
         {
             // 1. Kiểm tra các điều kiện trong bộ nhớ (Required, StringLength) trước - Hoàn toàn không gọi DB
             foreach (var item in items)
@@ -175,6 +175,8 @@ namespace HoangCN.Core.BL.Utils
 
                 foreach (var prop in metadata.Properties)
                 {
+                    if (excepts.Contains(prop.PropertyName)) continue;
+
                     var v = prop.PropertyInfo.GetValue(item);
 
                     // Kiểm tra null hoặc trống [Required]

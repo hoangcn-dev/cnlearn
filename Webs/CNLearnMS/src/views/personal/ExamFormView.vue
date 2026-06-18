@@ -666,7 +666,7 @@ import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
 import { getQuestionsPaging, saveQuestions } from '@/api/questions'
 import { getAllExams, getExamQuestions, saveExamDetails } from '@/api/exams'
-import { getAllQuizzes, saveQuizDetails } from '@/api/quizzes'
+import { getAllQuizzes, addQuizDetails, updateQuizDetails } from '@/api/quizzes'
 
 const route = useRoute()
 const router = useRouter()
@@ -1666,7 +1666,7 @@ const saveForm = async (isDraft = false) => {
             sendEmailReport: formData.sendEmailReport
           }
 
-          const qres = await saveQuizDetails(quizPayload)
+          const qres = await updateQuizDetails(quizPayload)
           if (!qres || !qres.isSuccess) {
             message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
             return
@@ -1706,7 +1706,7 @@ const saveForm = async (isDraft = false) => {
             sendEmailReport: formData.sendEmailReport
           }
 
-          const qres = await saveQuizDetails(quizPayload)
+          const qres = await addQuizDetails(quizPayload)
           if (!qres || !qres.isSuccess) {
             message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
             return
