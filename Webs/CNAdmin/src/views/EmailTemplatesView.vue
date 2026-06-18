@@ -83,7 +83,7 @@ const handleEdit = (record: EmailTemplate) => {
           <p class="text-secondary small">Hệ thống chưa thiết lập mẫu email nào.</p>
         </div>
 
-        <div v-for="item in filteredTemplates" :key="item.fileResourceId" class="col-12 col-md-6 col-lg-4 text-start">
+        <div v-for="item in filteredTemplates" :key="item.emailTemplateId" class="col-12 col-md-6 col-lg-4 text-start">
           <div class="glass-card h-100 p-4 border rounded shadow-sm d-flex flex-column justify-content-between position-relative overflow-hidden">
             <!-- Background Accent Blob -->
             <div class="accent-blob"></div>
@@ -91,7 +91,7 @@ const handleEdit = (record: EmailTemplate) => {
             <div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <span class="badge badge-code px-2.5 py-1.5 rounded-pill font-monospace fw-semibold">{{ item.templateCode }}</span>
-                <span class="small text-muted font-monospace text-truncate ms-2" style="max-width: 140px;">ID: {{ item.fileResourceId.substring(0, 8) }}...</span>
+                <span class="small text-muted font-monospace text-truncate ms-2" style="max-width: 140px;">ID: {{ item.emailTemplateId }}...</span>
               </div>
 
               <h5 class="fw-bold text-dark mb-2 text-truncate">{{ item.subject }}</h5>
@@ -119,7 +119,7 @@ const handleEdit = (record: EmailTemplate) => {
 
       <!-- Mode 2: Standard Clean Table -->
       <div v-else class="bg-white rounded-3 border shadow-sm p-3">
-        <a-table :dataSource="filteredTemplates" :rowKey="(r: any) => r.fileResourceId" :loading="loading" :pagination="{ pageSize: 8 }">
+        <a-table :dataSource="filteredTemplates" :rowKey="(r: any) => r.emailTemplateId" :loading="loading" :pagination="{ pageSize: 8 }">
           <a-table-column title="Mã mẫu (Code)" dataIndex="templateCode" key="templateCode">
             <template #default="{ text }">
               <span class="badge badge-code px-2.5 py-1.5 rounded font-monospace">{{ text }}</span>

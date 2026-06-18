@@ -20,7 +20,7 @@ export const endpoints = {
   emailTemplates: {
     // Các endpoint Quản lý Email Template
     getAll: "/api/emailtemplates",
-    getByCode: (code: string) => `/api/emailtemplates/${code}`,
+    getById: (id: string) => `/api/emailtemplates/${id}`,
     save: "/api/emailtemplates",
   },
   roles: {

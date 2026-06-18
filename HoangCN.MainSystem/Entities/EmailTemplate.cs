@@ -1,4 +1,4 @@
-﻿using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Base;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel;
@@ -16,7 +16,7 @@ namespace HoangCN.MainSystem.Entities
         /// Định danh duy nhất cho tệp tài nguyên template dạng Guid (Khóa chính)
         /// </summary>
         [Key]
-        public Guid FileResourceId { get; set; } = Guid.NewGuid();
+        public Guid EmailTemplateId { get; set; } = Guid.NewGuid();
 
         /// <summary>
         /// Mã mẫu email (Ví dụ: forgot_password, welcome...)

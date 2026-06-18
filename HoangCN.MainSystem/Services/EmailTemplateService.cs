@@ -50,7 +50,7 @@ namespace HoangCN.MainSystem.Services
                 {
                     var defaultTemplate = new EmailTemplate
                     {
-                        FileResourceId = Guid.NewGuid(),
+                        EmailTemplateId = Guid.NewGuid(),
                         TemplateCode = "forgot_password",
                         Subject = "Yêu cầu khôi phục mật khẩu - HoangCN",
                         Content = "<html><body><h3>Chào {{DisplayName}},</h3><p>Hệ thống đã nhận được yêu cầu khôi phục mật khẩu của bạn.</p><p>Mật khẩu tạm thời mới của bạn là: <strong>{{TemporaryPassword}}</strong> (Hiệu lực trong vòng <strong>{{ExpireTime}}</strong>).</p><p>Vui lòng đăng nhập và tiến hành đổi mật khẩu ngay lập tức để bảo mật thông tin.</p><br/><p>Trân trọng,<br/>Đội ngũ HoangCN</p></body></html>",
@@ -101,9 +101,9 @@ namespace HoangCN.MainSystem.Services
             }
             else
             {
-                if (template.FileResourceId == Guid.Empty)
+                if (template.EmailTemplateId == Guid.Empty)
                 {
-                    template.FileResourceId = Guid.NewGuid();
+                    template.EmailTemplateId = Guid.NewGuid();
                 }
                 template.CreatedBy = "System";
                 
