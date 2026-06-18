@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+F<script lang="ts" setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
@@ -22,7 +22,7 @@ const loadTemplates = async () => {
   try {
     const res = await getAllTemplates();
     if (res.isSuccess) {
-      templatesList.value = res.data || [];
+      templatesList.value = res.data?.items || res.data || [];
     } else {
       message.error(getErrorMessage(res, 'Không thể tải danh sách mẫu email.'));
     }
@@ -40,7 +40,7 @@ onMounted(() => {
 
 // Navigate to dedicated edit page
 const handleEdit = (record: EmailTemplate) => {
-  router.push({ name: 'email-template-edit', params: { code: record.templateCode } });
+  router.push({ name: 'email-template-edit', params: { id: record.emailTemplateId } });
 };
 </script>
 
