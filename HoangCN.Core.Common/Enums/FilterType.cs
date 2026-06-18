@@ -1,4 +1,4 @@
-﻿namespace HoangCN.Core.Common.Enums
+namespace HoangCN.Core.Common.Enums
 {
     /// <summary>
     /// Kiểu giá trị lọc
@@ -18,7 +18,12 @@
         /// <summary>
         /// True/False
         /// </summary>
-        Bool
+        Bool,
+
+        /// <summary>
+        /// Ngày tháng
+        /// </summary>
+        Date
     }
 }
 

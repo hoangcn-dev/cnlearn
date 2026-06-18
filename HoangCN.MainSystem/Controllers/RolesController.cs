@@ -1,3 +1,4 @@
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Enums;

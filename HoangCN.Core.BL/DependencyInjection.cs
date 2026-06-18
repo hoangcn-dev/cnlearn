@@ -17,6 +17,9 @@ namespace HoangCN.Core.BL
             // Đăng ký dịch vụ nghiệp vụ cơ sở dưới dạng Open Generic
             services.AddScoped(typeof(IBaseBL<>), typeof(BaseBL<>));
 
+            // Đăng ký BaseControllerAuthorizeFillter để sử dụng trong [ServiceFilter]
+            services.AddScoped<AuthActionFillter>();
+
             return services;
         }
     }

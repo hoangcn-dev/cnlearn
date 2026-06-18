@@ -66,7 +66,7 @@ namespace HoangCN.Core.BL.Base
             var parameters = new DynamicParameters();
             var mainTableName = typeof(TEntity).Name;
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters);
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters);
             var sortClause = BuildSQLUtil.BuildSortClaude<TEntity>(request);
 
             var result = new ResultDto<TResult>();
@@ -106,51 +106,30 @@ namespace HoangCN.Core.BL.Base
             var parameters = new DynamicParameters();
             var mainTableName = typeof(TEntity).Name;
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters);
+            
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters, extraGroup);
             var sortClause = BuildSQLUtil.BuildSortClaude<TEntity>(request);
-
-            // Dịch Expression thành SQL và gộp tham số
-            var exprWhere = BuildSQLUtil.BuildWhereClauseFromExpression<TEntity>(condition, out var exprParams);
-            if (exprParams != null)
-            {
-                parameters.AddDynamicParams(exprParams);
-            }
-
-            // Gộp 2 điều kiện WHERE
-            var finalWhereClause = "";
-            if (!string.IsNullOrWhiteSpace(whereClause) && !string.IsNullOrWhiteSpace(exprWhere))
-            {
-                // Gộp AND (cắt bỏ từ khóa 'WHERE ' ở đầu exprWhere)
-                finalWhereClause = whereClause + " AND " + exprWhere.Substring(6);
-            }
-            else if (!string.IsNullOrWhiteSpace(whereClause))
-            {
-                finalWhereClause = whereClause;
-            }
-            else if (!string.IsNullOrWhiteSpace(exprWhere))
-            {
-                finalWhereClause = exprWhere;
-            }
 
             var result = new ResultDto<TResult>();
 
             if (request.IsPaging)
             {
                 // 1. Tính tổng số dòng (COUNT) sử dụng Dapper
-                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {finalWhereClause}";
+                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {whereClause}";
                 var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
                 result.Total = totalCount;
                 result.Page = request.Page ?? 1;
                 result.Size = request.Size ?? 10;
 
                 // 2. Lấy danh sách phần tử (PAGING) sử dụng Dapper
-                var pagingSql = $"{selectFromSql} {finalWhereClause} {sortClause}" + BuildSQLUtil.BuildPagingClaude(result.Page, result.Size, parameters);
+                var pagingSql = $"{selectFromSql} {whereClause} {sortClause}" + BuildSQLUtil.BuildPagingClaude(result.Page, result.Size, parameters);
                 var items = await _baseReadDL.ExecuteQueryText<TResult>(pagingSql, parameters);
                 result.Items = items.ToList();
             }
             else
             {
-                var sql = $"{selectFromSql} {finalWhereClause} {sortClause}";
+                var sql = $"{selectFromSql} {whereClause} {sortClause}";
                 var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);
                 result.Items = items.ToList();
                 result.Total = result.Items.Count;
@@ -302,8 +281,12 @@ namespace HoangCN.Core.BL.Base
         /// </summary>
         public async Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
         {
+            var parameters = new DynamicParameters();
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClauseFromExpression<TEntity>(condition, out var parameters);
+            
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters, extraGroup);
 
             var sql = $"{selectFromSql} {whereClause}";
             var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);

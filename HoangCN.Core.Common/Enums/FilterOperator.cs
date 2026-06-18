@@ -56,7 +56,20 @@ namespace HoangCN.Core.Common.Enums
         /// <summary>
         /// Dấu -
         /// </summary>
+        /// <summary>
+        /// Dấu -
+        /// </summary>
         EndWith,
+
+        /// <summary>
+        /// Nằm trong tập hợp (IN)
+        /// </summary>
+        In,
+
+        /// <summary>
+        /// Không nằm trong tập hợp (NOT IN)
+        /// </summary>
+        NotIn,
     }
 
     /// <summary>
@@ -91,6 +104,10 @@ namespace HoangCN.Core.Common.Enums
 
                 FilterOperator.EndWith => $"{propertyName} LIKE CONCAT('%', @{paramName})",
 
+                FilterOperator.In => $"{propertyName} IN @{paramName}",
+
+                FilterOperator.NotIn => $"{propertyName} NOT IN @{paramName}",
+
                 _ => string.Empty
             };
         }
@@ -100,6 +117,11 @@ namespace HoangCN.Core.Common.Enums
         /// </summary>
         public static bool IsValidOperator(this FilterOperator o, FilterType filterType)
         {
+            if (o == FilterOperator.In || o == FilterOperator.NotIn)
+            {
+                return true;
+            }
+
             if (filterType == FilterType.Number)
             {
                 return 
@@ -124,6 +146,16 @@ namespace HoangCN.Core.Common.Enums
             {
                 return
                     o == FilterOperator.Equal;
+            }
+            else if (filterType == FilterType.Date)
+            {
+                return
+                    o == FilterOperator.Equal || 
+                    o == FilterOperator.NotEqual || 
+                    o == FilterOperator.LessThan ||
+                    o == FilterOperator.LessThanOrEqual ||
+                    o == FilterOperator.GreaterThan ||
+                    o == FilterOperator.GreaterThanOrEqual;
             }
 
             return false;

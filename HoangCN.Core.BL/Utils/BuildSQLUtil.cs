@@ -50,25 +50,70 @@ namespace HoangCN.Core.BL.Utils
         }
 
         /// <summary>
-        /// Hàm hỗ trợ build điều kiện lọc theo từ khóa Key
+        /// Hàm hỗ trợ build điều kiện lọc theo từ khóa Key dựa trên các trường string của cả TEntity và TResult
         /// </summary>
-        public static string BuildKeySearchClaude<TEntity>(string? key, DynamicParameters parameters) where TEntity : BaseEntity
+        public static string BuildKeySearchClaude<TEntity, TResult>(string? key, DynamicParameters parameters) where TEntity : BaseEntity
         {
             if (string.IsNullOrEmpty(key)) return string.Empty;
 
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
+            var resultMetadata = EntityMetadataCache.GetMetadata(typeof(TResult));
+
             var mainTableName = metadata.EntityType.Name;
+            var mainColumns = metadata.ColumnNames;
+            var resultProps = resultMetadata.Properties;
 
-            // Lấy danh sách các trường chuỗi thực tế từ cache
-            var stringProps = metadata.Properties
-                .Where(p => p.PropertyInfo.PropertyType == typeof(string) && !p.IsNotMapped)
-                .Select(p => p.PropertyName)
-                .ToList();
+            var searchConditions = new List<string>();
 
-            if (stringProps.Count > 0)
+            foreach (var prop in resultProps)
             {
-                var orConditions = string.Join(" OR ", stringProps.Select(propName => $"`{mainTableName}`.`{propName}` LIKE @SearchKey"));
+                if (prop.IsNotMapped) continue;
+                if (prop.PropertyInfo.PropertyType != typeof(string)) continue;
+
+                var propName = prop.PropertyName;
+                var foreignAttr = prop.ForeignTableAttr;
+
+                if (foreignAttr != null)
+                {
+                    var foreignType = foreignAttr.EntityType;
+                    if (foreignType != null)
+                    {
+                        var foreignTableName = foreignType.Name;
+                        var columnNameInDb = !string.IsNullOrEmpty(foreignAttr.ColumnName) ? foreignAttr.ColumnName : propName;
+                        
+                        var foreignMetadata = EntityMetadataCache.GetMetadata(foreignType);
+                        if (foreignMetadata.ColumnNames.Contains(columnNameInDb))
+                        {
+                            searchConditions.Add($"`{foreignTableName}`.`{columnNameInDb}` LIKE @SearchKey");
+                        }
+                    }
+                }
+                else
+                {
+                    if (mainColumns.Contains(propName))
+                    {
+                        searchConditions.Add($"`{mainTableName}`.`{propName}` LIKE @SearchKey");
+                    }
+                }
+            }
+
+            // Fallback: nếu DTO không có trường string nào được chọn, tự động quét các cột string của TEntity gốc
+            if (searchConditions.Count == 0)
+            {
+                var stringProps = metadata.Properties
+                    .Where(p => p.PropertyInfo.PropertyType == typeof(string) && !p.IsNotMapped)
+                    .Select(p => p.PropertyName)
+                    .ToList();
+                foreach (var propName in stringProps)
+                {
+                    searchConditions.Add($"`{mainTableName}`.`{propName}` LIKE @SearchKey");
+                }
+            }
+
+            if (searchConditions.Count > 0)
+            {
                 parameters.Add("SearchKey", $"%{key}%");
+                var orConditions = string.Join(" OR ", searchConditions);
                 return $"({orConditions})";
             }
 
@@ -76,9 +121,66 @@ namespace HoangCN.Core.BL.Utils
         }
 
         /// <summary>
-        /// Hàm hỗ trợ build toàn bộ mệnh đề WHERE (bao gồm Ids, Filters, từ khóa Key và Expression Condition)
+        /// Giải quyết thuộc tính lọc thành tên cột SQL đầy đủ
         /// </summary>
-        public static string BuildWhereClaude<TEntity>(GetRequest request, DynamicParameters parameters) where TEntity : BaseEntity
+        public static string ResolveSqlColumn<TEntity, TResult>(string propertyName, out string matchedPropertyName) where TEntity : BaseEntity
+        {
+            var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
+            var resultMetadata = EntityMetadataCache.GetMetadata(typeof(TResult));
+            var mainTableName = metadata.EntityType.Name;
+            var mainColumns = metadata.ColumnNames;
+            var resultProps = resultMetadata.Properties;
+
+            // 1. Tìm property tương ứng trong DTO (TResult)
+            var matchedDtoProp = resultProps.FirstOrDefault(p => p.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+            if (matchedDtoProp != null && !matchedDtoProp.IsNotMapped)
+            {
+                var foreignAttr = matchedDtoProp.ForeignTableAttr;
+                if (foreignAttr != null)
+                {
+                    var foreignType = foreignAttr.EntityType;
+                    if (foreignType != null)
+                    {
+                        var foreignTableName = foreignType.Name;
+                        var columnNameInDb = !string.IsNullOrEmpty(foreignAttr.ColumnName) ? foreignAttr.ColumnName : matchedDtoProp.PropertyName;
+                        
+                        var foreignMetadata = EntityMetadataCache.GetMetadata(foreignType);
+                        if (foreignMetadata.ColumnNames.Contains(columnNameInDb))
+                        {
+                            matchedPropertyName = matchedDtoProp.PropertyName;
+                            return $"`{foreignTableName}`.`{columnNameInDb}`";
+                        }
+                    }
+                }
+                else
+                {
+                    var propName = matchedDtoProp.PropertyName;
+                    if (mainColumns.Contains(propName))
+                    {
+                        matchedPropertyName = propName;
+                        return $"`{mainTableName}`.`{propName}`";
+                    }
+                }
+            }
+
+            // 2. Fallback: Nếu không tìm thấy trên DTO hoặc không map, tìm trên thực thể chính TEntity
+            var matchedEntityProp = mainColumns.FirstOrDefault(c => c.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+            if (matchedEntityProp != null)
+            {
+                matchedPropertyName = matchedEntityProp;
+                return $"`{mainTableName}`.`{matchedEntityProp}`";
+            }
+
+            throw new BadRequestException($"Thuộc tính lọc '{propertyName}' không tồn tại hoặc không được ánh xạ");
+        }
+
+        /// <summary>
+        /// Hàm hỗ trợ build toàn bộ mệnh đề WHERE (bao gồm Ids, Filters, từ khóa Key và các nhóm bộ lọc nâng cao)
+        /// </summary>
+        public static string BuildWhereClaude<TEntity, TResult>(
+            GetRequest request, 
+            DynamicParameters parameters, 
+            AdvancedFilterGroup? extraGroup = null) where TEntity : BaseEntity
         {
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
             var mainTableName = metadata.EntityType.Name;
@@ -98,7 +200,7 @@ namespace HoangCN.Core.BL.Utils
             // 2. Lọc theo bộ lọc động request.Filters
             if (request.Filters != null && request.Filters.Count > 0)
             {
-                var filterWhere = BuildWhereClaudeFromFilters<TEntity>(request.Filters, request.FilterGroupType, parameters);
+                var filterWhere = BuildWhereClaudeFromFilters<TEntity, TResult>(request.Filters, request.FilterGroupType, parameters);
                 if (!string.IsNullOrEmpty(filterWhere) && filterWhere != "TRUE")
                 {
                     whereConditions.Add($"({filterWhere})");
@@ -106,22 +208,31 @@ namespace HoangCN.Core.BL.Utils
             }
 
             // 3. Lọc theo từ khóa tìm kiếm (Key)
-            var keySearch = BuildKeySearchClaude<TEntity>(request.Key, parameters);
+            var keySearch = BuildKeySearchClaude<TEntity, TResult>(request.Key, parameters);
             if (!string.IsNullOrEmpty(keySearch))
             {
                 whereConditions.Add(keySearch);
             }
 
-            //// 4. Lọc theo Expression condition (Nếu có)
-            //if (condition != null)
-            //{
-            //    var (sql, paramsOut) = ExpressionToSqlTranslator.Translate(condition);
-            //    if (!string.IsNullOrEmpty(sql))
-            //    {
-            //        whereConditions.Add($"({sql})");
-            //        parameters.AddDynamicParams(paramsOut);
-            //    }
-            //}
+            // 4. Lọc theo AdvancedFilterGroup từ client và từ server
+            int paramCounter = 0;
+            if (request.AdvancedFilterGroup != null)
+            {
+                var groupSql = BuildWhereClauseFromGroup<TEntity, TResult>(request.AdvancedFilterGroup, parameters, ref paramCounter);
+                if (!string.IsNullOrEmpty(groupSql))
+                {
+                    whereConditions.Add($"({groupSql})");
+                }
+            }
+
+            if (extraGroup != null)
+            {
+                var extraSql = BuildWhereClauseFromGroup<TEntity, TResult>(extraGroup, parameters, ref paramCounter);
+                if (!string.IsNullOrEmpty(extraSql))
+                {
+                    whereConditions.Add($"({extraSql})");
+                }
+            }
 
             // Hợp nhất các điều kiện WHERE
             return whereConditions.Count > 0 
@@ -130,56 +241,161 @@ namespace HoangCN.Core.BL.Utils
         }
 
         /// <summary>
-        /// Hàm hỗ trợ xây SQL phần điều kiện câu lệnh WHERE từ danh sách Filter
+        /// Hàm xây dựng SQL đệ quy cho AdvancedFilterGroup
         /// </summary>
-        public static string BuildWhereClaudeFromFilters<TEntity>(List<Filter>? filters, FilterGroupType groupType, DynamicParameters parameters)
+        public static string BuildWhereClauseFromGroup<TEntity, TResult>(
+            AdvancedFilterGroup group, 
+            DynamicParameters parameters, 
+            ref int paramCounter) where TEntity : BaseEntity
+        {
+            if (group == null) return string.Empty;
+
+            var conditions = new List<string>();
+
+            // 1. Lọc theo các bộ lọc Filters cấp hiện tại
+            if (group.Filters != null && group.Filters.Count > 0)
+            {
+                foreach (var filter in group.Filters)
+                {
+                    var sqlColumn = ResolveSqlColumn<TEntity, TResult>(filter.Property, out var matchedPropName);
+                    filter.Property = matchedPropName; // Đồng bộ hoa thường
+
+                    if (!filter.Operator.IsValidOperator(filter.Type))
+                    {
+                        throw new BadRequestException("Toán tử không hợp lệ cho kiểu dữ liệu lọc");
+                    }
+
+                    if (filter.ColumnToCompare != null)
+                    {
+                        // So sánh cột với cột
+                        var sqlColumn2 = ResolveSqlColumn<TEntity, TResult>(filter.ColumnToCompare, out var matchedPropName2);
+                        filter.ColumnToCompare = matchedPropName2;
+
+                        var condition = filter.Operator.ToSQLKeyword(sqlColumn, sqlColumn2);
+                        // Bỏ ký tự '@' vì vế phải là tên cột chứ không phải tham số
+                        if (condition.Contains($"@{sqlColumn2}"))
+                        {
+                            condition = condition.Replace($"@{sqlColumn2}", sqlColumn2);
+                        }
+                        conditions.Add(condition);
+                    }
+                    else
+                    {
+                        // So sánh cột với giá trị
+                        var paramName = $"af_{matchedPropName}_{paramCounter++}";
+                        var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
+
+                        if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                        {
+                            parameters.Add(paramName, filter.Value);
+                        }
+                        else if (filter.Type == FilterType.Number)
+                        {
+                            parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                        }
+                        else if (filter.Type == FilterType.Bool)
+                        {
+                            parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                        }
+                        else if (filter.Type == FilterType.Date)
+                        {
+                            parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                        }
+                        else if (filter.Type == FilterType.String)
+                        {
+                            parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                        }
+                        else
+                        {
+                            throw new BadRequestException("Kiểu dữ liệu lọc không được hỗ trợ");
+                        }
+
+                        conditions.Add(condition);
+                    }
+                }
+            }
+
+            // 2. Duyệt đệ quy qua các nhóm con Groups
+            if (group.Groups != null && group.Groups.Count > 0)
+            {
+                foreach (var subGroup in group.Groups)
+                {
+                    var subSql = BuildWhereClauseFromGroup<TEntity, TResult>(subGroup, parameters, ref paramCounter);
+                    if (!string.IsNullOrEmpty(subSql))
+                    {
+                        conditions.Add($"({subSql})");
+                    }
+                }
+            }
+
+            if (conditions.Count == 0) return string.Empty;
+
+            var opJoin = group.GroupType == FilterGroupType.And ? " AND " : " OR ";
+            return string.Join(opJoin, conditions);
+        }
+
+        /// <summary>
+        /// Hàm hỗ trợ xây SQL phần điều kiện câu lệnh WHERE từ danh sách Filter hỗ trợ DTO
+        /// </summary>
+        public static string BuildWhereClaudeFromFilters<TEntity, TResult>(List<Filter>? filters, FilterGroupType groupType, DynamicParameters parameters) where TEntity : BaseEntity
         {
             if (filters == null || filters.Count == 0) return "TRUE";
 
-            var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
-            var columnNames = metadata.ColumnNames;
             var conditions = new List<string>();
 
             for (int i = 0; i < filters.Count; i++)
             {
                 var filter = filters[i];
-                // Tìm property khớp không phân biệt hoa thường từ Cache
-                var matchedProp = columnNames.FirstOrDefault(c => c.Equals(filter.Property, StringComparison.OrdinalIgnoreCase));
-                if (matchedProp == null)
-                {
-                    throw new BadRequestException("Thuộc tính lọc không tồn tại");
-                }
-                
-                filter.Property = matchedProp;
+                var sqlColumn = ResolveSqlColumn<TEntity, TResult>(filter.Property, out var matchedPropName);
+                filter.Property = matchedPropName; // Đồng bộ lại tên hoa thường chuẩn
 
                 if (!filter.Operator.IsValidOperator(filter.Type))
                 {
                     throw new BadRequestException("Toán tử không hợp lệ");
                 }
 
-                var paramName = $"{filter.Property}_{i}";
-                var condition = filter.Operator.ToSQLKeyword($"`{metadata.EntityType.Name}`.`{filter.Property}`", paramName);
+                if (filter.ColumnToCompare != null)
+                {
+                    var sqlColumn2 = ResolveSqlColumn<TEntity, TResult>(filter.ColumnToCompare, out var matchedPropName2);
+                    filter.ColumnToCompare = matchedPropName2;
 
-                // Gán tham số dựa trên kiểu dữ liệu lọc
-                if (filter.Type == FilterType.Number)
-                {
-                    parameters.Add(paramName, int.Parse(filter.Value.ToString()!));
-                }
-                else if (filter.Type == FilterType.String)
-                {
-                    parameters.Add(paramName, filter.Value.ToString()!);
-                }
-                else if (filter.Type == FilterType.Bool)
-                {
-                    parameters.Add(paramName, bool.Parse(filter.Value.ToString()!));
+                    var condition = filter.Operator.ToSQLKeyword(sqlColumn, sqlColumn2);
+                    if (condition.Contains($"@{sqlColumn2}"))
+                    {
+                        condition = condition.Replace($"@{sqlColumn2}", sqlColumn2);
+                    }
+                    conditions.Add(condition);
                 }
                 else
                 {
-                    throw new InvalidDataException("Kiểu lọc chưa hỗ trợ");
-                }
+                    var paramName = $"{filter.Property}_{i}";
+                    var condition = filter.Operator.ToSQLKeyword(sqlColumn, paramName);
 
-                if (condition != null)
-                {
+                    if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.NotIn)
+                    {
+                        parameters.Add(paramName, filter.Value);
+                    }
+                    else if (filter.Type == FilterType.Number)
+                    {
+                        parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                    }
+                    else if (filter.Type == FilterType.Bool)
+                    {
+                        parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                    }
+                    else if (filter.Type == FilterType.Date)
+                    {
+                        parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                    }
+                    else if (filter.Type == FilterType.String)
+                    {
+                        parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                    }
+                    else
+                    {
+                        throw new InvalidDataException("Kiểu lọc chưa hỗ trợ");
+                    }
+
                     conditions.Add(condition);
                 }
             }
@@ -286,21 +502,7 @@ namespace HoangCN.Core.BL.Utils
             return $"SELECT {columnsSql} FROM `{mainTableName}`{joinsSql}";
         }
 
-        /// <summary>
-        /// Tạo mệnh đề WHERE từ Expression condition
-        /// </summary>
-        public static string BuildWhereClauseFromExpression<TEntity>(Expression<Func<TEntity, bool>> condition, out DynamicParameters parameters) where TEntity : BaseEntity
-        {
-            if (condition == null)
-            {
-                parameters = new DynamicParameters();
-                return string.Empty;
-            }
 
-            var (sql, paramsOut) = ExpressionToSqlTranslator.Translate(condition);
-            parameters = paramsOut;
-            return string.IsNullOrEmpty(sql) ? string.Empty : $"WHERE {sql}";
-        }
     }
 }
 
