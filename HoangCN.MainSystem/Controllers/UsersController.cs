@@ -3,11 +3,10 @@ using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Requests;
-using HoangCN.MainSystem.Enums;
-using HoangCN.MainSystem.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Enums;
 
 namespace HoangCN.MainSystem.Controllers
 {

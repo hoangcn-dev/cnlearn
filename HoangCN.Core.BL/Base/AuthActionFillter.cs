@@ -41,7 +41,7 @@ namespace HoangCN.Core.BL.Base
             // Chặn truy cập nếu endpoint bị vô hiệu hóa
             if (!settings.IsEnabled)
             {
-                throw new ForbiddenException("This endpoint is disabled");
+                throw new NotFoundException("This endpoint is disabled");
             }
 
             // Cho phép tất cả user đã có tài khoản + đăng nhập sử dụng

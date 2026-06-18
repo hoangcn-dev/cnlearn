@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.MainSystem.DTOs;

@@ -1,7 +1,7 @@
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
 using HoangCN.MainSystem.Entities;
-using HoangCN.MainSystem.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HoangCN.MainSystem.Controllers

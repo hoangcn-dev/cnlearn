@@ -27,11 +27,11 @@ namespace HoangCN.MainSystem.Services
                 var options = ConfigurationOptions.Parse(_connectionString);
                 
                 // Nạp mật khẩu từ biến môi trường nếu trong connection string chưa cấu hình mật khẩu
-                var envPassword = Environment.GetEnvironmentVariable("REDIS_CONNECTION_PASSWORD");
-                if (string.IsNullOrEmpty(options.Password) && !string.IsNullOrEmpty(envPassword))
-                {
-                    options.Password = envPassword;
-                }
+                //var envPassword = Environment.GetEnvironmentVariable("REDIS_CONNECTION_PASSWORD");
+                //if (string.IsNullOrEmpty(options.Password) && !string.IsNullOrEmpty(envPassword))
+                //{
+                //    options.Password = envPassword;
+                //}
 
                 options.AbortOnConnectFail = false; // Tránh treo ứng dụng nếu Redis chưa chạy
                 options.ConnectTimeout = 5000;

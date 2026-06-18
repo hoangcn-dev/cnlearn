@@ -1,4 +1,4 @@
-namespace HoangCN.MainSystem.Enums
+namespace HoangCN.Core.Common.Enums
 {
     public enum RoleNames
     {

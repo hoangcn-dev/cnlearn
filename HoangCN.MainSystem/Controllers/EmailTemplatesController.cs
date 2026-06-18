@@ -1,11 +1,10 @@
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Entities;
-using HoangCN.MainSystem.Enums;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
 
 namespace HoangCN.MainSystem.Controllers
 {

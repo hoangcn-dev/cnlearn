@@ -3,6 +3,7 @@ using HoangCN.Core.Common.Base;
 using HoangCN.Core.DL.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Linq.Expressions;
 
 namespace HoangCN.Core.DL.Implementation
 {
@@ -124,6 +125,12 @@ namespace HoangCN.Core.DL.Implementation
                 }
             }
             await SaveChangesAsync();
+        }
+
+
+        public void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity
+        {
+            _context.Entry(entity).Property(propertySelector).IsModified = isChanged;
         }
     }
 }

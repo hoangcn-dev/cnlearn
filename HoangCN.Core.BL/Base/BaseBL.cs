@@ -257,7 +257,6 @@ namespace HoangCN.Core.BL.Base
                 entity.ModifiedDate = now;
                 entity.IsDeleted = false;
             }
-            //await BeforeSave(entities);
         }
 
         /// <summary>

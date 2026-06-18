@@ -41,15 +41,9 @@ namespace HoangCN.LearnMS.Entities
         /// Số điện thoại
         /// </summary>
         [StringLength(20, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+        [Phone(ErrorMessage = "{0} không đúng định dạng số điện thoại.")]
         [DisplayName("Số điện thoại")]
         public string? PhoneNumber { get; set; }
-
-        /// <summary>
-        /// Vai trò người dùng (Thay đổi để thử nghiệm phân quyền)
-        /// </summary>
-        [StringLength(50, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        [DisplayName("Vai trò")]
-        public string? Role { get; set; }
 
         /// <summary>
         /// Giới thiệu bản thân

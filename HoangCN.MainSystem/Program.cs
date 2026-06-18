@@ -1,10 +1,9 @@
+using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Utils;
-using HoangCN.MainSystem.Enums;
-using HoangCN.MainSystem.Utils;
 using HoangCN.Core.DL;
 using HoangCN.MainSystem.Entities;
+using HoangCN.MainSystem.Utils;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HoangCN.MainSystem
 {

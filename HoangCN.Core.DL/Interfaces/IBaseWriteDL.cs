@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace HoangCN.Core.DL.Interfaces
 {
@@ -47,6 +48,11 @@ namespace HoangCN.Core.DL.Interfaces
         /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
         /// </summary>
         Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
+
+        /// <summary>
+        /// Cập nhật trạng thái thay đổi của entity trong DbContext (theo dõi hoặc không theo dõi)
+        /// </summary>
+        void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity;
     }
 }
 

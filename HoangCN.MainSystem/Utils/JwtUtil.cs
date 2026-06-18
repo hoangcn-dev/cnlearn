@@ -34,6 +34,8 @@ namespace HoangCN.MainSystem.Utils
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Role, role.RoleName),
                 new Claim(nameof(user.UserName), user.UserName),
+                new Claim(ClaimTypes.Name, user.DisplayName),
+                new Claim(ClaimTypes.Email, user.Email),
             ];
 
             byte[] bytes = Encoding.UTF8.GetBytes(EnvUtil.GetValue(EnvKeys.JWT_SECRET_KEY));

@@ -6,6 +6,17 @@ namespace HoangCN.Core.Common.Utils
     public class ClaimUtil
     {
         /// <summary>
+        /// Lấy giá trị của claim = key từ ClaimsPrincipal
+        /// </summary>
+        public static string GetByKey(ClaimsPrincipal claims, string key)
+        {
+            var value = claims!.Claims.FirstOrDefault(c => c.Type == key)?.Value
+                ?? throw new UnauthorizedException("Thông tin đăng nhập không hợp lệ");
+            return value;
+        }
+
+
+        /// <summary>
         /// Lấy tên tài khoản người dùng từ ClaimsPrincipal
         /// </summary>
         public static string GetUserName(ClaimsPrincipal? claims)

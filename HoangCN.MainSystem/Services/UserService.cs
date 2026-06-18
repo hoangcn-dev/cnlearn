@@ -7,7 +7,6 @@ using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.DTOs;
-using HoangCN.MainSystem.Enums;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Requests;
 using HoangCN.MainSystem.Utils;
@@ -109,7 +108,7 @@ namespace HoangCN.MainSystem.Services
             };
 
             // 4. Lưu xuống cơ sở dữ liệu
-            await InsertAsync(new List<User> { user });
+            await InsertAsync([user]);
         }
 
         /// <summary>
@@ -164,10 +163,6 @@ namespace HoangCN.MainSystem.Services
                 AvatarImageFileId = userAuth.AvatarImageFileId,
                 RoleId = userAuth.RoleId,
                 LastLogin = DateTime.UtcNow,
-                CreatedBy = userAuth.CreatedBy,
-                CreatedDate = userAuth.CreatedDate,
-                ModifiedBy = userAuth.ModifiedBy,
-                ModifiedDate = DateTime.UtcNow
             };
             
             await UpdateAsync([user]);
@@ -363,7 +358,7 @@ namespace HoangCN.MainSystem.Services
                 {
                     if (dbUserMap.TryGetValue(user.UserId, out var dbUser))
                     {
-                        // Giữ nguyên mật khẩu và muối nếu client không truyền mật khẩu mới
+                        // Giữ nguyên mật khẩu và salt nếu client không truyền mật khẩu mới
                         if (string.IsNullOrWhiteSpace(user.Password))
                         {
                             user.Password = dbUser.Password;

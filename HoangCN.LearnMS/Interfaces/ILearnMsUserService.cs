@@ -1,5 +1,6 @@
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.LearnMS.Entities;
+using System.Security.Claims;
 
 namespace HoangCN.LearnMS.Interfaces
 {
@@ -8,5 +9,11 @@ namespace HoangCN.LearnMS.Interfaces
     /// </summary>
     public interface ILearnMsUserService : IBaseBL<LearnMsUser>
     {
+        /// <summary>
+        /// Lấy thông tin hồ sơ người dùng, nếu chưa tồn lại thì đồng bộ lần đầu từ claims từ MainSystem
+        /// </summary>
+        /// <param name="claims"></param>
+        /// <returns></returns>
+        Task<LearnMsUser> GetProfile(ClaimsPrincipal claims);
     }
 }

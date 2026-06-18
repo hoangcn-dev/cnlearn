@@ -1,16 +1,8 @@
-using HoangCN.Core.Common.Utils;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Utils;
 using HoangCN.MainSystem.Entities;
-using HoangCN.MainSystem.Enums;
 using HoangCN.MainSystem.Interfaces;
-using HoangCN.MainSystem.Utils;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace HoangCN.MainSystem.Utils
 {

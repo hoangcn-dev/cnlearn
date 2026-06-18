@@ -23,5 +23,9 @@
     <ProjectReference Include="..\HoangCN.Core.BL\HoangCN.Core.BL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Enums\" />
+  </ItemGroup>
+
 </Project>
 
