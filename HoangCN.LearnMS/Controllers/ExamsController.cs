@@ -12,6 +12,8 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
+using HoangCN.Core.BL.Base;
+
 namespace HoangCN.LearnMS.Controllers
 {
     /// <summary>
@@ -19,7 +21,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class ExamsController : BaseController<Exam>
+    public class ExamsController : CRUDController<Exam>
     {
         private readonly IExamService _examService;
         private readonly IBaseBL<ExamQuestion> _examQuestionBL;

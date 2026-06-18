@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
+using HoangCN.Core.BL.Base;
+
 namespace HoangCN.LearnMS.Controllers
 {
     /// <summary>
@@ -16,7 +18,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class QuizzesController : BaseController<Quiz>
+    public class QuizzesController : CRUDController<Quiz>
     {
         private readonly IQuizService _quizService;
 

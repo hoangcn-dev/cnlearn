@@ -1,4 +1,5 @@
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Base;
 using HoangCN.LearnMS.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ namespace HoangCN.LearnMS.Controllers
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize(Roles = "Admin")] // Giới hạn quyền Admin
-    public class CategoriesController : BaseController<QuestionCategory>
+    public class CategoriesController : CRUDController<QuestionCategory>
     {
         public CategoriesController(IBaseBL<QuestionCategory> questionCategoryService) : base(questionCategoryService)
         {

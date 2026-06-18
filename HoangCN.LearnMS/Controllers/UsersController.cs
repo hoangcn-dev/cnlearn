@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 
 using HoangCN.LearnMS.Interfaces;
 
+using HoangCN.Core.BL.Base;
+
 namespace HoangCN.LearnMS.Controllers
 {
     /// <summary>
@@ -18,7 +20,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class UsersController : BaseController<LearnMsUser>
+    public class UsersController : CRUDController<LearnMsUser>
     {
         public UsersController(ILearnMsUserService userBL) : base(userBL)
         {

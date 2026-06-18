@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using HoangCN.Core.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -11,8 +15,8 @@ namespace HoangCN.Core.BL.Base
             var controller = context.Controller;
             var controllerType = controller.GetType();
 
-            // 1. Kiểm tra xem controller hiện tại có kế thừa từ BaseController<> hay không
-            if (!IsSubclassOfRawGeneric(typeof(BaseController<>), controllerType))
+            // 1. Kiểm tra xem controller hiện tại có kế thừa từ BaseController hay không
+            if (!typeof(BaseController).IsAssignableFrom(controllerType))
             {
                 return next();
             }
@@ -58,17 +62,6 @@ namespace HoangCN.Core.BL.Base
             }
 
             return next();
-        }
-
-        private bool IsSubclassOfRawGeneric(Type generic, Type toCheck)
-        {
-            while (toCheck != null && toCheck != typeof(object))
-            {
-                var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
-                if (generic == cur) return true;
-                toCheck = toCheck.BaseType;
-            }
-            return false;
         }
     }
 }

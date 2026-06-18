@@ -15,6 +15,8 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+using HoangCN.Core.BL.Base;
+
 namespace HoangCN.LearnMS.Controllers
 {
     /// <summary>
@@ -22,7 +24,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class QuestionsController : BaseController<Question>
+    public class QuestionsController : CRUDController<Question>
     {
         private readonly IQuestionService _questionService;
 

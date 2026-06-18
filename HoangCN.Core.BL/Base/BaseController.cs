@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Exceptions;
@@ -12,19 +15,14 @@ namespace HoangCN.Core.BL.Base
 {
     [ApiController]
     [ServiceFilter(typeof(AuthActionFillter))]
-    public class BaseController<TEntity> : ControllerBase where TEntity : BaseEntity
+    public class BaseController : ControllerBase
     {
-        protected readonly IBaseBL<TEntity> _baseBL;
         private static readonly ConcurrentDictionary<Type, Dictionary<string, AuthActionSettings>> _defaultPoliciesCache = new();
-
-        public BaseController(IBaseBL<TEntity> baseBL)
-        {
-            _baseBL = baseBL;
-        }
 
         /// <summary>
         /// Lấy toàn bộ danh sách cấu hình phân quyền của Controller
         /// </summary>
+        [NonAction]
         public Dictionary<string, AuthActionSettings> GetPolicies()
         {
             var controllerType = this.GetType();
@@ -60,7 +58,7 @@ namespace HoangCN.Core.BL.Base
                 }
             );
 
-            ConfigurePolicies(new AuthActionPolicyBuilder(instancePolicies));
+            ConfigurePolicies(new AuthActionPolicyBuilder(instancePolicies, controllerType));
             return instancePolicies;
         }
 
@@ -71,6 +69,16 @@ namespace HoangCN.Core.BL.Base
         protected virtual void ConfigurePolicies(AuthActionPolicyBuilder builder)
         {
 
+        }
+    }
+
+    public class CRUDController<TEntity> : BaseController where TEntity : BaseEntity
+    {
+        protected readonly IBaseBL<TEntity> _baseBL;
+
+        public CRUDController(IBaseBL<TEntity> baseBL)
+        {
+            _baseBL = baseBL;
         }
 
         [HttpGet]

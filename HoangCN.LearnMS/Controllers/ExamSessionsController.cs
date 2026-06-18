@@ -8,11 +8,13 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
+using HoangCN.Core.BL.Base;
+
 namespace HoangCN.LearnMS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ExamSessionsController : BaseController<ExamSession>
+    public class ExamSessionsController : CRUDController<ExamSession>
     {
         private readonly IExamSessionService _examSessionService;
 
