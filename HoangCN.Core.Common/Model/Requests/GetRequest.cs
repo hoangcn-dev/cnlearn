@@ -133,5 +133,6 @@ namespace HoangCN.Core.Common.Model.Requests
             ColumnToCompare = columnToCompare;
         }
     }
+
 }
 

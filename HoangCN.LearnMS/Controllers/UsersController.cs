@@ -3,6 +3,7 @@ using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Utils;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -34,16 +35,6 @@ namespace HoangCN.LearnMS.Controllers
                    .Protect(nameof(Delete), nameof(RoleNames.Admin));
         }
 
-        private Guid CheckAuth()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
-            {
-                throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện chức năng này");
-            }
-            return userId;
-        }
-
         /// <summary>
         /// Lấy hồ sơ cá nhân hiện tại của người dùng trong LearnMS
         /// </summary>
@@ -62,7 +53,9 @@ namespace HoangCN.LearnMS.Controllers
         [AuthAction]
         public async Task<IActionResult> UpdateProfile([FromBody] LearnMsUser userDto)
         {
-            var userId = CheckAuth();
+            var userId = ClaimUtil.GetUserId(User)
+                ?? throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục");
+
             if (userDto.LearnMsUserId != Guid.Empty && userDto.LearnMsUserId != Guid.Empty && userDto.LearnMsUserId != userId)
             {
                 throw new ForbiddenException("Bạn không có quyền cập nhật thông tin của người khác");

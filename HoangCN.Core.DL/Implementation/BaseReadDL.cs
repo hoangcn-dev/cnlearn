@@ -22,6 +22,23 @@ namespace HoangCN.Core.DL.Implementation
         }
 
         /// <summary>
+        /// Thực thi truy vấn nhiều kết quả (Multiple Result Sets)
+        /// </summary>
+        public async Task<TResult> ExecuteQueryMultiple<TResult>(
+            string query,
+            Func<SqlMapper.GridReader, Task<TResult>> readerFunc,
+            DynamicParameters? parameters = null)
+        {
+            using (var conn = new MySqlConnection(_connectionString))
+            {
+                using (var multi = await conn.QueryMultipleAsync(query, parameters, commandType: CommandType.Text))
+                {
+                    return await readerFunc(multi);
+                }
+            }
+        }
+
+        /// <summary>
         /// Thực thi truy vấn lấy danh sách dữ liệu từ database đọc
         /// </summary>
         public async Task<IEnumerable<TRow>> ExecuteQueryText<TRow>(string query, DynamicParameters? parameters = null)

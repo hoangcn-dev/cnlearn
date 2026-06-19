@@ -16,6 +16,6 @@ namespace HoangCN.LearnMS.DTOs
         public int AccessType { get; set; } = 1;
         public bool IsDraft { get; set; } = false;
         public bool ContributeToBank { get; set; } = true;
-        public List<QuestionDetailDto> Questions { get; set; } = new();
+        public List<BankQuestionDto> Questions { get; set; } = new();
     }
 }

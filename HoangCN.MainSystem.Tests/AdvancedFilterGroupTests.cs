@@ -333,5 +333,86 @@ namespace HoangCN.MainSystem.Tests
         }
 
         #endregion
+
+        #region Giai đoạn 3: BuildQueryStringGetDtoByCondition Tests
+
+        [Fact]
+        public void BuildQueryStringGetDtoByCondition_WithOnlyOneTrue_ShouldGenerateSqlWithLimit1()
+        {
+            // Arrange
+            var parameters = new DynamicParameters();
+            Expression<Func<User, bool>> condition = u => u.UserName == "john";
+
+            // Act
+            var sql = BuildSQLUtil.BuildQueryStringGetDtoByCondition<User, UserAuthDto>(
+                isGetOnlyOne: true,
+                condition,
+                parameters);
+
+            // Assert
+            Assert.Contains("SELECT", sql);
+            Assert.Contains("WHERE", sql);
+            Assert.Contains("`User`.`UserName` = @af_UserName_0", sql);
+            Assert.Contains("LIMIT 1", sql);
+            Assert.DoesNotContain("WHERE WHERE", sql);
+            Assert.Equal("john", parameters.Get<string>("af_UserName_0"));
+        }
+
+        [Fact]
+        public void BuildQueryStringGetDtoByCondition_WithOnlyOneFalse_ShouldGenerateSqlWithoutLimit1()
+        {
+            // Arrange
+            var parameters = new DynamicParameters();
+            Expression<Func<User, bool>> condition = u => u.UserName == "john";
+
+            // Act
+            var sql = BuildSQLUtil.BuildQueryStringGetDtoByCondition<User, UserAuthDto>(
+                isGetOnlyOne: false,
+                condition,
+                parameters);
+
+            // Assert
+            Assert.Contains("SELECT", sql);
+            Assert.Contains("WHERE", sql);
+            Assert.Contains("`User`.`UserName` = @af_UserName_0", sql);
+            Assert.DoesNotContain("LIMIT 1", sql);
+            Assert.DoesNotContain("WHERE WHERE", sql);
+            Assert.Equal("john", parameters.Get<string>("af_UserName_0"));
+        }
+
+        [Fact]
+        public void BuildQueryStringGetDtoByCondition_WithForeignTableDto_ShouldGenerateSelectWithJoinsAndColumns()
+        {
+            // Arrange
+            var parameters = new DynamicParameters();
+            var targetUserId = Guid.NewGuid();
+            Expression<Func<User, bool>> condition = u => u.UserId == targetUserId;
+
+            // Act
+            var sql = BuildSQLUtil.BuildQueryStringGetDtoByCondition<User, UserAuthDto>(
+                isGetOnlyOne: true,
+                condition,
+                parameters);
+
+            // Assert
+            // 1. Phải có SELECT và lấy các cột từ bảng chính User
+            Assert.Contains("SELECT", sql);
+            Assert.Contains("`User`.`UserName` AS `UserName`", sql);
+
+            // 2. Phải phân giải và lấy cột từ bảng ngoại Role
+            Assert.Contains("`Role`.`RoleName` AS `RoleName`", sql);
+
+            // 3. Phải sinh câu lệnh LEFT JOIN đến bảng Role thông qua mối quan hệ khóa ngoại RoleId
+            Assert.Contains("LEFT JOIN `Role` ON `User`.`RoleId` = `Role`.`RoleId`", sql);
+
+            // 4. Mệnh đề WHERE phải lọc đúng theo ID truyền vào
+            Assert.Contains("WHERE", sql);
+            Assert.Contains("`User`.`UserId` = @af_UserId_0", sql);
+            Assert.Contains("LIMIT 1", sql);
+
+            Assert.Equal(targetUserId.ToString(), parameters.Get<string>("af_UserId_0"));
+        }
+
+        #endregion
     }
 }

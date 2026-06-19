@@ -81,8 +81,6 @@ namespace HoangCN.LearnMS.Services
             }
         }
 
-
-
         /// <summary>
         /// Tiền xử lý xóa - thực hiện xóa mềm/cascade các thực thể liên quan
         /// </summary>
@@ -164,21 +162,21 @@ namespace HoangCN.LearnMS.Services
         /// <summary>
         /// Lấy danh sách câu hỏi phân trang kèm chi tiết đáp án và danh mục
         /// </summary>
-        public async Task<ResultDto<QuestionDetailDto>> GetQuestionDetailsPagingAsync(GetRequest request, Guid currentUserId)
+        public async Task<ResultDto<BankQuestionDto>> GetQuestionDetailsPagingAsync(GetRequest request, Guid currentUserId)
         {
             request ??= new GetRequest();
             request.Filters ??= new List<Filter>();
             request.Ids ??= new List<Guid>();
 
-            var result = new ResultDto<QuestionDetailDto>
+            var result = new ResultDto<BankQuestionDto>
             {
                 Page = request.Page ?? 1,
                 Size = request.Size ?? 10,
                 Total = 0,
-                Items = new List<QuestionDetailDto>()
+                Items = new List<BankQuestionDto>()
             };
 
-            Expression<Func<Question, bool>>? condition = q => q.AccessType == QuestionAccessType.Public || q.UserId == currentUserId;
+            Expression<Func<Question, bool>>? condition = q => q.AccessType == QuestionAccessType.Public || q.LearnMsUserId == currentUserId;
 
             // Xử lý bộ lọc IsMyCreated
             var myCreatedFilter = request.Filters.FirstOrDefault(f => f != null && string.Equals(f.Property, "IsMyCreated", StringComparison.OrdinalIgnoreCase));
@@ -187,7 +185,7 @@ namespace HoangCN.LearnMS.Services
                 request.Filters.Remove(myCreatedFilter);
                 if (bool.TryParse(myCreatedFilter.Value?.ToString(), out bool isMyCreated) && isMyCreated)
                 {
-                    condition = q => q.UserId == currentUserId;
+                    condition = q => q.LearnMsUserId == currentUserId;
                 }
             }
             // Xử lý bộ lọc IsSaved
@@ -297,10 +295,10 @@ namespace HoangCN.LearnMS.Services
 
                 answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
 
-                result.Items.Add(new QuestionDetailDto
+                result.Items.Add(new BankQuestionDto
                 {
                     QuestionId = q.QuestionId,
-                    Slug = q.QuestionSlug,
+                    QuestionSlug = q.QuestionSlug,
                     StringContent = q.StringContent,
                     Explaination = q.Explaination,
                     Level = q.Level,
@@ -323,7 +321,7 @@ namespace HoangCN.LearnMS.Services
         /// <summary>
         /// Lấy chi tiết câu hỏi theo ID
         /// </summary>
-        public async Task<QuestionDetailDto?> GetQuestionDetailsByIdAsync(Guid id, Guid currentUserId)
+        public async Task<BankQuestionDto?> GetQuestionDetailsByIdAsync(Guid id, Guid currentUserId)
         {
             var q = await GetById<Question>(id);
             if (q == null) return null;
@@ -335,10 +333,10 @@ namespace HoangCN.LearnMS.Services
             int correctCount = answers?.Count(a => a.IsCorrectAnswer) ?? 0;
             int determinedType = correctCount > 1 ? 1 : 0;
 
-            return new QuestionDetailDto
+            return new BankQuestionDto
             {
                 QuestionId = q.QuestionId,
-                Slug = q.QuestionSlug,
+                QuestionSlug = q.QuestionSlug,
                 StringContent = q.StringContent,
                 //Explanation = q.Explaination,
                 //Level = (int)q.Level,
@@ -358,7 +356,7 @@ namespace HoangCN.LearnMS.Services
         /// <summary>
         /// Lấy danh sách câu hỏi thuộc một đề thi (bỏ qua điều kiện AccessType để đảm bảo học viên thấy nội dung đề thi)
         /// </summary>
-        public async Task<List<QuestionDetailDto>> GetQuestionsByExamIdAsync(Guid examId, Guid currentUserId)
+        public async Task<List<BankQuestionDto>> GetQuestionsByExamIdAsync(Guid examId, Guid currentUserId)
         {
             var parameters = new DynamicParameters();
             parameters.Add("ExamId", examId);
@@ -373,7 +371,7 @@ namespace HoangCN.LearnMS.Services
             var questions = (await _baseReadDL.ExecuteQueryText<Question>(sql, parameters))?.ToList();
             if (questions == null || questions.Count == 0)
             {
-                return new List<QuestionDetailDto>();
+                return new List<BankQuestionDto>();
             }
 
             var questionIds = questions.Select(q => q.QuestionId).ToList();
@@ -385,19 +383,19 @@ namespace HoangCN.LearnMS.Services
                 .GroupBy(a => a.QuestionId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(a => a.OrderInList).ToList());
 
-            var result = new List<QuestionDetailDto>();
+            var result = new List<BankQuestionDto>();
             foreach (var q in questions)
             {
                 answerGroup.TryGetValue(q.QuestionId, out var qAnswers);
 
-                bool isOwner = q.UserId == currentUserId;
+                bool isOwner = q.LearnMsUserId == currentUserId;
                 int correctCount = qAnswers?.Count(a => a.IsCorrectAnswer) ?? 0;
                 int determinedType = correctCount > 1 ? 1 : 0;
 
-                result.Add(new QuestionDetailDto
+                result.Add(new BankQuestionDto
                 {
                     QuestionId = q.QuestionId,
-                    Slug = q.QuestionSlug,
+                    QuestionSlug = q.QuestionSlug,
                     StringContent = q.StringContent,
                     //Explanation = isOwner ? q.Explaination : null,
                     //Level = (int)q.Level,
@@ -420,7 +418,7 @@ namespace HoangCN.LearnMS.Services
         /// <summary>
         /// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật) kèm đáp án và danh mục
         /// </summary>
-        public async Task SaveQuestionDetailsAsync(List<QuestionDetailDto> questionsDto, Guid currentUserId)
+        public async Task SaveQuestionDetailsAsync(List<BankQuestionDto> questionsDto, Guid currentUserId)
         {
             if (questionsDto == null || questionsDto.Count == 0)
             {
@@ -467,9 +465,9 @@ namespace HoangCN.LearnMS.Services
                     throw new BadRequestException("Nội dung câu hỏi không được phép để trống.");
                 }
 
-                var slug = string.IsNullOrWhiteSpace(qDto.Slug)
+                var slug = string.IsNullOrWhiteSpace(qDto.QuestionSlug)
                     ? SlugUtil.GenerateSlug(qDto.StringContent)
-                    : SlugUtil.GenerateSlug(qDto.Slug);
+                    : SlugUtil.GenerateSlug(qDto.QuestionSlug);
 
                 Question q;
                 bool isInsertingQuestion = false;
@@ -478,7 +476,7 @@ namespace HoangCN.LearnMS.Services
                     q = new Question
                     {
                         QuestionId = questionId,
-                        UserId = currentUserId
+                        LearnMsUserId = currentUserId
                     };
                     questionsToInsert.Add(q);
                     isInsertingQuestion = true;
@@ -495,7 +493,7 @@ namespace HoangCN.LearnMS.Services
                         q = new Question
                         {
                             QuestionId = questionId,
-                            UserId = currentUserId
+                            LearnMsUserId = currentUserId
                         };
                         questionsToInsert.Add(q);
                         isInsertingQuestion = true;
@@ -679,7 +677,7 @@ namespace HoangCN.LearnMS.Services
                     Type = getQuestionType(q),
                     AccessType = request.AccessType,
                     IsInBank = request.IsInBank,
-                    UserId = currentUserId,
+                    LearnMsUserId = currentUserId,
                     QuestionCategoryId = q.QuestionCategoryId,
                     AttemptCount = 0
                 });
@@ -724,6 +722,53 @@ namespace HoangCN.LearnMS.Services
                 await _baseWriteDL.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Lấy chi tiết một câu hỏi trong ngân hàng đề kèm theo toàn bộ đáp án của nó sử dụng Multiple Query
+        /// </summary>
+        /// <param name="questionId">Mã định danh (GUID) của câu hỏi cần truy vấn</param>
+        /// <returns>Đối tượng DTO <see cref="BankQuestionWithAnswersDto"/> chứa thông tin chi tiết câu hỏi và danh sách đáp án</returns>
+        /// <exception cref="NotFoundException">Ném ra khi không tìm thấy câu hỏi tương ứng với mã định danh cung cấp</exception>
+        public async Task<BankQuestionWithAnswersDto> GetBankQuestionWithAnswers(Guid questionId)
+        {
+            var param = new DynamicParameters();
+
+            // Tạo câu sql lấy thông tin câu hỏi
+            var questionQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<Question, BankQuestionDto>(
+                isGetOnlyOne: true,
+                q => q.QuestionId == questionId,
+                param);
+
+            // Tạo câu sql lấy thông tin câu trả lời
+            var answerQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<QuestionAnswer, BankAnswerDto>(
+                isGetOnlyOne: false,
+                q => q.QuestionId == questionId,
+                param);
+
+            // Thực thi cả 2 câu cùng lúc trong cung 1 connnection
+            var questionWithAnswers = await _baseReadDL.ExecuteQueryMultiple(
+                $"{questionQuery}; {answerQuery};",
+                async grid =>
+                {
+                    var question = (await grid.ReadAsync<BankQuestionWithAnswersDto>()).FirstOrDefault();
+                    if (question == null)
+                    {
+                        return null;
+                    }
+
+                    var anwsers = (await grid.ReadAsync<BankAnswerDto>()).ToList();
+                    question.Answers = anwsers;
+                    return question;
+                },
+                param);
+
+            if (questionWithAnswers == null)
+            {
+                throw new NotFoundException("Không tìm thấy câu hỏi");
+            }
+
+            return questionWithAnswers;
         }
     }
 }

@@ -16,6 +16,28 @@ namespace HoangCN.Core.BL.Utils
     public static class BuildSQLUtil
     {
         /// <summary>
+        /// Hàm hỗ trợ xây câu lệnh lấy các thông tin của dto theo điều kiện
+        /// </summary>
+        public static string BuildQueryStringGetDtoByCondition<TEntity, TResult>(
+            bool isGetOnlyOne,
+            Expression<Func<TEntity, bool>> condition, 
+            DynamicParameters parameters) where TEntity : BaseEntity
+        {
+            var advancedFilters = ExpressionToFilterTranslator.Translate(condition);
+            var sql = $"{BuildSelectClaude<TEntity, TResult>()}";
+            var whereClause = BuildWhereClaude<TEntity, TResult>(new GetRequest(), parameters, advancedFilters);
+            if (!string.IsNullOrEmpty(whereClause))
+            {
+                sql += $" {whereClause}";
+            }
+            if (isGetOnlyOne)
+            {
+                sql += " LIMIT 1";
+            }
+            return sql;
+        }
+
+        /// <summary>
         /// Tạo câu lệnh kiểm tra sự tồn tại của danh sách các ID khóa chính
         /// </summary>
         public static string BuildQueryStringCheckPkExists(string tableName, string pkPropName)
@@ -187,7 +209,7 @@ namespace HoangCN.Core.BL.Utils
             var whereConditions = new List<string>();
 
             // 0. Lọc bỏ dữ liệu đã bị xóa mềm mặc định
-            whereConditions.Add($"`{mainTableName}`.`IsDeleted` = 0");
+            //whereConditions.Add($"`{mainTableName}`.`IsDeleted` = 0");
 
             // 1. Lọc theo danh sách Ids (nếu có)
             if (request.Ids != null && request.Ids.Count > 0)
@@ -303,19 +325,23 @@ namespace HoangCN.Core.BL.Utils
                             }
                             else if (filter.Type == FilterType.Number)
                             {
-                                parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                                var rawValue = GetValueFromFilter(filter.Value);
+                                parameters.Add(paramName, Convert.ChangeType(rawValue!, typeof(int)));
                             }
                             else if (filter.Type == FilterType.Bool)
                             {
-                                parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                                var rawValue = GetValueFromFilter(filter.Value);
+                                parameters.Add(paramName, Convert.ToBoolean(rawValue!));
                             }
                             else if (filter.Type == FilterType.Date)
                             {
-                                parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                                var rawValue = GetValueFromFilter(filter.Value);
+                                parameters.Add(paramName, rawValue is DateTime dt ? dt : DateTime.Parse(rawValue!.ToString()!));
                             }
                             else if (filter.Type == FilterType.String)
                             {
-                                parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                                var rawValue = GetValueFromFilter(filter.Value);
+                                parameters.Add(paramName, rawValue?.ToString() ?? string.Empty);
                             }
                             else
                             {
@@ -402,19 +428,23 @@ namespace HoangCN.Core.BL.Utils
                         }
                         else if (filter.Type == FilterType.Number)
                         {
-                            parameters.Add(paramName, Convert.ChangeType(filter.Value!, typeof(int)));
+                            var rawValue = GetValueFromFilter(filter.Value);
+                            parameters.Add(paramName, Convert.ChangeType(rawValue!, typeof(int)));
                         }
                         else if (filter.Type == FilterType.Bool)
                         {
-                            parameters.Add(paramName, Convert.ToBoolean(filter.Value!));
+                            var rawValue = GetValueFromFilter(filter.Value);
+                            parameters.Add(paramName, Convert.ToBoolean(rawValue!));
                         }
                         else if (filter.Type == FilterType.Date)
                         {
-                            parameters.Add(paramName, filter.Value is DateTime dt ? dt : DateTime.Parse(filter.Value!.ToString()!));
+                            var rawValue = GetValueFromFilter(filter.Value);
+                            parameters.Add(paramName, rawValue is DateTime dt ? dt : DateTime.Parse(rawValue!.ToString()!));
                         }
                         else if (filter.Type == FilterType.String)
                         {
-                            parameters.Add(paramName, filter.Value?.ToString() ?? string.Empty);
+                            var rawValue = GetValueFromFilter(filter.Value);
+                            parameters.Add(paramName, rawValue?.ToString() ?? string.Empty);
                         }
                         else
                         {
@@ -464,6 +494,53 @@ namespace HoangCN.Core.BL.Utils
             return $"ORDER BY `{mainTableName}`.`ModifiedDate` DESC";
         }
 
+        public static string BuildFromClaude<TEntity, TResult>()
+        {
+            var mainTableName = typeof(TEntity).Name;
+            var mainMetadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
+            var mainColumns = mainMetadata.ColumnNames;
+
+            var resultType = typeof(TResult);
+            var resultMetadata = EntityMetadataCache.GetMetadata(resultType);
+            var resultProps = resultMetadata.Properties;
+
+            var joinClauses = new List<string>();
+            var joinedTables = new HashSet<Type>();
+
+            foreach (var prop in resultProps)
+            {
+                if (prop.IsNotMapped) continue;
+
+                var foreignAttr = prop.ForeignTableAttr;
+                if (foreignAttr != null)
+                {
+                    var foreignType = foreignAttr.EntityType;
+                    if (foreignType != null)
+                    {
+                        var foreignTableName = foreignType.Name;
+                        var propName = prop.PropertyName;
+                        var columnNameInDb = !string.IsNullOrEmpty(foreignAttr.ColumnName) ? foreignAttr.ColumnName : propName;
+
+                        var foreignMetadata = EntityMetadataCache.GetMetadata(foreignType);
+                        var foreignColumns = foreignMetadata.ColumnNames;
+                        
+                        if (foreignColumns.Contains(columnNameInDb))
+                        {
+                            if (!joinedTables.Contains(foreignType))
+                            {
+                                joinedTables.Add(foreignType);
+                                var foreignKeyId = $"{foreignTableName}Id";
+                                joinClauses.Add($"LEFT JOIN `{foreignTableName}` ON `{mainTableName}`.`{foreignKeyId}` = `{foreignTableName}`.`{foreignKeyId}`");
+                            }
+                        }
+                    }
+                }
+            }
+
+            var joinsSql = joinClauses.Count > 0 ? " " + string.Join(" ", joinClauses) : string.Empty;
+            return $"FROM `{mainTableName}`{joinsSql}";
+        }
+
         /// <summary>
         /// Hàm hỗ trợ build phần chọn trường trả về SELECT ... FROM ... JOIN
         /// </summary>
@@ -477,14 +554,11 @@ namespace HoangCN.Core.BL.Utils
             var resultProps = resultMetadata.Properties;
 
             var selectColumns = new List<string>();
-            var joinClauses = new List<string>();
-            var joinedTables = new HashSet<Type>();
 
             foreach (var prop in resultProps)
             {
                 if (prop.IsNotMapped) continue;
 
-                // Kiểm tra xem thuộc tính có ForeignTableAttribute hay không
                 var foreignAttr = prop.ForeignTableAttr;
                 if (foreignAttr != null)
                 {
@@ -501,14 +575,6 @@ namespace HoangCN.Core.BL.Utils
                         if (foreignColumns.Contains(columnNameInDb))
                         {
                             selectColumns.Add($"`{foreignTableName}`.`{columnNameInDb}` AS `{propName}`");
-
-                            // Thêm LEFT JOIN
-                            if (!joinedTables.Contains(foreignType))
-                            {
-                                joinedTables.Add(foreignType);
-                                var foreignKeyId = $"{foreignTableName}Id";
-                                joinClauses.Add($"LEFT JOIN `{foreignTableName}` ON `{mainTableName}`.`{foreignKeyId}` = `{foreignTableName}`.`{foreignKeyId}`");
-                            }
                         }
                     }
                 }
@@ -523,12 +589,44 @@ namespace HoangCN.Core.BL.Utils
             }
 
             var columnsSql = string.Join(", ", selectColumns);
-            var joinsSql = joinClauses.Count > 0 ? " " + string.Join(" ", joinClauses) : string.Empty;
-
-            return $"SELECT {columnsSql} FROM `{mainTableName}`{joinsSql}";
+            return $"SELECT {columnsSql} {BuildFromClaude<TEntity, TResult>()}";
         }
 
+        
+        private static object? GetValueFromFilter(object? value)
+        {
+            if (value == null) return null;
 
+            if (value is System.Text.Json.JsonElement jsonElement)
+            {
+                switch (jsonElement.ValueKind)
+                {
+                    case System.Text.Json.JsonValueKind.Number:
+                        if (jsonElement.TryGetInt32(out int intVal)) return intVal;
+                        if (jsonElement.TryGetInt64(out long longVal)) return longVal;
+                        if (jsonElement.TryGetDouble(out double doubleVal)) return doubleVal;
+                        return jsonElement.GetDecimal();
+                    case System.Text.Json.JsonValueKind.String:
+                        return jsonElement.GetString();
+                    case System.Text.Json.JsonValueKind.True:
+                        return true;
+                    case System.Text.Json.JsonValueKind.False:
+                        return false;
+                    case System.Text.Json.JsonValueKind.Null:
+                        return null;
+                    default:
+                        return jsonElement.GetRawText();
+                }
+            }
+
+            var type = value.GetType();
+            if (type.IsEnum)
+            {
+                return Convert.ChangeType(value, Enum.GetUnderlyingType(type));
+            }
+
+            return value;
+        }
     }
 }
 

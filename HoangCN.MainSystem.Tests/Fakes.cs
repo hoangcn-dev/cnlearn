@@ -195,6 +195,11 @@ namespace HoangCN.MainSystem.Tests
             var result = QueryResults.OfType<TResult>().FirstOrDefault();
             return Task.FromResult<TResult?>(result);
         }
+
+        public Task<TResult> ExecuteQueryMultiple<TResult>(string query, Func<SqlMapper.GridReader, Task<TResult>> readerFunc, DynamicParameters? parameters = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class FakeWriteDL : IBaseWriteDL
@@ -229,6 +234,10 @@ namespace HoangCN.MainSystem.Tests
         {
             DeletedEntities.AddRange(entities.Cast<object>());
             return Task.CompletedTask;
+        }
+
+        public void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity
+        {
         }
     }
 

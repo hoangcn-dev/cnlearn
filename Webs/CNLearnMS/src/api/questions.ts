@@ -3,8 +3,8 @@ import { endpoints } from "./config/endpoint";
 import axiosInstance from "./config/axios";
 
 // Lấy danh sách câu hỏi phân trang chi tiết
-export const getQuestionsPaging = async (request: any) => {
-  return await post(endpoints.questions.pagingDetails, request);
+export const getQuestionsPaging = async (request: any, isMine: boolean = false) => {
+  return await post(`${endpoints.questions.pagingDetails}?isMine=${isMine}`, request);
 };
 
 // Lấy danh sách câu hỏi đã lưu phân trang

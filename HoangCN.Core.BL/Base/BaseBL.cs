@@ -74,7 +74,7 @@ namespace HoangCN.Core.BL.Base
             if (request.IsPaging)
             {
                 // 1. Tính tổng số dòng (COUNT) sử dụng Dapper
-                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {whereClause}";
+                var countSql = $"SELECT COUNT(*) {BuildSQLUtil.BuildFromClaude<TEntity, TResult>()} {whereClause}";
                 var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
                 result.Total = totalCount;
                 result.Page = request.Page ?? 1;
@@ -116,7 +116,7 @@ namespace HoangCN.Core.BL.Base
             if (request.IsPaging)
             {
                 // 1. Tính tổng số dòng (COUNT) sử dụng Dapper
-                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {whereClause}";
+                var countSql = $"SELECT COUNT(*) {BuildSQLUtil.BuildFromClaude<TEntity, TResult>()} {whereClause}";
                 var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
                 result.Total = totalCount;
                 result.Page = request.Page ?? 1;

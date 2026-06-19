@@ -3,6 +3,7 @@ using System;
 using HoangCN.Core.DL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HoangCN.LearnMS.Migrations
 {
     [DbContext(typeof(DynamicDbContext))]
-    partial class DynamicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618090908_ChangeFKLearnMsUserIdOfQuestion")]
+    partial class ChangeFKLearnMsUserIdOfQuestion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

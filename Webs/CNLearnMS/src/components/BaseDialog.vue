@@ -19,7 +19,7 @@
           <button v-if="showCancel" class="btn btn-outline-secondary px-4 py-1.5 rounded-3 fw-semibold small" @click="handleCancel">
             {{ cancelText }}
           </button>
-          <button v-if="showOk" class="btn btn-indigo text-white px-4 py-1.5 rounded-3 fw-semibold small d-flex align-items-center gap-2" :disabled="okLoading" @click="handleOk">
+          <button v-if="showOk" class="btn text-white px-4 py-1.5 rounded-3 fw-semibold small d-flex align-items-center gap-2" :class="buttonType === 'danger' ? 'btn-danger' : 'btn-indigo'" :disabled="okLoading" @click="handleOk">
             <span v-if="okLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             {{ okText }}
           </button>
@@ -72,6 +72,10 @@ const props = defineProps({
   okLoading: {
     type: Boolean,
     default: false
+  },
+  buttonType: {
+    type: String,
+    default: 'indigo'
   }
 })
 

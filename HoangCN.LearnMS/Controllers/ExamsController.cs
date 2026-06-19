@@ -89,22 +89,22 @@ namespace HoangCN.LearnMS.Controllers
             return Ok(ApiResponseDto.Success(new { ExamId = examId }));
         }
 
-        /// <summary>
-        /// Lấy danh sách câu hỏi thuộc đề thi
-        /// </summary>
-        [HttpGet("{id}/questions")]
-        public async Task<IActionResult> GetExamQuestions(Guid id)
-        {
-            Guid userId = Guid.Empty;
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
-            {
-                userId = parsedId;
-            }
+        ///// <summary>
+        ///// Lấy danh sách câu hỏi thuộc đề thi
+        ///// </summary>
+        //[HttpGet("{id}/questions")]
+        //public async Task<IActionResult> GetExamQuestions(Guid id)
+        //{
+        //    Guid userId = Guid.Empty;
+        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        //    if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
+        //    {
+        //        userId = parsedId;
+        //    }
 
-            var sortedQuestions = await _questionService.GetQuestionsByExamIdAsync(id, userId);
+        //    var sortedQuestions = await _questionService.GetQuestionsByExamIdAsync(id, userId);
 
-            return Ok(ApiResponseDto.Success(sortedQuestions));
-        }
+        //    return Ok(ApiResponseDto.Success(sortedQuestions));
+        //}
     }
 }

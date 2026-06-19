@@ -9,7 +9,7 @@ export const endpoints = {
     delete: "/api/categories/delete",
   },
   questions: {
-    pagingDetails: "/api/questions/paging-details",
+    pagingDetails: "/api/questions/bank/paging",
     savedPaging: "/api/questions/saved/paging",
     donePaging: "/api/questions/done/paging",
     details: "/api/questions/details",

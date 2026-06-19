@@ -82,7 +82,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpGet]
-        [AuthAction]
         public virtual async Task<IActionResult> GetAll()
         {
             var res = await _baseBL.Get<TEntity>(GetRequest.GetAllRequest());
@@ -90,7 +89,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpGet("{id}")]
-        [AuthAction]
         public virtual async Task<IActionResult> GetById(Guid id)
         {
             var res = await _baseBL.Get<TEntity>(GetRequest.GetByIdRequest(id));
@@ -102,7 +100,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpPost("paging")]
-        [AuthAction]
         public virtual async Task<IActionResult> GetPaging([FromBody] GetRequest request)
         {
             var res = await _baseBL.Get<TEntity>(request);
@@ -110,7 +107,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpPost]
-        [AuthAction]
         public virtual async Task<IActionResult> Insert([FromBody] List<TEntity> entities)
         {
             await _baseBL.InsertAsync(entities);
@@ -118,7 +114,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpPut]
-        [AuthAction]
         public virtual async Task<IActionResult> Update([FromBody] List<TEntity> entities)
         {
             await _baseBL.UpdateAsync(entities);
@@ -126,7 +121,6 @@ namespace HoangCN.Core.BL.Base
         }
 
         [HttpPost("delete")]
-        [AuthAction]
         public virtual async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
             await _baseBL.DeleteAsync(request);

@@ -11,11 +11,15 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Admin")] // Giới hạn quyền Admin
     public class CategoriesController : CRUDController<QuestionCategory>
     {
         public CategoriesController(IBaseBL<QuestionCategory> questionCategoryService) : base(questionCategoryService)
         {
+        }
+
+        protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
+        {
+            base.ConfigurePolicies(builder);
         }
     }
 }

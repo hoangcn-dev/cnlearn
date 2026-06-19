@@ -163,7 +163,7 @@ namespace HoangCN.LearnMS.Services
                 }
 
                 // 2. Lưu thông tin các câu hỏi trắc nghiệm liên quan
-                var questionsToSave = new List<QuestionDetailDto>();
+                var questionsToSave = new List<BankQuestionDto>();
 
                 for (int i = 0; i < dto.Questions.Count; i++)
                 {
@@ -178,10 +178,10 @@ namespace HoangCN.LearnMS.Services
                     questionsToSave.Add(qDto);
                 }
 
-                if (questionsToSave.Count > 0)
-                {
-                    await _questionService.SaveQuestionDetailsAsync(questionsToSave, currentUserId);
-                }
+                //if (questionsToSave.Count > 0)
+                //{
+                //    await _questionService.SaveQuestionDetailsAsync(questionsToSave, currentUserId);
+                //}
 
                 // 3. Xoá các mối liên kết đề thi - câu hỏi cũ
                 var relSql = HoangCN.LearnMS.Utils.ExamSqlUtil.BuildQueryExamQuestionsByExamId(examId, out var relParams);

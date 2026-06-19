@@ -61,7 +61,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Tài khoản sở hữu")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
-        public Guid UserId { get; set; }
+        public Guid LearnMsUserId { get; set; }
 
         /// <summary>
         /// Quyền truy cập của câu hỏi
