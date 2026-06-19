@@ -10,9 +10,9 @@
             <div class="icon-box mb-3 d-flex align-items-center justify-content-center">
               <span>📁</span>
             </div>
-            <h3 class="h5 fw-bold text-dark-blue mb-2 card-title">{{ getLocalName(cat.name) }}</h3>
+            <h3 class="h5 fw-bold text-dark-blue mb-2 card-title">{{ getLocalName(cat.questionCategoryName) }}</h3>
             <p class="text-secondary small mb-0 desc-text">
-              Khám phá các đề thi thử và tài liệu thuộc phần {{ getLocalName(cat.name) }}.
+              Khám phá các đề thi thử và tài liệu thuộc phần {{ getLocalName(cat.questionCategoryName) }}.
              </p>
           </div>
           <div class="d-flex align-items-center justify-content-between border-top pt-3 mt-4 text-indigo">
@@ -44,7 +44,7 @@ const selectCategory = (cat: QuestionCategory) => {
   router.push({
     name: 'quiz-list',
     params: { id: cat.questionCategoryId },
-    query: { name: cat.name }
+    query: { name: cat.questionCategoryName }
   })
 }
 </script>

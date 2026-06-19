@@ -201,14 +201,14 @@ const loadCategories = async () => {
   const found = flatCategories.value.find(c => c.questionCategoryId === categoryId.value)
   if (found) {
     currentCategory.value = found
-    categoryName.value = found.name
+    categoryName.value = found.questionCategoryName
   } else {
     const defaultName = (route.query.name as string) || 'Danh Mục Đề Thi'
     currentCategory.value = {
       questionCategoryId: categoryId.value,
       parentId: null,
-      name: defaultName,
-      slug: ''
+      questionCategoryName: defaultName,
+      questionCategorySlug: ''
     }
     categoryName.value = defaultName
   }
@@ -217,8 +217,8 @@ const loadCategories = async () => {
 // Kiểm tra xem danh mục hiện tại là danh mục lá (Leaf - chứa đề thi) hay danh mục ảo (Virtual - chứa các con)
 const isLeaf = computed(() => {
   if (!currentCategory.value) return true
-  const prefix = currentCategory.value.name + ' - '
-  return !flatCategories.value.some(c => c.name.startsWith(prefix))
+  const prefix = currentCategory.value.questionCategoryName + ' - '
+  return !flatCategories.value.some(c => c.questionCategoryName.startsWith(prefix))
 })
 
 // Lấy danh mục con trực tiếp
@@ -239,14 +239,14 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
     return [{ name: categoryName.value, id: null, fullName: categoryName.value }]
   }
 
-  const parts = currentCategory.value.name.split(' - ')
+  const parts = currentCategory.value.questionCategoryName.split(' - ')
   const list: BreadcrumbItem[] = []
   let accumulatedName: string = ''
 
   for (let i = 0; i < parts.length; i++) {
     const partName = parts[i] || ''
     accumulatedName = accumulatedName ? `${accumulatedName} - ${partName}` : partName
-    const match = flatCategories.value.find(c => c.name === accumulatedName)
+    const match = flatCategories.value.find(c => c.questionCategoryName === accumulatedName)
     
     list.push({
       name: partName,

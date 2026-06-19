@@ -1,8 +1,8 @@
 export interface QuestionCategory {
   questionCategoryId: string
   parentId: string | null
-  name: string
-  slug: string
+  questionCategoryName: string
+  questionCategorySlug: string
 }
 
 export interface CategoryNode {
@@ -24,8 +24,8 @@ export function buildCategoryTree(flatList: QuestionCategory[]): CategoryNode[] 
         const children = build(x.questionCategoryId)
         const node: CategoryNode = {
           key: x.questionCategoryId,
-          title: x.name.split(' - ').pop() || x.name, // Hiển thị nhãn cục bộ
-          slug: x.slug,
+          title: x.questionCategoryName.split(' - ').pop() || x.questionCategoryName, // Hiển thị nhãn cục bộ
+          slug: x.questionCategorySlug,
           originalItem: x
         }
         if (children.length > 0) {
@@ -35,16 +35,6 @@ export function buildCategoryTree(flatList: QuestionCategory[]): CategoryNode[] 
       })
   }
   return build(null)
-}
-
-/**
- * Tìm tất cả danh mục con trực tiếp (Direct Children) của một danh mục hiện tại
- */
-export function getDirectChildren(
-  parentCategory: QuestionCategory,
-  flatList: QuestionCategory[]
-): QuestionCategory[] {
-  return flatList.filter(c => c.parentId === parentCategory.questionCategoryId)
 }
 
 /**
@@ -67,16 +57,6 @@ export function getRecursiveChildIds(
 }
 
 /**
- * Kiểm tra xem danh mục hiện tại có phải là danh mục lá (Leaf Category) hay không
- */
-export function isLeafCategory(
-  category: QuestionCategory,
-  flatList: QuestionCategory[]
-): boolean {
-  return !flatList.some(c => c.parentId === category.questionCategoryId)
-}
-
-/**
  * Khởi tạo danh sách dropdown thụt đầu dòng (Indented List) để render vào các select thông thường
  */
 export interface IndentedOption {
@@ -92,11 +72,11 @@ export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOpti
   const traverse = (parentId: string | null, level: number) => {
     const children = flatList
       .filter(x => x.parentId === parentId)
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => a.questionCategoryName.localeCompare(b.questionCategoryName))
       
     children.forEach(cat => {
-      const currentPath = cat.name
-      const localName = cat.name.split(' - ').pop() || cat.name
+      const currentPath = cat.questionCategoryName
+      const localName = cat.questionCategoryName.split(' - ').pop() || cat.questionCategoryName
       const indent = '\u00A0\u00A0'.repeat(level)
       const prefix = level > 0 ? '└─ ' : ''
       
@@ -126,3 +106,14 @@ export function generateSlug(name: string): string {
   str = str.replace(/[^a-z0-9\s-]/g, '')
   return str.trim().replace(/\s+/g, '-')
 }
+
+/**
+ * Lấy các danh mục con trực tiếp
+ */
+export function getDirectChildren(
+  parentCategory: QuestionCategory,
+  flatList: QuestionCategory[]
+): QuestionCategory[] {
+  return flatList.filter(c => c.parentId === parentCategory.questionCategoryId)
+}
+
