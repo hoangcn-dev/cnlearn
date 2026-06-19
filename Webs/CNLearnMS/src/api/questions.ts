@@ -60,8 +60,13 @@ export const importBulkJsonFile = async (formData: FormData) => {
 };
 
 // Toggle trạng thái lưu câu hỏi
-export const toggleSaveQuestion = async (id: string) => {
-  return await post(`${endpoints.bookmarks.toggleQuestion}/${id}`);
+export const toggleSaveQuestion = async (payload: { TargetId: string, IsSaved: boolean }) => {
+  return await post(endpoints.questions.bankSaved, payload);
+};
+
+// Lấy danh sách câu hỏi đã lưu
+export const getSavedQuestions = async () => {
+  return await get(endpoints.questions.bankSaved);
 };
 
 // Lấy danh sách ID câu hỏi đã lưu

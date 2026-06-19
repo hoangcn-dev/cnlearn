@@ -7,6 +7,7 @@ using HoangCN.Core.Common.Utils;
 using HoangCN.LearnMS.DTOs;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
+using HoangCN.LearnMS.Requests;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -59,6 +60,25 @@ namespace HoangCN.LearnMS.Controllers
             }
             var res = await _baseBL.Get<BankQuestionDto>(request);
             return Ok(ApiResponseDto.Success(res));
+        }
+
+        [HttpGet("bank/saved")]
+        [AuthAction]
+        public async Task<IActionResult> GetSavedQuestions()
+        {
+            var userId = ClaimUtil.GetUserId(User);
+            var res = await _questionService.GetSavedQuestions(userId!.Value);
+            return Ok(ApiResponseDto.Success(res));
+        }
+
+        [HttpPost("bank/saved")]
+        [AuthAction]
+        public async Task<IActionResult> GetSavedQuestions([FromBody] ToggleUserSavedRequest request)
+        {
+            var userId = ClaimUtil.GetUserId(User);
+            request.UserId = userId!.Value;
+            await _questionService.ToggleQuestion(request);
+            return Ok(ApiResponseDto.Success(request.IsSaved? "Lưu thành công":"Bỏ lưu thành công"));
         }
     }
 }

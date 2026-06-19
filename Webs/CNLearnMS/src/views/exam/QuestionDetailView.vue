@@ -98,9 +98,13 @@ const checkQuestionSavedStatus = async () => {
 
 const toggleSaveQuestionStatus = async () => {
   try {
-    const res = await toggleSaveQuestion(questionId)
+    const nextSavedState = !isQuestionSaved.value
+    const res = await toggleSaveQuestion({
+      TargetId: questionId,
+      IsSaved: nextSavedState
+    })
     if (res && res.isSuccess) {
-      isQuestionSaved.value = res.data
+      isQuestionSaved.value = nextSavedState
       if (isQuestionSaved.value) {
         message.success('Đã lưu câu hỏi thành công!')
       } else {

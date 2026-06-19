@@ -18,6 +18,11 @@ namespace HoangCN.Core.DL.Interfaces
         Task<TResult?> ExecuteQueryToGetFirstResult<TResult>(string query, DynamicParameters? parameters = null);
 
         /// <summary>
+        /// Thực thi truy vấn lấy một dòng dữ liệu duy nhất từ database đọc
+        /// </summary>
+        Task<TRow?> ExecuteQuerySingle<TRow>(string query, DynamicParameters? parameters = null);
+
+        /// <summary>
         /// Thực thi truy vấn nhiều kết quả (Multiple Result Sets) sử dụng Dapper
         /// </summary>
         /// <typeparam name="TResult">Kiểu dữ liệu kết quả trả về sau khi map</typeparam>

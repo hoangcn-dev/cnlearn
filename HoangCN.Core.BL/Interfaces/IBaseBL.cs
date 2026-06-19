@@ -41,9 +41,19 @@ namespace HoangCN.Core.BL.Interfaces
         Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
 
         /// <summary>
+        /// Đếm thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)
+        /// </summary>
+        Task<int> CountByCondition(Expression<Func<TEntity, bool>> condition);
+
+        /// <summary>
         /// Lấy chi tiết thực thể theo ID (chỉ dùng cho nội bộ)
         /// </summary>
         Task<TResult?> GetById<TResult>(Guid id);
+
+        /// <summary>
+        /// Lấy một đối tượng duy nhất theo điều kiện chỉ định sử dụng Dapper tối ưu hóa
+        /// </summary>
+        Task<TResult?> GetSingleByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
     }
 }
 

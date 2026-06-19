@@ -3,6 +3,7 @@ using System;
 using HoangCN.Core.DL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HoangCN.LearnMS.Migrations
 {
     [DbContext(typeof(DynamicDbContext))]
-    partial class DynamicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619030035_RemoveSaveDate")]
+    partial class RemoveSaveDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -682,9 +685,9 @@ namespace HoangCN.LearnMS.Migrations
                     b.ToTable("Quiz");
                 });
 
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserSavedMapping", b =>
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserSavedQuestionMapping", b =>
                 {
-                    b.Property<Guid>("UserSavedMappingId")
+                    b.Property<Guid>("UserSavedQuestionMappingId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
@@ -715,15 +718,14 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("char(36)");
 
-                    b.HasKey("UserSavedMappingId");
+                    b.HasKey("UserSavedQuestionMappingId");
 
-                    b.HasIndex("UserId", "TargetId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
-                    b.ToTable("UserSavedMapping");
+                    b.ToTable("UserSavedQuestionMapping");
                 });
 
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserSavedMapping", b =>
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.UserSavedQuestionMapping", b =>
                 {
                     b.HasOne("HoangCN.LearnMS.Entities.LearnMsUser", "User")
                         .WithMany()

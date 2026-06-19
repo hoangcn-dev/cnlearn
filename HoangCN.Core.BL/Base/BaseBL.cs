@@ -141,17 +141,21 @@ namespace HoangCN.Core.BL.Base
         }
 
         /// <summary>
-        /// Lấy chi tiết đối tượng theo ID sử dụng Dapper
+        /// Lấy chi tiết đối tượng theo ID sử dụng Dapper tối ưu hóa
         /// </summary>
         public async Task<TResult?> GetById<TResult>(Guid id)
         {
-            var request = GetRequest.GetByIdRequest(id);
-            var res = await Get<TResult>(request);
-            if (res != null && res.Items.Count > 0)
-            {
-                return res.Items[0];
-            }
-            return default;
+            var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
+            var pkPropName = metadata.PrimaryKeyName;
+
+            // Xây dựng biểu thức Lambda động: entity => entity.PrimaryKey == id
+            var parameter = Expression.Parameter(typeof(TEntity), "entity");
+            var property = Expression.Property(parameter, pkPropName);
+            var constant = Expression.Constant(id);
+            var equal = Expression.Equal(property, constant);
+            var lambda = Expression.Lambda<Func<TEntity, bool>>(equal, parameter);
+
+            return await GetSingleByCondition<TResult>(lambda);
         }
 
         /// <summary>
@@ -290,6 +294,38 @@ namespace HoangCN.Core.BL.Base
             var sql = $"{selectFromSql} {whereClause}";
             var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);
             return [.. items];
+        }
+
+        /// <summary>
+        /// Đếm thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)
+        /// </summary>
+        public async Task<int> CountByCondition(Expression<Func<TEntity, bool>> condition)
+        {
+            var parameters = new DynamicParameters();
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TEntity>(request, parameters, extraGroup);
+            
+            var countSql = $"SELECT COUNT(*) {BuildSQLUtil.BuildFromClaude<TEntity, TEntity>()} {whereClause}";
+            var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
+            return totalCount;
+        }
+
+        /// <summary>
+        /// Lấy một đối tượng duy nhất theo điều kiện chỉ định sử dụng Dapper tối ưu hóa
+        /// </summary>
+        public async Task<TResult?> GetSingleByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
+        {
+            var parameters = new DynamicParameters();
+            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
+            
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters, extraGroup);
+
+            // Thêm giới hạn 1 dòng (LIMIT 1) để tối ưu hóa hiệu năng truy vấn của MySQL
+            var sql = $"{selectFromSql} {whereClause} LIMIT 1";
+            return await _baseReadDL.ExecuteQuerySingle<TResult>(sql, parameters);
         }
     }
 }

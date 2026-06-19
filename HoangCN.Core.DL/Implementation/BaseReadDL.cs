@@ -59,5 +59,16 @@ namespace HoangCN.Core.DL.Implementation
                 return await conn.ExecuteScalarAsync<TResult>(query, parameters, commandType: CommandType.Text);
             }
         }
+
+        /// <summary>
+        /// Thực thi truy vấn lấy một dòng dữ liệu duy nhất từ database đọc
+        /// </summary>
+        public async Task<TRow?> ExecuteQuerySingle<TRow>(string query, DynamicParameters? parameters = null)
+        {
+            using (var conn = new MySqlConnection(_connectionString))
+            {
+                return await conn.QueryFirstOrDefaultAsync<TRow>(query, parameters, commandType: CommandType.Text);
+            }
+        }
     }
 }

@@ -18,6 +18,7 @@ export const endpoints = {
     bulkJson: "/api/questions/bulk/json",
     bulkJsonFile: "/api/questions/bulk/json-file",
     checkAnswer: "/api/questions/check-answer",
+    bankSaved: "/api/questions/bank/saved",
   },
   bookmarks: {
     toggleQuestion: "/api/bookmarks/question/toggle",

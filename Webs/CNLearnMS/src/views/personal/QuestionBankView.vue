@@ -188,7 +188,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
-import { getQuestionsPaging, deleteQuestions, getSavedQuestionsPaging, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
+import { getQuestionsPaging, deleteQuestions, getSavedQuestions, toggleSaveQuestion } from '@/api/questions'
 import type { GetRequest, Filter } from '@/models/get-request'
 import { FilterGroupType, FilterOperator, FilterType } from '@/models/get-request'
 import type { BankQuestionWithAnswersDto } from '@/models/questions'
@@ -297,10 +297,27 @@ const fetchQuestions = async () => {
   loading.value = true
   try {
     if (listTab.value === 'saved') {
-      // Tạm thời chưa gọi API thật cho phần saved để tránh lỗi 404
-      questions.value = []
-      totalItems.value = 0
+      // Bước 1: Tải danh sách ID đã lưu
+      await fetchSavedQuestionIds()
+      
+      if (savedQuestionIdsList.value.length === 0) {
+        questions.value = []
+        totalItems.value = 0
+        return
+      }
+
+      // Bước 2: Gọi API phân trang với Ids câu hỏi đã lưu
+      const requestCopy = {
+        ...request.value,
+        ids: savedQuestionIdsList.value
+      }
+      const res = await getQuestionsPaging(requestCopy, false)
+      if (res && res.isSuccess && res.data) {
+        questions.value = res.data.items || []
+        totalItems.value = res.data.total || 0
+      }
     } else {
+      request.value.ids = []
       const res = await getQuestionsPaging(request.value, true)
       if (res && res.isSuccess && res.data) {
         questions.value = res.data.items || []
@@ -332,23 +349,40 @@ const fetchCategories = async () => {
 }
 
 const fetchSavedQuestionIds = async () => {
-  // Mock danh sách ID đã lưu trống trên client
-  savedQuestionIdsList.value = []
+  try {
+    const res = await getSavedQuestions()
+    if (res && res.isSuccess && res.data) {
+      savedQuestionIdsList.value = (res.data || []).map((q: any) => q.targetId)
+    }
+  } catch (err) {
+    console.error('Lỗi lấy danh sách ID đã lưu:', err)
+  }
 }
 
 const handleToggleSave = async (id: string) => {
-  // Mock tính năng lưu/bỏ lưu câu hỏi trên client
-  const index = savedQuestionIdsList.value.indexOf(id)
-  if (index > -1) {
-    savedQuestionIdsList.value.splice(index, 1)
-    message.success('Đã bỏ lưu câu hỏi!')
-    if (listTab.value === 'saved') {
-      questions.value = questions.value.filter(q => q.questionId !== id)
-      totalItems.value = questions.value.length
+  try {
+    const isCurrentlySaved = savedQuestionIdsList.value.includes(id)
+    const res = await toggleSaveQuestion({
+      TargetId: id,
+      IsSaved: !isCurrentlySaved
+    })
+    if (res && res.isSuccess) {
+      if (!isCurrentlySaved) {
+        message.success('Đã lưu câu hỏi thành công!')
+        savedQuestionIdsList.value.push(id)
+      } else {
+        message.success('Đã bỏ lưu câu hỏi!')
+        savedQuestionIdsList.value = savedQuestionIdsList.value.filter(x => x !== id)
+        if (listTab.value === 'saved') {
+          fetchQuestions()
+        }
+      }
+    } else {
+      message.error(res.errorMessage || 'Thao tác thất bại')
     }
-  } else {
-    savedQuestionIdsList.value.push(id)
-    message.success('Đã lưu câu hỏi thành công!')
+  } catch (err) {
+    console.error('Lỗi khi lưu/bỏ lưu câu hỏi:', err)
+    message.error('Đã xảy ra lỗi khi thực hiện thao tác')
   }
 }
 
