@@ -136,45 +136,6 @@ interface Question {
 const loading = ref(true)
 const question = ref<Question | null>(null)
 
-const MOCK_QUESTIONS: Question[] = [
-  {
-    questionId: "q1",
-    stringContent: "Điểm khác biệt lớn nhất giữa IEnumerable và IQueryable là gì?",
-    explaination: "IEnumerable thực hiện lọc dữ liệu trên Client (In-Memory), còn IQueryable thực hiện lọc phía Server (Database) trước khi kéo về Client.",
-    level: 1,
-    createdDate: new Date(),
-    answers: [
-      { questionAnswerId: "a1_1", stringContent: "IEnumerable lọc ở Client, IQueryable lọc ở Server Database", isCorrectAnswer: true },
-      { questionAnswerId: "a1_2", stringContent: "IEnumerable lọc ở Server, IQueryable lọc ở Client", isCorrectAnswer: false }
-    ]
-  },
-  {
-    questionId: "q2",
-    stringContent: "Cú pháp khai báo biến hằng trong C# là gì?",
-    explaination: "Biến hằng trong C# được khai báo bằng từ khóa const đứng trước kiểu dữ liệu và gán giá trị trực tiếp.",
-    level: 0,
-    createdDate: new Date(Date.now() - 3600000),
-    answers: [
-      { questionAnswerId: "a2_1", stringContent: "const <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: true },
-      { questionAnswerId: "a2_2", stringContent: "readonly <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false },
-      { questionAnswerId: "a2_3", stringContent: "static <kiểu_dữ_liệu> <tên_biến> = <giá_trị>;", isCorrectAnswer: false }
-    ]
-  },
-  {
-    questionId: "q3",
-    stringContent: "Phương thức nào dùng để khởi tạo một Transaction trong DbContext của EF Core?",
-    explaination: "Phương thức Database.BeginTransaction() khởi tạo một giao dịch mới để đảm bảo tính toàn vẹn dữ liệu.",
-    level: 2,
-    createdDate: new Date(Date.now() - 86400000),
-    answers: [
-      { questionAnswerId: "a3_1", stringContent: "Database.BeginTransaction()", isCorrectAnswer: true },
-      { questionAnswerId: "a3_2", stringContent: "Database.StartTransaction()", isCorrectAnswer: false },
-      { questionAnswerId: "a3_3", stringContent: "DbContext.Transaction()", isCorrectAnswer: false },
-      { questionAnswerId: "a3_4", stringContent: "DbSet.Begin()", isCorrectAnswer: false }
-    ]
-  }
-]
-
 const loadQuestion = async () => {
   loading.value = true
   try {
@@ -182,35 +143,19 @@ const loadQuestion = async () => {
     if (res && res.isSuccess && res.data) {
       const qData = res.data
       question.value = {
-        questionId: qData.id,
+        questionId: qData.questionId,
         stringContent: qData.stringContent || 'Nội dung câu hỏi',
-        explaination: qData.explanation || 'Chưa có giải thích chi tiết',
+        explaination: qData.explaination || 'Chưa có giải thích chi tiết',
         level: qData.level || 0,
-        createdDate: qData.createdDate ? new Date(qData.createdDate) : new Date(),
+        createdDate: qData.modifiedDate ? new Date(qData.modifiedDate) : new Date(),
         answers: qData.answers || []
       }
     } else {
-      throw new Error()
+      question.value = null
     }
   } catch (error) {
-    const mock = MOCK_QUESTIONS.find(q => q.questionId === questionId)
-    if (mock) {
-      question.value = mock
-    } else {
-      question.value = {
-        questionId: questionId,
-        stringContent: `Nội dung câu hỏi chi tiết mã ${questionId.substring(0,8)}... Được tạo ngẫu nhiên để demo giao diện.`,
-        explaination: `Đây là phần giải thích chi tiết cho câu hỏi mã ${questionId.substring(0,8)}. Phương án đúng là C vì tính chất đặc trưng của môn học.`,
-        level: Math.floor(Math.random() * 3),
-        createdDate: new Date(),
-        answers: [
-          { questionAnswerId: `a1`, stringContent: 'Phương án A - gây nhiễu', isCorrectAnswer: false },
-          { questionAnswerId: `a2`, stringContent: 'Phương án B - phân tích chưa đủ', isCorrectAnswer: false },
-          { questionAnswerId: `a3`, stringContent: 'Phương án C - hoàn toàn chính xác', isCorrectAnswer: true },
-          { questionAnswerId: `a4`, stringContent: 'Phương án D - hoàn toàn sai', isCorrectAnswer: false }
-        ]
-      }
-    }
+    console.error('Lỗi khi tải chi tiết câu hỏi:', error)
+    question.value = null
   } finally {
     loading.value = false
   }

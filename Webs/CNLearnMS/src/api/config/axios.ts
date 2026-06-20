@@ -83,52 +83,109 @@ export interface ApiResponseDto<T> {
   errorMessage?: string
 }
 
-export const get = async <T = any>(url: string, params?: any): Promise<ApiResponseDto<T>> => {
+export interface ApiOptions {
+  showLoading?: boolean;   // Bật/tắt hiển thị loading toast (mặc định: true)
+  loadingText?: string;    // Nội dung chữ hiển thị (mặc định tương ứng với từng method)
+}
+
+export const get = async <T = any>(url: string, params?: any, options?: ApiOptions): Promise<ApiResponseDto<T>> => {
+  const isBackgroundApi = url.includes('/users/profile') || url.includes('/users/me');
+  const showLoading = !isBackgroundApi && (options?.showLoading ?? true);
+  const loadingText = options?.loadingText || "Đang tải dữ liệu...";
+  let hideLoading: (() => void) | null = null;
+
+  if (showLoading) {
+    hideLoading = message.loading(loadingText, 0);
+  }
+
   try {
-		const response = await axiosInstance.get<ApiResponseDto<T>>(url, { params });
+    const response = await axiosInstance.get<ApiResponseDto<T>>(url, { params });
     return response.data;
-	} catch (error: any) {
-		return {
-			isSuccess: false,
+  } catch (error: any) {
+    return {
+      isSuccess: false,
       errorMessage: getErrorMessage(error)
-		};
-	}
+    };
+  } finally {
+    if (hideLoading) {
+      hideLoading();
+    }
+  }
 };
 
-export const post = async <T = any>(url: string, data?: any): Promise<ApiResponseDto<T>> => {
+export const post = async <T = any>(url: string, data?: any, options?: ApiOptions): Promise<ApiResponseDto<T>> => {
+  const isBackgroundApi = url.includes('/users/profile') || url.includes('/users/me');
+  const showLoading = !isBackgroundApi && (options?.showLoading ?? true);
+  const loadingText = options?.loadingText || "Đang xử lý...";
+  let hideLoading: (() => void) | null = null;
+
+  if (showLoading) {
+    hideLoading = message.loading(loadingText, 0);
+  }
+
   try {
-		const response = await axiosInstance.post<ApiResponseDto<T>>(url, data);
+    const response = await axiosInstance.post<ApiResponseDto<T>>(url, data);
     return response.data;
-	} catch (error: any) {
-		return {
-			isSuccess: false,
+  } catch (error: any) {
+    return {
+      isSuccess: false,
       errorMessage: getErrorMessage(error)
-		};
-	}
+    };
+  } finally {
+    if (hideLoading) {
+      hideLoading();
+    }
+  }
 };
 
-export const put = async <T = any>(url: string, data?: any): Promise<ApiResponseDto<T>> => {
+export const put = async <T = any>(url: string, data?: any, options?: ApiOptions): Promise<ApiResponseDto<T>> => {
+  const isBackgroundApi = url.includes('/users/profile') || url.includes('/users/me');
+  const showLoading = !isBackgroundApi && (options?.showLoading ?? true);
+  const loadingText = options?.loadingText || "Đang cập nhật...";
+  let hideLoading: (() => void) | null = null;
+
+  if (showLoading) {
+    hideLoading = message.loading(loadingText, 0);
+  }
+
   try {
-		const response = await axiosInstance.put<ApiResponseDto<T>>(url, data);
+    const response = await axiosInstance.put<ApiResponseDto<T>>(url, data);
     return response.data;
-	} catch (error: any) {
-		return {
-			isSuccess: false,
+  } catch (error: any) {
+    return {
+      isSuccess: false,
       errorMessage: getErrorMessage(error)
-		};
-	}
+    };
+  } finally {
+    if (hideLoading) {
+      hideLoading();
+    }
+  }
 };
 
-export const del = async <T = any>(url: string): Promise<ApiResponseDto<T>> => {
+export const del = async <T = any>(url: string, options?: ApiOptions): Promise<ApiResponseDto<T>> => {
+  const isBackgroundApi = url.includes('/users/profile') || url.includes('/users/me');
+  const showLoading = !isBackgroundApi && (options?.showLoading ?? true);
+  const loadingText = options?.loadingText || "Đang xóa dữ liệu...";
+  let hideLoading: (() => void) | null = null;
+
+  if (showLoading) {
+    hideLoading = message.loading(loadingText, 0);
+  }
+
   try {
-		const response = await axiosInstance.delete<ApiResponseDto<T>>(url);
+    const response = await axiosInstance.delete<ApiResponseDto<T>>(url);
     return response.data;
-	} catch (error: any) {
-		return {
-			isSuccess: false,
+  } catch (error: any) {
+    return {
+      isSuccess: false,
       errorMessage: getErrorMessage(error)
-		};
-	}
+    };
+  } finally {
+    if (hideLoading) {
+      hideLoading();
+    }
+  }
 };
 
 export default axiosInstance;

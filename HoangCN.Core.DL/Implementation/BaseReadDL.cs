@@ -21,6 +21,8 @@ namespace HoangCN.Core.DL.Implementation
             _connectionString = connectionString;
         }
 
+
+
         /// <summary>
         /// Thực thi truy vấn nhiều kết quả (Multiple Result Sets)
         /// </summary>

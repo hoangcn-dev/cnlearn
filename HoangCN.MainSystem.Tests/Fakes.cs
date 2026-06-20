@@ -200,6 +200,12 @@ namespace HoangCN.MainSystem.Tests
         {
             throw new NotImplementedException();
         }
+
+        public async Task<TRow?> ExecuteQuerySingle<TRow>(string query, DynamicParameters? parameters = null)
+        {
+            var results = await ExecuteQueryText<TRow>(query, parameters);
+            return results.FirstOrDefault();
+        }
     }
 
     public class FakeWriteDL : IBaseWriteDL
@@ -250,6 +256,20 @@ namespace HoangCN.MainSystem.Tests
             var func = condition.Compile();
             var matched = Roles.Where(func).Cast<TResult>().ToList();
             return Task.FromResult(matched);
+        }
+
+        public Task<int> CountByCondition(Expression<Func<Role, bool>> condition)
+        {
+            var func = condition.Compile();
+            var count = Roles.Count(func);
+            return Task.FromResult(count);
+        }
+
+        public Task<TResult?> GetSingleByCondition<TResult>(Expression<Func<Role, bool>> condition)
+        {
+            var func = condition.Compile();
+            var matched = Roles.Where(func).Cast<TResult>().FirstOrDefault();
+            return Task.FromResult<TResult?>(matched);
         }
 
         public Task InsertAsync(List<Role> entities) => throw new NotImplementedException();

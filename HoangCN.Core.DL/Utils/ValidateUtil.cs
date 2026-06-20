@@ -1,15 +1,13 @@
 using Dapper;
-using HoangCN.Core.BL.Metadata;
 using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Enums;
 using System.ComponentModel.DataAnnotations;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.DL.Interfaces;
 using System.Collections;
-using System.Reflection;
-using static Dapper.SqlMapper;
+using HoangCN.Core.Common.Metadata;
 
-namespace HoangCN.Core.BL.Utils
+namespace HoangCN.Core.DL.Utils
 {
     public class ValidateUtil
     {
@@ -181,8 +179,8 @@ namespace HoangCN.Core.BL.Utils
 
                     // Kiểm tra null hoặc trống [Required]
                     var isNullOrEmpty = prop.RequiredAttr != null && (v is null ||
-                                        (v is string strV && string.IsNullOrEmpty(strV)) ||
-                                        (v is Guid guidV && guidV == Guid.Empty));
+                                        v is string strV && string.IsNullOrEmpty(strV) ||
+                                        v is Guid guidV && guidV == Guid.Empty);
                     if (isNullOrEmpty)
                     {
                         var msg = !string.IsNullOrEmpty(prop.RequiredAttr.ErrorMessage)
@@ -221,13 +219,13 @@ namespace HoangCN.Core.BL.Utils
 
                     // Đệ quy hết các đối tượng con (nếu có)
                     if (v == null || v is string) continue; // Bỏ qua null và string
-                    if (v is System.Collections.IEnumerable subItems)
+                    if (v is IEnumerable subItems)
                     {
-                        CommonValidate(subItems);
+                        CommonValidate(subItems, excepts);
                     }
                     else if (v.GetType().IsClass)
                     {
-                        CommonValidate(new [] { v });
+                        CommonValidate(new [] { v }, excepts);
                     }
                 }
 

@@ -54,6 +54,12 @@ namespace HoangCN.Core.Common.Base
         [BindNever]
         [JsonIgnore]
         public bool IsDeleted { get; set; } = false;
+
+        /// <summary>
+        /// Trạng thái ghi
+        /// </summary>
+        [NotMapped]
+        public ModalState State { get; set; } = ModalState.None;
     }
 }
 

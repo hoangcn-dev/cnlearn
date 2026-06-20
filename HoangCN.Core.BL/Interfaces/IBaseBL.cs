@@ -10,6 +10,8 @@ namespace HoangCN.Core.BL.Interfaces
     /// </summary>
     public interface IBaseBL<TEntity> where TEntity : BaseEntity
     {
+        Task SaveEntities(IEnumerable<TEntity> entities);
+
         /// <summary>
         /// Thêm mới danh sách thực thể
         /// </summary>

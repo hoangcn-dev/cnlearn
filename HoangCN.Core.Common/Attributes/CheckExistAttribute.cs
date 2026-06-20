@@ -4,6 +4,11 @@
     public class CheckExistAttribute : Attribute
     {
         public bool MustExist { get; set; }
+
+        ///// <summary>
+        ///// Có giới hạn phạm vi check trong tập con của cha hay không, nếu không check trên toàn bộ DB
+        ///// </summary>
+        //public bool IsCheckWithParent { get; set; } = false;
         public string ErrorMessage { get; set; }
 
         /// <summary>

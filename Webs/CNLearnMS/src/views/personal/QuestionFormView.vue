@@ -168,11 +168,15 @@
                   <!-- Select Category in card -->
                   <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Danh mục:</span>
-                    <a-select v-model:value="q.categoryIds[0]" style="width: 210px" size="small" placeholder="Chọn môn học">
-                      <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId" :disabled="cat.hasChildren">
-                        {{ cat.name }}
-                      </a-select-option>
-                    </a-select>
+                    <CategorySelect
+                      v-model:value="q.categoryIds[0]"
+                      :categories="categories"
+                      :disable-parents="true"
+                      placeholder="Chọn môn học"
+                      style="width: 210px"
+                      size="small"
+                      :allow-clear="false"
+                    />
                   </div>
 
                   <!-- Select Difficulty in card -->
@@ -425,6 +429,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
 import { getQuestionDetails, saveQuestions } from '@/api/questions'
+import { CategorySelect, type QuestionCategory } from '@/components/category'
 
 const route = useRoute()
 const router = useRouter()
@@ -449,15 +454,8 @@ interface Question {
   isMyCreated?: boolean
 }
 
-interface Category {
-  questionCategoryId: string
-  name: string
-  parentId?: string | null
-  hasChildren?: boolean
-}
-
 // Categories list loaded from API
-const categories = ref<Category[]>([])
+const categories = ref<QuestionCategory[]>([])
 
 const isEditMode = computed(() => !!route.params.id)
 
@@ -521,10 +519,10 @@ const fetchQuestionForEdit = async (id: string) => {
     if (res && res.isSuccess && res.data) {
       const q = res.data
       questionsList.value = [{
-        id: q.id || '',
-        slug: q.slug || '',
+        id: q.questionId || '',
+        slug: q.questionSlug || '',
         stringContent: q.stringContent || '',
-        explanation: q.explanation || '',
+        explanation: q.explaination || '',
         level: q.level ?? 0,
         type: q.type ?? 0,
         accessType: q.accessType ?? 0,
@@ -552,11 +550,7 @@ const fetchCategories = async () => {
   try {
     const res = await getAllCate()
     if (res && res.isSuccess && res.data) {
-      const items = res.data.items || []
-      categories.value = items.map((cat: any) => ({
-        ...cat,
-        hasChildren: items.some((c: any) => c.parentId === cat.questionCategoryId)
-      }))
+      categories.value = res.data.items || []
     }
   } catch (error) {
     console.error('Lỗi tải danh mục:', error)
@@ -732,16 +726,15 @@ const saveAllQuestionsToBank = async () => {
 
   try {
     const payload = questionsList.value.map(q => ({
-      id: formatId(q.id),
-      slug: q.slug || '',
+      questionId: formatId(q.id),
+      questionSlug: q.slug || '',
       stringContent: q.stringContent.trim(),
-      explanation: q.explanation ? q.explanation.trim() : '',
+      explaination: q.explanation ? q.explanation.trim() : '',
       level: q.level,
       type: q.type || 0,
       accessType: globalAccessType.value,
       isMyCreated: globalAccessType.value === 0,
       questionCategoryId: formatId(q.categoryIds[0]),
-      categoryIds: q.categoryIds.filter(id => id && isGuid(id)),
       answers: q.answers.map((ans) => ({
         questionAnswerId: formatId(ans.questionAnswerId || (ans as any).id),
         stringContent: ans.stringContent.trim(),
@@ -765,7 +758,7 @@ const saveAllQuestionsToBank = async () => {
       currentSaveBatch.value = i + 1
       const chunk = chunks[i]
       
-      const res = await saveQuestions(chunk)
+      const res = await saveQuestions(chunk, isEditMode.value)
       if (!res || !res.isSuccess) {
         isSavingModalOpen.value = false
         message.error(res?.errorMessage || `Lưu lô câu hỏi thứ ${i + 1} thất bại! Đã dừng lưu.`);
@@ -853,7 +846,7 @@ const parseImportFile = (file: File) => {
                 return validIds;
               }
               // Nếu không có ID hợp lệ nào, gán mặc định là danh mục hợp lệ đầu tiên (nút lá)
-              const firstLeaf = categories.value.find(c => !c.hasChildren);
+              const firstLeaf = categories.value.find(c => !categories.value.some(child => child.parentId === c.questionCategoryId));
               return firstLeaf ? [firstLeaf.questionCategoryId] : (categories.value[0] ? [categories.value[0].questionCategoryId] : []);
             })(),
             answers: Array.isArray(item.answers) ? item.answers.map((ans: any) => ({

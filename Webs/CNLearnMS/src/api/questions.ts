@@ -1,4 +1,4 @@
-import { get, post } from "./config/axios";
+import { get, post, put } from "./config/axios";
 import { endpoints } from "./config/endpoint";
 import axiosInstance from "./config/axios";
 
@@ -19,12 +19,15 @@ export const getDoneQuestionsPaging = async (request: any) => {
 
 // Lấy chi tiết câu hỏi theo ID
 export const getQuestionDetails = async (id: string) => {
-  return await get(`${endpoints.questions.details}/${id}`);
+  return await post(`/api/questions/bank/${id}`);
 };
 
-// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật)
-export const saveQuestions = async (questions: any[]) => {
-  return await post(endpoints.questions.saveDetails, questions);
+// Lưu danh sách câu hỏi chi tiết (Thêm mới/Cập nhật sử dụng CRUD mặc định)
+export const saveQuestions = async (questions: any[], isEdit: boolean = false) => {
+  if (isEdit) {
+    return await put("/api/questions", questions);
+  }
+  return await post("/api/questions", questions);
 };
 
 // Xóa câu hỏi theo danh sách ID
@@ -71,7 +74,17 @@ export const getSavedQuestions = async () => {
 
 // Lấy danh sách ID câu hỏi đã lưu
 export const getSavedQuestionIds = async () => {
-  return await get(endpoints.bookmarks.savedQuestionIds);
+  const res = await get(endpoints.questions.bankSaved);
+  if (res && res.isSuccess && res.data) {
+    return {
+      isSuccess: true,
+      data: (res.data as any[]).map(x => x.targetId)
+    };
+  }
+  return {
+    isSuccess: false,
+    errorMessage: res?.errorMessage || "Không thể lấy danh sách ID đã lưu"
+  };
 };
 
 // Toggle trạng thái lưu đề thi

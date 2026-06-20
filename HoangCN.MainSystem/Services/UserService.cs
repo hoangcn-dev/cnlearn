@@ -1,6 +1,5 @@
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.Core.BL.Utils;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.MainSystem.Entities;
 using HoangCN.Core.Common.Model.Requests;
@@ -15,6 +14,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using HoangCN.MainSystem.Models;
 using HoangCN.Core.Common.Utils;
+using HoangCN.Core.DL.Utils;
 
 namespace HoangCN.MainSystem.Services
 {

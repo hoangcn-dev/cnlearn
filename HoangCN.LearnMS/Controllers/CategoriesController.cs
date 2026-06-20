@@ -20,7 +20,6 @@ namespace HoangCN.LearnMS.Controllers
 
         protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
         {
-            builder.Disable(nameof(GetAll));
             builder.Disable(nameof(GetById));
             builder.Disable(nameof(GetPaging));
             builder.Protect(nameof(Insert), nameof(RoleNames.Admin));

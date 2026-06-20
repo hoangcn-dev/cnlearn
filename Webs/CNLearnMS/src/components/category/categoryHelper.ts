@@ -64,6 +64,7 @@ export interface IndentedOption {
   label: string
   rawName: string
   level: number
+  hasChildren: boolean
 }
 
 export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOption[] {
@@ -79,12 +80,14 @@ export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOpti
       const localName = cat.questionCategoryName.split(' - ').pop() || cat.questionCategoryName
       const indent = '\u00A0\u00A0'.repeat(level)
       const prefix = level > 0 ? '└─ ' : ''
+      const hasChildren = flatList.some(child => child.parentId === cat.questionCategoryId)
       
       options.push({
         value: cat.questionCategoryId,
         label: `${indent}${prefix}${localName}`,
         rawName: currentPath,
-        level
+        level,
+        hasChildren
       })
       
       traverse(cat.questionCategoryId, level + 1)

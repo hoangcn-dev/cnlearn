@@ -11,7 +11,7 @@ using HoangCN.MainSystem.Interfaces;
 using Microsoft.Extensions.Logging;
 using HoangCN.Core.Common.Exceptions;
 using Microsoft.AspNetCore.Http;
-using HoangCN.Core.BL.Utils;
+using HoangCN.Core.DL.Utils;
 
 namespace HoangCN.MainSystem.Services
 {

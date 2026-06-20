@@ -4,6 +4,8 @@ using HoangCN.LearnMS.Enums;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace HoangCN.LearnMS.Entities
 {
     /// <summary>
@@ -84,6 +86,10 @@ namespace HoangCN.LearnMS.Entities
         [CheckExist(MustExist = true, TargetEntity = typeof(QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
         public Guid QuestionCategoryId { get; set; }
 
-
+        /// <summary>
+        /// Danh sách đáp án đi kèm câu hỏi (Không map trực tiếp xuống DB)
+        /// </summary>
+        [NotMapped]
+        public List<QuestionAnswer> Answers { get; set; } = [];
     }
 }

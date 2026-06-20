@@ -1,15 +1,19 @@
 using Dapper;
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.Core.BL.Metadata;
 using HoangCN.Core.BL.Utils;
 using HoangCN.Core.Common.Base;
+using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Metadata;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
+using HoangCN.Core.DL.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace HoangCN.Core.BL.Base
 {
@@ -176,7 +180,7 @@ namespace HoangCN.Core.BL.Base
             try
             {
                 await _baseWriteDL.InsertRangeAsync(entities);
-                await AfterSave(entities);
+                await AfterInsert(entities);
                 await _baseWriteDL.CommitTransactionAsync();
             }
             catch
@@ -205,7 +209,7 @@ namespace HoangCN.Core.BL.Base
             try
             {
                 await _baseWriteDL.UpdateRangeAsync(entities);
-                await AfterSave(entities);
+                await AfterUpdate(entities);
                 await _baseWriteDL.CommitTransactionAsync();
             }
             catch
@@ -226,7 +230,15 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Hậu xử lý sau khi lưu thành công đối tượng
         /// </summary>
-        protected virtual async Task AfterSave(List<TEntity> entities)
+        protected virtual async Task AfterUpdate(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Hậu xử lý sau khi lưu thành công đối tượng
+        /// </summary>
+        protected virtual async Task AfterInsert(List<TEntity> entities)
         {
             await Task.CompletedTask;
         }
@@ -276,6 +288,8 @@ namespace HoangCN.Core.BL.Base
                     ? ClaimUtil.GetUserName(user)
                     : "System";
                 entity.ModifiedDate = now;
+                _baseWriteDL.SetChanged(entity, e => e.CreatedBy, false);
+                _baseWriteDL.SetChanged(entity, e => e.CreatedDate, false);
             }
         }
 
@@ -327,6 +341,8 @@ namespace HoangCN.Core.BL.Base
             var sql = $"{selectFromSql} {whereClause} LIMIT 1";
             return await _baseReadDL.ExecuteQuerySingle<TResult>(sql, parameters);
         }
+
+        
     }
 }
 

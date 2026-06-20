@@ -4,11 +4,12 @@ using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Utils;
-using HoangCN.Core.BL.Metadata;
 using System.Linq.Expressions;
 using System.Text;
+using HoangCN.Core.Common.Metadata;
+using HoangCN.Core.BL.Utils;
 
-namespace HoangCN.Core.BL.Utils
+namespace HoangCN.Core.DL.Utils
 {
     /// <summary>
     /// Lớp chứa các phương thức hỗ trợ tạo câu lệnh raw SQL sử dụng cache metadata để tối ưu hóa hiệu năng

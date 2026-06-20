@@ -17,6 +17,7 @@
       :key="opt.value" 
       :value="opt.value"
       :label="opt.rawName"
+      :disabled="disableParents && opt.hasChildren"
     >
       <span :style="{ paddingLeft: `${opt.level * 12}px` }" class="option-label">
         <span v-if="opt.level > 0" class="indent-connector">└─ </span>
@@ -33,15 +34,18 @@ import { computed } from 'vue'
 import { buildIndentedOptions, type QuestionCategory } from './categoryHelper'
 
 const props = withDefaults(defineProps<{
-  value: string
+  value?: string | null
   categories: QuestionCategory[]
   placeholder?: string
   allowClear?: boolean
   showAllOption?: boolean
+  disableParents?: boolean
 }>(), {
+  value: '',
   placeholder: 'Chọn danh mục...',
   allowClear: true,
-  showAllOption: false
+  showAllOption: false,
+  disableParents: false
 })
 
 const emit = defineEmits<{
@@ -49,7 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const computedValue = computed({
-  get: () => props.value,
+  get: () => props.value || '',
   set: (val) => emit('update:value', val || '')
 })
 

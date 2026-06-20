@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 
-namespace HoangCN.Core.BL.Metadata
+namespace HoangCN.Core.Common.Metadata
 {
     /// <summary>
     /// Lưu trữ thông tin chi tiết về từng thuộc tính của Entity hoặc DTO
@@ -21,6 +21,7 @@ namespace HoangCN.Core.BL.Metadata
         public RequiredAttribute? RequiredAttr { get; set; }
         public StringLengthAttribute? StringLengthAttr { get; set; }
         public CheckExistAttribute? CheckExistAttr { get; set; }
+        public FKAttribute? FKAttr { get; set; }
         public ForeignTableAttribute? ForeignTableAttr { get; set; }
         public List<ValidationAttribute> ValidationAttrs { get; set; } = new();
     }
@@ -90,6 +91,7 @@ namespace HoangCN.Core.BL.Metadata
                         RequiredAttr = prop.GetCustomAttribute<RequiredAttribute>(true),
                         StringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>(true),
                         CheckExistAttr = prop.GetCustomAttribute<CheckExistAttribute>(true),
+                        FKAttr = prop.GetCustomAttribute<FKAttribute>(true),
                         ForeignTableAttr = prop.GetCustomAttribute<ForeignTableAttribute>(true),
                         ValidationAttrs = prop.GetCustomAttributes<ValidationAttribute>(true).ToList()
                     };

@@ -12,7 +12,7 @@ namespace HoangCN.Core.DL.Interfaces
         /// <summary>
         /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
         /// </summary>
-        IQueryable<TEntity> GetQueryable<TEntity>() where TEntity : class;
+        DbSet<TEntity> GetDbSet<TEntity>() where TEntity : class;
 
         /// <summary>
         /// Bắt đầu một Transaction mới
@@ -33,6 +33,11 @@ namespace HoangCN.Core.DL.Interfaces
         /// Lưu các thay đổi hiện tại vào database ghi
         /// </summary>
         Task SaveChangesAsync();
+
+        /// <summary>
+        /// Ghi danh sách tự phát hiện thêm, sửa hoặc xóa
+        /// </summary>
+        Task SaveRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
 
         /// <summary>
         /// Thêm danh sách entity vào database
