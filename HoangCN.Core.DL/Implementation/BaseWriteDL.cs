@@ -10,7 +10,9 @@ using HoangCN.Core.DL.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Collections;
 using System.Linq.Expressions;
+using System.Reflection;
 using static Dapper.SqlMapper;
 
 namespace HoangCN.Core.DL.Implementation
@@ -25,77 +27,162 @@ namespace HoangCN.Core.DL.Implementation
         private IDbContextTransaction? _transaction;
         private int _transactionCount = 0;
 
+        /// <summary>
+        /// Khởi tạo BaseWriteDL với DbContext và HttpContextAccessor tương ứng
+        /// </summary>
         public BaseWriteDL(DbContext context, IHttpContextAccessor httpContextAccessor)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _httpContextAccessor = httpContextAccessor;
         }
 
+        /// <summary>
+        /// Thực hiện lưu danh sách thực thể tự động đệ quy làm phẳng cây thực thể,
+        /// đồng bộ khóa ngoại và dọn dẹp các con mồ côi (Orphan Disposal)
+        /// </summary>
         public async Task<List<TEntity>> SaveEntities<TEntity, TParentEntity>(List<TEntity> entities, TParentEntity? parent = null) 
             where TParentEntity : BaseEntity
             where TEntity : BaseEntity
         {
-            if (entities.Count == 0)
+            if (entities == null || entities.Count == 0)
             {
                 return [];
             }
 
-            /// Bước 1: Tự động gắn cờ xóa/cập nhật cho entities (nếu chưa được chỉ định)
-            await SetModalState(entities);
-
-            /// Bước 2: Gắn giá trị cho các trường Audit
-            AssignAuditProperties(entities);
-            var insertEntities = entities.Where(e => e.State == ModalState.Insert).ToList();
-            var deleteEntities = entities.Where(e => e.State == ModalState.Delete).ToList();
-            var updateEntities = entities.Where(e => e.State == ModalState.Update).ToList();
-
-            /// Bước 3: Kiểm tra trùng lặp, kiểm tra tồn tại
-            await CheckExist(entities);
-
-            /// Bước 4: Lấy lên danh sách thực thể đã được lưu dưới DB
-            // Dùng để so sánh thay đổi các trường (Update) và xác định các entities cần xóa
-            var savedEntites = await GetSavedEntities(entities, parent);
-
-            /// Bước 5: Xác định những trường bị thay đổi giá trị đối với các entity dạng Update
-            // Dùng để tối ưu câu SQL cập nhật được sinh ra.
-            DetermineChangedProperty(updateEntities, savedEntites);
-
-            /// Bước 6: Bổ xung thêm những phần tử cần xóa 
-            // Khi cập nhật Childrens, những phần tử trong DB khi không được đề cập đến => Tự động xóa
-            if (parent != null)
-            {
-                var remainingIds = updateEntities.Select(e => e.GetId());
-                foreach (var savedEntity in savedEntites)
-                {
-                    if (!remainingIds.Contains(savedEntity.GetId()))
-                    {
-                        deleteEntities.Add(savedEntity);
-                    }
-                }
-            }
-
-            /// Bước 7: Lưu thay đổi bằng transaction
             await BeginTransactionAsync();
             try
             {
-                // Thêm những phần tử mới
-                await _context.Set<TEntity>().AddRangeAsync(insertEntities);
+                var graph = new FlattenedEntityGraph();
 
-                // Xóa những đứa cần xóa
-                var deleteSql = $"DELETE FROM {typeof(TEntity).Name} " +
-                    $"WHERE {typeof(TEntity).Name}Id IN ({string.Join(",", deleteEntities.Select((_, index) => $"{{{index}}}"))})";
-                await _context.Database.ExecuteSqlRawAsync(deleteSql, deleteEntities.Select(e => e.GetId()));
+                // Pha 1: Duyệt đệ quy làm phẳng cây thực thể gửi lên từ Client
+                await TraverseAndFlattenIncoming(entities, parent, graph);
 
-                // Lưu
+                // Pha 2: Quét DB phát hiện các con mồ côi cần xóa (Orphan Disposal)
+                var rootUpdates = entities.Where(e => e.State == ModalState.Update).ToList();
+                if (rootUpdates.Count > 0)
+                {
+                    await DetectOrphansForParents(rootUpdates, graph);
+                }
+
+                // Pha 3 & 4: Gom nhóm theo Type để gán Audit, Validate và đưa vào Change Tracker
+                var allTypes = graph.Inserts.Keys
+                    .Union(graph.Updates.Keys)
+                    .Union(graph.Deletes.Keys)
+                    .ToList();
+
+                foreach (var type in allTypes)
+                {
+                    var inserts = graph.Inserts.GetValueOrDefault(type) ?? new();
+                    var updates = graph.Updates.GetValueOrDefault(type) ?? new();
+                    var deletes = graph.Deletes.GetValueOrDefault(type) ?? new();
+
+                    var listType = typeof(List<>).MakeGenericType(type);
+                    var addMethod = listType.GetMethod("Add")!;
+
+                    // Gán Audit
+                    var allInsertUpdate = inserts.Concat(updates).ToList();
+                    if (allInsertUpdate.Count > 0)
+                    {
+                        AssignAuditProperties(allInsertUpdate);
+                    }
+
+                    // Validate hàng loạt
+                    var allEntitiesOfType = inserts.Concat(updates).Concat(deletes).ToList();
+                    if (allEntitiesOfType.Count > 0)
+                    {
+                        var checkExistMethod = typeof(BaseWriteDL)
+                            .GetMethod("CheckExist", BindingFlags.NonPublic | BindingFlags.Instance)!
+                            .MakeGenericMethod(type);
+
+                        var typedCheckList = Activator.CreateInstance(listType)!;
+                        foreach (var entity in allEntitiesOfType)
+                        {
+                            addMethod.Invoke(typedCheckList, new object[] { entity });
+                        }
+
+                        var checkTask = (Task)checkExistMethod.Invoke(this, new object[] { typedCheckList })!;
+                        await checkTask;
+                    }
+
+                    // Đưa vào Change Tracker
+                    if (inserts.Count > 0)
+                    {
+                        var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(type);
+                        var dbSet = setMethod.Invoke(_context, null)!;
+
+                        var typedInsertList = Activator.CreateInstance(listType)!;
+                        foreach (var entity in inserts)
+                        {
+                            addMethod.Invoke(typedInsertList, new object[] { entity });
+                        }
+
+                        var dbSetType = typeof(DbSet<>).MakeGenericType(type);
+                        var addRangeMethod = dbSetType.GetMethods()
+                            .First(m => m.Name == nameof(DbSet<object>.AddRangeAsync) && 
+                                        m.GetParameters().Length == 2 && 
+                                        m.GetParameters()[0].ParameterType.IsAssignableFrom(typedInsertList.GetType()));
+
+                        var addTask = (Task)addRangeMethod.Invoke(dbSet, new object[] { typedInsertList, default(CancellationToken) })!;
+                        await addTask;
+                    }
+
+                    if (updates.Count > 0)
+                    {
+                        var updateIds = updates.Select(u => GetEntityId(u)).ToList();
+                        var savedEntities = await GetDbChildrenDynamic(type, $"{type.Name}Id", updateIds);
+
+                        foreach (var entity in updates)
+                        {
+                            var savedEntity = savedEntities.FirstOrDefault(e => GetEntityId(e) == GetEntityId(entity));
+                            if (savedEntity != null)
+                            {
+                                _context.Entry(savedEntity).CurrentValues.SetValues(entity);
+                                _context.Entry(savedEntity).Property(x => x.CreatedBy).IsModified = false;
+                                _context.Entry(savedEntity).Property(x => x.CreatedDate).IsModified = false;
+                            }
+                        }
+                    }
+
+                    if (deletes.Count > 0)
+                    {
+                        var deleteIds = deletes.Select(d => GetEntityId(d)).ToList();
+
+                        var trackedDeletes = _context.ChangeTracker.Entries()
+                            .Where(e => type.IsAssignableFrom(e.Entity.GetType()) && deleteIds.Contains(GetEntityId((BaseEntity)e.Entity)))
+                            .Select(e => (BaseEntity)e.Entity)
+                            .ToList();
+
+                        var missingDeleteIds = deleteIds.Except(trackedDeletes.Select(d => GetEntityId(d))).ToList();
+                        if (missingDeleteIds.Count > 0)
+                        {
+                            var missingDeletes = await GetDbChildrenDynamic(type, $"{type.Name}Id", missingDeleteIds);
+                            trackedDeletes.AddRange(missingDeletes);
+                        }
+
+                        if (trackedDeletes.Count > 0)
+                        {
+                            var dbSetType = typeof(DbSet<>).MakeGenericType(type);
+                            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(type);
+                            var dbSet = setMethod.Invoke(_context, null)!;
+
+                            var typedDeleteList = Activator.CreateInstance(listType)!;
+                            foreach (var entity in trackedDeletes)
+                            {
+                                addMethod.Invoke(typedDeleteList, new object[] { entity });
+                            }
+
+                            var removeRangeMethod = dbSetType.GetMethod(nameof(DbSet<object>.RemoveRange), new[] { typeof(IEnumerable<>).MakeGenericType(type) })
+                                ?? dbSetType.GetMethod(nameof(DbSet<object>.RemoveRange), new[] { typeof(object[]) });
+
+                            removeRangeMethod.Invoke(dbSet, new object[] { typedDeleteList });
+                        }
+                    }
+                }
+
                 await _context.SaveChangesAsync();
-
                 await CommitTransactionAsync();
 
-                // Trả về danh sách
-                return insertEntities
-                    .Concat(updateEntities)
-                    .Concat(deleteEntities)
-                    .ToList();
+                return entities;
             }
             catch
             {
@@ -104,48 +191,58 @@ namespace HoangCN.Core.DL.Implementation
             }
         }
 
-        private void DetermineChangedProperty<TEntity>(List<TEntity> updateEntities, List<TEntity> savedEntites) where TEntity : BaseEntity
+        /// <summary>
+        /// Bắt đầu một Transaction mới
+        /// </summary>
+        public async Task BeginTransactionAsync()
         {
-            foreach (var entity in updateEntities)
+            if (_transaction == null)
             {
-                var idPropName = ReflectionUtil.GetIdPropName<TEntity>();
-                var saveEntity = savedEntites.FirstOrDefault(e =>
-                    _context.Entry(e).Property(idPropName).CurrentValue.Equals(entity.GetId()));
+                _transaction = await _context.Database.BeginTransactionAsync();
+            }
+            _transactionCount++;
+        }
 
-                if (saveEntity != null)
+        /// <summary>
+        /// Xác nhận lưu các thay đổi và kết thúc Transaction thành công
+        /// </summary>
+        public async Task CommitTransactionAsync()
+        {
+            if (_transactionCount > 0)
+            {
+                _transactionCount--;
+                if (_transactionCount == 0 && _transaction != null)
                 {
-                    _context.Entry(saveEntity).CurrentValues.SetValues(entity);
+                    await _transaction.CommitAsync();
+                    await _transaction.DisposeAsync();
+                    _transaction = null;
                 }
             }
         }
 
         /// <summary>
-        /// Kiểm tra sự tồn tại của các khóa chính (Primary Key) trong cơ sở dữ liệu khi cập nhật.
+        /// Hủy bỏ toàn bộ thay đổi trong Transaction khi xảy ra lỗi
         /// </summary>
-        private async Task ValidatePkExists<TEntity>(IEnumerable<TEntity> entities)
-            where TEntity : BaseEntity
+        public async Task RollbackTransactionAsync()
         {
-            if (entities == null || !entities.Any()) return;
-
-            var tableName = $"{typeof(TEntity).Name}";
-            var checkSql = @$"
-                SELECT {tableName}Id 
-                FROM {tableName} 
-                WHERE {tableName}Id IN ({string.Join(",", entities.Select((_, index) => $"{{{index}}}"))})";
-            
-            var checkIds = entities.Select(e => e.GetId());
-            var existingIds = await _context.Database
-                .SqlQueryRaw<Guid>(checkSql, checkIds)
-                .ToListAsync();
-
-            // Kết luận
-            foreach (var id in checkIds)
+            if (_transaction != null)
             {
-                if (existingIds.Contains(id)) continue;
-                throw new NotFoundException($"Thực thể {id} không tồn tại");
+                await _transaction.RollbackAsync();
+                await _transaction.DisposeAsync();
+                _transaction = null;
             }
+            _transactionCount = 0;
         }
 
+        /// <summary>
+        /// Thay đổi trạng thái theo dõi property của entity
+        /// </summary>
+        public void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity
+        {
+            _context.Entry(entity).Property(propertySelector).IsModified = isChanged;
+        }
+
+        #region Private Helper Methods
 
         /// <summary>
         /// CheckExist: Kiểm tra sự tồn tại hoặc không trùng lặp của các bản ghi trong cơ sở dữ liệu
@@ -212,11 +309,16 @@ namespace HoangCN.Core.DL.Implementation
                 /// Bước 5: Kiểm tra đảm bảo giá trị tồn tại 
                 if ((checkExistAttr != null && checkExistAttr.MustExist) || fkAttr != null || isFkProp)
                 {
+                    // Xác định cột tương ứng trên bảng đích (nếu trỏ sang bảng cha thì dùng khóa chính của bảng cha, ngược lại dùng tên thuộc tính hiện tại)
+                    var targetColumnName = (checkExistAttr?.TargetEntity != null || fkAttr?.TargetEntity != null) 
+                        ? $"{targetTableName}Id" 
+                        : checkColumnName;
+
                     // Câu SQL truy vấn lấy danh sách giá trị ra
                     var sql = @$"
-                        SELECT {checkColumnName} FROM {targetTableName}
-                        WHERE {checkColumnName} IN ({string.Join(", ", checkValues.Keys.Select((_, index) => $"{{{index}}}"))})";
-                    var existingValues = _context.Database.SqlQueryRaw<object>(sql, checkValues.Keys);
+                        SELECT {targetColumnName} FROM {targetTableName}
+                        WHERE {targetColumnName} IN ({string.Join(", ", checkValues.Keys.Select((_, index) => $"{{{index}}}"))})";
+                    var existingValues = _context.Database.SqlQueryRaw<object>(sql, checkValues.Keys.ToArray());
 
                     if (existingValues.Count() == checkValues.Count) continue;
 
@@ -242,24 +344,32 @@ namespace HoangCN.Core.DL.Implementation
 
                     // Kiểm tra trùng ngay dưới database
                     // Tạo câu lệnh truy vấn cần lấy thêm cả Id của bản ghi trùng để kiểm tra trường hợp trùng với chính nó khi UPDATE
+                    var parameters = new DynamicParameters();
+                    var paramNames = new List<string>();
+                    int pIndex = 0;
+                    foreach (var val in checkValues.Keys)
+                    {
+                        var paramName = $"@p{pIndex}";
+                        parameters.Add(paramName, val);
+                        paramNames.Add(paramName);
+                        pIndex++;
+                    }
+
                     var sql = @$"
                         SELECT {targetTableName}Id, {checkColumnName} FROM {targetTableName}
-                        WHERE {checkColumnName} IN ({string.Join(", ", checkValues.Select((_, index) => $"{{{index}}}"))})";
-                    var result = await _context.Database.GetDbConnection().QueryAsync(sql, checkValues.Keys);
-                    var map = result.ToDictionary(
-                        row => row.GetValueByPropName(checkColumnName),
-                        row => Guid.Parse(row.GetValueByPropName($"{targetTableName}Id").ToString()));
-
+                        WHERE {checkColumnName} IN ({string.Join(", ", paramNames)})";
+                    var result = await _context.Database.GetDbConnection().QueryAsync(sql, parameters);
                     var duplicateIndexs = new List<int>();
                     foreach (var row in result)
                     {
-                        var value = row.GetValueByPropName(checkColumnName) as object;
-                        var id = Guid.Parse(row.GetValueByPropName($"{targetTableName}Id").ToString());
-                        var checkEntityIndex = checkValues[value][0];// Vì đã kiểm tra trùng trên list nội bộ nên index đầu tiên chính là index của entity đó
+                        var rowDict = (IDictionary<string, object>)row;
+                        var value = rowDict[checkColumnName];
+                        var id = Guid.Parse(rowDict[$"{targetTableName}Id"].ToString()!);
+                        var checkEntityIndex = checkValues[value][0] - 1;// Đổi từ 1-indexed về 0-indexed
                         var checkEntity = entities[checkEntityIndex]; 
 
                         // Nếu đang cập nhật thì chỉ thêm nếu giá trị bị trùng là của record khác
-                        if (checkEntity.State == ModalState.Update && id != checkEntity.GetId())
+                        if (checkEntity.State == ModalState.Update && id != GetEntityId(checkEntity))
                         {
                             duplicateIndexs.Add(checkEntityIndex);
                         }
@@ -272,16 +382,23 @@ namespace HoangCN.Core.DL.Implementation
                     }
 
                     // Tạo thông báo lỗi
-                    var duplicateMessage = entities.Count == 1 ?
-                        $"Giá trị trường {prop.PropertyInfo.GetPropDisplayName()} của {ReflectionUtil.GetEntityDisplayName<TEntity>()} đã tồn tại" :
-                        $"Giá trị trường {prop.PropertyInfo.GetPropDisplayName()} của {ReflectionUtil.GetEntityDisplayName<TEntity>()} ({string.Join(", ", duplicateIndexs)}) đã tồn tại";
-                    throw new BadRequestException(duplicateMessage);
+                    if (duplicateIndexs.Count > 0)
+                    {
+                        var duplicateMessage = entities.Count == 1 ?
+                            $"Giá trị trường {prop.PropertyInfo.GetPropDisplayName()} của {ReflectionUtil.GetEntityDisplayName<TEntity>()} đã tồn tại" :
+                            $"Giá trị trường {prop.PropertyInfo.GetPropDisplayName()} của {ReflectionUtil.GetEntityDisplayName<TEntity>()} ({string.Join(", ", duplicateIndexs)}) đã tồn tại";
+                        throw new BadRequestException(duplicateMessage);
+                    }
                 }
             }
         }
 
-
-        private void AssignAuditProperties<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        /// <summary>
+        /// Gán các thuộc tính Audit (CreatedBy, CreatedDate, ModifiedBy, ModifiedDate) cho danh sách thực thể
+        /// dựa trên thông tin người dùng đăng nhập trong HttpContext
+        /// </summary>
+        /// <param name="entities">Danh sách thực thể cần gán</param>
+        private void AssignAuditProperties(IEnumerable<BaseEntity> entities)
         {
             var auditUserName = ClaimUtil.GetUserName(_httpContextAccessor.HttpContext?.User);
             var auditTime = DateTime.UtcNow;
@@ -303,6 +420,9 @@ namespace HoangCN.Core.DL.Implementation
             }
         }
 
+        /// <summary>
+        /// Truy vấn dữ liệu hiện tại từ database của các thực thể để chuẩn bị so sánh cập nhật hoặc xóa
+        /// </summary>
         private async Task<List<TEntity>> GetSavedEntities<TEntity, TParentEntity>(IEnumerable<TEntity> entities, TParentEntity? parent = null) 
             where TParentEntity : BaseEntity
             where TEntity : BaseEntity
@@ -329,19 +449,12 @@ namespace HoangCN.Core.DL.Implementation
             return curEntities;
         }
 
-        private async Task ValidateBeforeSave<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
-        {
-            
-
-            
-        }
-
         /// <summary>
         /// Hàm này thực hiện việc đánh dấu trạng thái của từng entity
         /// </summary>
         /// <param name="entities"></param>
         /// <returns></returns>
-        private async Task SetModalState<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        private async Task SetModalState(IEnumerable<BaseEntity> entities)
         {
             // Cập nhật tự động thêm / sửa
             foreach (var entity in entities)
@@ -349,11 +462,14 @@ namespace HoangCN.Core.DL.Implementation
                 if (entity.State != ModalState.None) continue;
 
                 // Cập nhật là thêm mới nếu Id là Guid mặc định, ngược lại là cập nhật
-                var id = entity.GetId();
+                var id = GetEntityId(entity);
                 if (id == Guid.Empty)
                 {
                     // Tự thêm Guid nếu tầng Business ko thêm
-                    entity.SetValueByPropName(ReflectionUtil.GetIdPropName<TEntity>(), Guid.NewGuid());
+                    var type = entity.GetType();
+                    var realType = _context.Model.FindEntityType(type)?.ClrType ?? type;
+                    var idPropName = $"{realType.Name}Id";
+                    entity.SetValueByPropName(idPropName, Guid.NewGuid());
                     entity.State = ModalState.Insert;
                 }
                 else
@@ -363,130 +479,221 @@ namespace HoangCN.Core.DL.Implementation
             }
         }
 
-        /// <summary>
-        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
-        /// </summary>
-        public DbSet<TEntity> GetDbSet<TEntity>() where TEntity : class
+        private class FlattenedEntityGraph
         {
-            return _context.Set<TEntity>();
+            public Dictionary<Type, List<BaseEntity>> Inserts { get; } = new();
+            public Dictionary<Type, List<BaseEntity>> Updates { get; } = new();
+            public Dictionary<Type, List<BaseEntity>> Deletes { get; } = new();
+            public HashSet<BaseEntity> Processed { get; } = new();
         }
 
         /// <summary>
-        /// Bắt đầu một Transaction mới
+        /// Lấy giá trị khóa chính (Id) của thực thể dựa trên metadata cấu hình từ EF Core
         /// </summary>
-        public async Task BeginTransactionAsync()
+        /// <param name="entity">Thực thể cần lấy Id</param>
+        /// <returns>Giá trị Guid của khóa chính</returns>
+        private Guid GetEntityId(BaseEntity entity)
         {
-            if (_transaction == null)
+            var type = entity.GetType();
+            var realType = _context.Model.FindEntityType(type)?.ClrType ?? type;
+            var idPropName = $"{realType.Name}Id";
+            var rawId = entity.GetValueByPropName(idPropName);
+            if (rawId == null)
             {
-                _transaction = await _context.Database.BeginTransactionAsync();
-            }
-            _transactionCount++;
-        }
-
-        /// <summary>
-        /// Xác nhận lưu các thay đổi và kết thúc Transaction thành công
-        /// </summary>
-        public async Task CommitTransactionAsync()
-        {
-            if (_transactionCount > 0)
-            {
-                _transactionCount--;
-                if (_transactionCount == 0 && _transaction != null)
+                var backupProp = type.GetProperty("Id") ?? type.GetProperty("ID");
+                if (backupProp != null)
                 {
-                    await _transaction.CommitAsync();
-                    await _transaction.DisposeAsync();
-                    _transaction = null;
+                    rawId = backupProp.GetValue(entity);
+                }
+            }
+            if (rawId != null && Guid.TryParse(rawId.ToString(), out Guid id))
+            {
+                return id;
+            }
+            return Guid.Empty;
+        }
+
+        /// <summary>
+        /// Truy vấn danh sách thực thể con từ DB một cách động sử dụng Reflection và Raw SQL để tối ưu hiệu năng
+        /// </summary>
+        /// <param name="childType">Kiểu dữ liệu của thực thể con</param>
+        /// <param name="foreignKeyName">Tên cột khóa ngoại liên kết với cha</param>
+        /// <param name="parentIds">Danh sách Id của thực thể cha</param>
+        /// <returns>Danh sách thực thể con đang tồn tại trong DB</returns>
+        private async Task<List<BaseEntity>> GetDbChildrenDynamic(Type childType, string foreignKeyName, List<Guid> parentIds)
+        {
+            if (parentIds == null || parentIds.Count == 0) return new List<BaseEntity>();
+
+            var tableName = childType.Name;
+            var sql = $"SELECT * FROM {tableName} WHERE {foreignKeyName} IN ({string.Join(",", parentIds.Select((_, i) => $"{{{i}}}"))}) AND IsDeleted = 0";
+
+            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!
+                .MakeGenericMethod(childType);
+            var dbSet = setMethod.Invoke(_context, null)!;
+
+            var fromSqlRawMethod = typeof(RelationalQueryableExtensions)
+                .GetMethods()
+                .First(m => m.Name == nameof(RelationalQueryableExtensions.FromSqlRaw) && 
+                            m.GetParameters().Length == 3 && 
+                            m.GetParameters()[2].ParameterType == typeof(object[]))
+                .MakeGenericMethod(childType);
+
+            var query = fromSqlRawMethod.Invoke(null, new object[] { dbSet, sql, parentIds.Select(id => (object)id).ToArray() })!;
+
+            var toListAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.ToListAsync) && 
+                            m.GetParameters().Length == 2)
+                .MakeGenericMethod(childType);
+
+            var task = (Task)toListAsyncMethod.Invoke(null, new object[] { query, default(CancellationToken) })!;
+            await task;
+
+            var result = task.GetType().GetProperty("Result")!.GetValue(task) as System.Collections.IEnumerable;
+            return result != null ? result.Cast<BaseEntity>().ToList() : new List<BaseEntity>();
+        }
+
+        /// <summary>
+        /// Pha 1: Duyệt đệ quy theo chiều sâu để làm phẳng cây thực thể được gửi lên từ client
+        /// </summary>
+        /// <param name="entities">Danh sách thực thể đầu vào</param>
+        /// <param name="parent">Thực thể cha của danh sách hiện tại (nếu có)</param>
+        /// <param name="graph">Biểu đồ chứa các thực thể đã làm phẳng phân loại theo Inserts/Updates</param>
+        private async Task TraverseAndFlattenIncoming(System.Collections.IEnumerable entities, BaseEntity? parent, FlattenedEntityGraph graph)
+        {
+            if (entities == null) return;
+
+            var baseList = entities.Cast<BaseEntity>().ToList();
+            if (baseList.Count == 0) return;
+
+            await SetModalState(baseList);
+
+            foreach (var entity in baseList)
+            {
+                if (!graph.Processed.Add(entity)) continue;
+
+                if (parent != null)
+                {
+                    var parentType = parent.GetType();
+                    var parentRealType = _context.Model.FindEntityType(parentType)?.ClrType ?? parentType;
+                    var parentKeyName = $"{parentRealType.Name}Id";
+
+                    var fkProp = entity.GetType().GetProperty(parentKeyName);
+                    if (fkProp != null)
+                    {
+                        fkProp.SetValue(entity, GetEntityId(parent));
+                    }
+                }
+
+                var type = entity.GetType();
+                if (entity.State == ModalState.Insert)
+                {
+                    if (!graph.Inserts.ContainsKey(type)) graph.Inserts[type] = new List<BaseEntity>();
+                    graph.Inserts[type].Add(entity);
+                }
+                else if (entity.State == ModalState.Update)
+                {
+                    if (!graph.Updates.ContainsKey(type)) graph.Updates[type] = new List<BaseEntity>();
+                    graph.Updates[type].Add(entity);
+                }
+
+                var childProps = type.GetProperties()
+                    .Where(p => p.PropertyType.IsGenericType &&
+                                typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType) &&
+                                typeof(BaseEntity).IsAssignableFrom(p.PropertyType.GetGenericArguments()[0]))
+                    .ToList();
+
+                foreach (var prop in childProps)
+                {
+                    var incomingChildrenRaw = prop.GetValue(entity) as System.Collections.IEnumerable;
+                    if (incomingChildrenRaw == null) continue;
+
+                    var incomingChildren = incomingChildrenRaw.Cast<BaseEntity>().ToList();
+                    if (incomingChildren.Count == 0) continue;
+
+                    await TraverseAndFlattenIncoming(incomingChildren, entity, graph);
                 }
             }
         }
 
         /// <summary>
-        /// Hủy bỏ toàn bộ thay đổi trong Transaction khi xảy ra lỗi
+        /// Pha 2: Quét DB để phát hiện các con mồ côi (không nằm trong danh sách gửi lên từ client nữa) và đánh dấu trạng thái Delete
         /// </summary>
-        public async Task RollbackTransactionAsync()
+        /// <param name="parentsRaw">Danh sách các thực thể cha đang thực hiện cập nhật</param>
+        /// <param name="graph">Biểu đồ chứa danh sách thực thể để đẩy các thực thể mồ côi vào Deletes</param>
+        private async Task DetectOrphansForParents(System.Collections.IEnumerable parentsRaw, FlattenedEntityGraph graph)
         {
-            if (_transaction != null)
+            if (parentsRaw == null) return;
+
+            var parents = parentsRaw.Cast<BaseEntity>().ToList();
+            if (parents.Count == 0) return;
+
+            var parentType = parents[0].GetType();
+            var parentRealType = _context.Model.FindEntityType(parentType)?.ClrType ?? parentType;
+            var parentKeyName = $"{parentRealType.Name}Id";
+
+            var childProps = parentRealType.GetProperties()
+                .Where(p => p.PropertyType.IsGenericType &&
+                            typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType) &&
+                            typeof(BaseEntity).IsAssignableFrom(p.PropertyType.GetGenericArguments()[0]))
+                .ToList();
+
+            foreach (var prop in childProps)
             {
-                await _transaction.RollbackAsync();
-                await _transaction.DisposeAsync();
-                _transaction = null;
-            }
-            _transactionCount = 0;
-        }
+                var childType = prop.PropertyType.GetGenericArguments()[0];
 
-        /// <summary>
-        /// Lưu các thay đổi hiện tại vào database ghi
-        /// </summary>
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
+                var parentIds = parents.Select(p => GetEntityId(p)).ToList();
+                if (parentIds.Count == 0) continue;
 
-        /// <summary>
-        /// Thêm danh sách entity vào database
-        /// </summary>
-        public async Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
-        {
-            if (entities == null || !entities.Any()) return;
-            await _context.Set<TEntity>().AddRangeAsync(entities);
-            await SaveChangesAsync();
-        }
+                var dbChildren = await GetDbChildrenDynamic(childType, parentKeyName, parentIds);
 
-        /// <summary>
-        /// Cập nhật danh sách entity trong database
-        /// </summary>
-        public async Task UpdateRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
-        {
-            if (entities == null || !entities.Any()) return;
-            foreach (var entity in entities)
-            {
-                _context.Entry(entity).State = EntityState.Modified;
-                _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
-                _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
-            }
-            await SaveChangesAsync();
-        }
+                var childrenToDelete = new List<BaseEntity>();
+                var childrenToUpdate = new List<BaseEntity>();
 
-        /// <summary>
-        /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
-        /// </summary>
-        public async Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
-        {
-            if (entities == null || !entities.Any()) return;
-            foreach (var entity in entities)
-            {
-                if (entity.IsDeleted)
+                foreach (var parent in parents)
                 {
-                    _context.Entry(entity).State = EntityState.Modified;
-                    _context.Entry(entity).Property(x => x.CreatedBy).IsModified = false;
-                    _context.Entry(entity).Property(x => x.CreatedDate).IsModified = false;
+                    var parentId = GetEntityId(parent);
+                    var parentDbChildren = dbChildren.Where(c => {
+                        var fkVal = c.GetType().GetProperty(parentKeyName)?.GetValue(c);
+                        return fkVal != null && (Guid)fkVal == parentId;
+                    }).ToList();
+
+                    var incomingChildrenRaw = prop.GetValue(parent) as System.Collections.IEnumerable;
+                    var incomingChildren = incomingChildrenRaw != null 
+                        ? incomingChildrenRaw.Cast<BaseEntity>().ToList() 
+                        : new List<BaseEntity>();
+
+                    var incomingChildIds = incomingChildren.Select(c => GetEntityId(c)).ToHashSet();
+
+                    foreach (var dbChild in parentDbChildren)
+                    {
+                        if (!incomingChildIds.Contains(GetEntityId(dbChild)))
+                        {
+                            dbChild.State = ModalState.Delete;
+                            childrenToDelete.Add(dbChild);
+                        }
+                        else
+                        {
+                            var incomingChild = incomingChildren.First(c => GetEntityId(c) == GetEntityId(dbChild));
+                            childrenToUpdate.Add(incomingChild);
+                        }
+                    }
                 }
-                else
+
+                if (childrenToDelete.Count > 0)
                 {
-                    _context.Set<TEntity>().Remove(entity);
+                    if (!graph.Deletes.ContainsKey(childType)) graph.Deletes[childType] = new List<BaseEntity>();
+                    graph.Deletes[childType].AddRange(childrenToDelete);
+                }
+
+                if (childrenToUpdate.Count > 0)
+                {
+                    await DetectOrphansForParents(childrenToUpdate, graph);
                 }
             }
-            await SaveChangesAsync();
         }
 
-        /// <summary>
-        /// Thay đổi trạng thái theo dõi property của entity
-        /// </summary>
-        public void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity
-        {
-            _context.Entry(entity).Property(propertySelector).IsModified = isChanged;
-        }
-
-        /// <summary>
-        /// Tự phát hiện thêm/sửa/xóa
-        /// </summary>
-        public async Task SaveRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
-        {
-            await _context.Set<TEntity>().AddRangeAsync(entities.Where(e => e.State == ModalState.Insert));
-            _context.Set<TEntity>().UpdateRange(entities.Where(e => e.State == ModalState.Update));
-            _context.Set<TEntity>().RemoveRange(entities.Where(e => e.State == ModalState.Delete));
-            await SaveChangesAsync();
-        }
+        #endregion
     }
 }
 

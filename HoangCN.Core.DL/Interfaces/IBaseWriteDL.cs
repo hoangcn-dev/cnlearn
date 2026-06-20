@@ -10,11 +10,6 @@ namespace HoangCN.Core.DL.Interfaces
     public interface IBaseWriteDL
     {
         /// <summary>
-        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
-        /// </summary>
-        DbSet<TEntity> GetDbSet<TEntity>() where TEntity : class;
-
-        /// <summary>
         /// Bắt đầu một Transaction mới
         /// </summary>
         Task BeginTransactionAsync();
@@ -30,29 +25,11 @@ namespace HoangCN.Core.DL.Interfaces
         Task RollbackTransactionAsync();
 
         /// <summary>
-        /// Lưu các thay đổi hiện tại vào database ghi
+        /// Lưu danh sách entity tự động đệ quy và đồng bộ khóa ngoại
         /// </summary>
-        Task SaveChangesAsync();
-
-        /// <summary>
-        /// Ghi danh sách tự phát hiện thêm, sửa hoặc xóa
-        /// </summary>
-        Task SaveRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
-
-        /// <summary>
-        /// Thêm danh sách entity vào database
-        /// </summary>
-        Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
-
-        /// <summary>
-        /// Cập nhật danh sách entity trong database
-        /// </summary>
-        Task UpdateRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
-
-        /// <summary>
-        /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
-        /// </summary>
-        Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
+        Task<List<TEntity>> SaveEntities<TEntity, TParentEntity>(List<TEntity> entities, TParentEntity? parent = null)
+            where TParentEntity : BaseEntity
+            where TEntity : BaseEntity;
 
         /// <summary>
         /// Cập nhật trạng thái thay đổi của entity trong DbContext (theo dõi hoặc không theo dõi)

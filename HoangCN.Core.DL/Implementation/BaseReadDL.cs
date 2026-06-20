@@ -12,6 +12,10 @@ namespace HoangCN.Core.DL.Implementation
     {
         private readonly string _connectionString;
 
+        /// <summary>
+        /// Khởi tạo BaseReadDL với chuỗi kết nối tương ứng
+        /// </summary>
+        /// <param name="connectionString">Chuỗi kết nối cơ sở dữ liệu đọc</param>
         public BaseReadDL(string connectionString)
         {
             if (string.IsNullOrEmpty(connectionString))
@@ -20,8 +24,6 @@ namespace HoangCN.Core.DL.Implementation
             }
             _connectionString = connectionString;
         }
-
-
 
         /// <summary>
         /// Thực thi truy vấn nhiều kết quả (Multiple Result Sets)

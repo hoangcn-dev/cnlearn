@@ -210,7 +210,7 @@ namespace HoangCN.Core.DL.Utils
             var whereConditions = new List<string>();
 
             // 0. Lọc bỏ dữ liệu đã bị xóa mềm mặc định
-            //whereConditions.Add($"`{mainTableName}`.`IsDeleted` = 0");
+            whereConditions.Add($"`{mainTableName}`.`IsDeleted` = 0");
 
             // 1. Lọc theo danh sách Ids (nếu có)
             if (request.Ids != null && request.Ids.Count > 0)
