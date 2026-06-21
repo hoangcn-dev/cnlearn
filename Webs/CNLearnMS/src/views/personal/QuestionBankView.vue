@@ -75,7 +75,7 @@
                 {{ record.stringContent }}
               </div>
               <div class="text-secondary small mt-1">
-                {{ (record.answers || []).length }} đáp án • Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explaination || 'Không có' }}</span>
+                Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explaination || 'Không có' }}</span>
               </div>
             </template>
 
@@ -146,11 +146,14 @@
       <div class="py-2">
         <div class="mb-3">
           <label class="form-label small fw-semibold">Danh mục môn học:</label>
-          <a-select v-model:value="filters.categoryId" style="width: 100%" placeholder="Tất cả môn học" allow-clear>
-            <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId">
-              {{ cat.questionCategoryName }}
-            </a-select-option>
-          </a-select>
+          <CategorySelect
+            v-model:value="filters.categoryId"
+            :categories="categories"
+            :disable-parents="true"
+            placeholder="Tất cả môn học"
+            class="w-100"
+            show-all-option
+          />
         </div>
         <div class="mb-3">
           <label class="form-label small fw-semibold">Độ khó:</label>
@@ -167,13 +170,7 @@
             <a-select-option :value="1">🌐 Công khai (Public)</a-select-option>
           </a-select>
         </div>
-        <div class="mb-2">
-          <label class="form-label small fw-semibold d-block">Tác giả:</label>
-          <a-radio-group v-model:value="filters.scope" button-style="solid" size="small" class="w-100 d-flex">
-            <a-radio-button value="all" class="flex-grow-1 text-center">Tất cả</a-radio-button>
-            <a-radio-button value="mine" class="flex-grow-1 text-center">Của tôi</a-radio-button>
-          </a-radio-group>
-        </div>
+
         <div class="border-top pt-2 mt-4 d-flex justify-content-between align-items-center">
           <button class="btn btn-link btn-xs text-secondary p-0 text-decoration-none small" @click="resetFilters">Đặt lại bộ lọc</button>
           <button class="btn btn-indigo text-white btn-sm px-4" @click="applyFilters">Áp dụng</button>
@@ -188,6 +185,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
+import { CategorySelect } from '@/components/category'
 import { getQuestionsPaging, deleteQuestions, getSavedQuestions, toggleSaveQuestion } from '@/api/questions'
 import type { GetRequest, Filter } from '@/models/get-request'
 import { FilterGroupType, FilterOperator, FilterType } from '@/models/get-request'
@@ -219,8 +217,7 @@ const request = ref<GetRequest>({
 const filters = reactive({
   categoryId: undefined as string | undefined,
   level: undefined as number | undefined,
-  accessType: undefined as number | undefined,
-  scope: 'all'
+  accessType: undefined as number | undefined
 })
 
 const activeFiltersCount = computed(() => {
@@ -228,7 +225,6 @@ const activeFiltersCount = computed(() => {
   if (filters.categoryId !== undefined) count++
   if (filters.level !== undefined) count++
   if (filters.accessType !== undefined) count++
-  if (filters.scope !== 'all') count++
   return count
 })
 
@@ -238,7 +234,6 @@ const resetFilters = () => {
   filters.categoryId = undefined
   filters.level = undefined
   filters.accessType = undefined
-  filters.scope = 'all'
   applyFilters()
 }
 
@@ -435,10 +430,16 @@ const confirmDelete = (id: string) => {
   })
 }
 
+// onMounted(async () => {
+//   await fetchCategories()
+//   await fetchSavedQuestionIds()
+//   await fetchQuestions()
+// })
+
 onMounted(async () => {
-  await fetchCategories()
-  await fetchSavedQuestionIds()
-  await fetchQuestions()
+  fetchCategories()
+  fetchSavedQuestionIds()
+  fetchQuestions()
 })
 </script>
 
