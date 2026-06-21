@@ -24,16 +24,16 @@ namespace HoangCN.LearnMS.Services
             _questionService = questionService;
         }
 
-        protected override async Task BeforeInsert(List<QuestionCategory> entities)
+        protected override async Task HandleBeforeInsert(List<QuestionCategory> entities)
         {
-            await base.BeforeInsert(entities);
+            await base.HandleBeforeInsert(entities);
             GenerateSlugForCategories(entities);
             await ValidateParentCategories(entities);
         }
 
-        protected override async Task BeforeUpdate(List<QuestionCategory> entities)
+        protected override async Task HandleBeforeUpdate(List<QuestionCategory> entities)
         {
-            await base.BeforeUpdate(entities);
+            await base.HandleBeforeUpdate(entities);
             GenerateSlugForCategories(entities);
             await ValidateParentCategories(entities);
         }

@@ -1,8 +1,8 @@
-using System;
-using System.Collections.Generic;
+using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Base;
 using System.Reflection;
 
-namespace HoangCN.Core.BL.Base
+namespace HoangCN.Core.BL.Attributes.AuthAction
 {
     /// <summary>
     /// Bộ dựng cấu hình phân quyền (Fluent API) cho các Action trong BaseController

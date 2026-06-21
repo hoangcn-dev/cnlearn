@@ -1,17 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using HoangCN.Core.BL.Base;
-using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Enums;
-using HoangCN.MainSystem.Entities;
-using HoangCN.Core.DL.Interfaces;
-using HoangCN.MainSystem.Interfaces;
-using Microsoft.Extensions.Logging;
 using HoangCN.Core.Common.Exceptions;
-using Microsoft.AspNetCore.Http;
+using HoangCN.Core.DL.Interfaces;
 using HoangCN.Core.DL.Utils;
+using HoangCN.MainSystem.Entities;
+using HoangCN.MainSystem.Interfaces;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -97,7 +89,7 @@ namespace HoangCN.MainSystem.Services
                 existing.ModifiedBy = "Admin";
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", existing.TemplateCode);
-                await UpdateAsync(new List<EmailTemplate> { existing });
+                await UpdateEntities(new List<EmailTemplate> { existing });
             }
             else
             {
@@ -108,7 +100,7 @@ namespace HoangCN.MainSystem.Services
                 template.CreatedBy = "System";
                 
                 _logger.LogInformation("Saving email template '{TemplateCode}' to database", template.TemplateCode);
-                await InsertAsync(new List<EmailTemplate> { template });
+                await InsertEntities(new List<EmailTemplate> { template });
             }
         }
 

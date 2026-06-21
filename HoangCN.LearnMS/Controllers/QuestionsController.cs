@@ -1,3 +1,4 @@
+using HoangCN.Core.BL.Attributes.AuthAction;
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
@@ -30,26 +31,23 @@ namespace HoangCN.LearnMS.Controllers
         protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
         {
             builder.Disable(nameof(GetAll));
-            builder.Disable(nameof(GetById));
             builder.Disable(nameof(GetPaging));
             builder.Protect(nameof(Insert), nameof(RoleNames.Admin));
             builder.Protect(nameof(Update), nameof(RoleNames.Admin));
             builder.Protect(nameof(Delete), nameof(RoleNames.Admin));
         }
 
-        [HttpPost("bank/{id}")]
-        public async Task<IActionResult> GetBankQuestionDetail(Guid id)
-        {
-            var res = await _questionService.GetBankQuestionWithAnswers(id);
-            return Ok(ApiResponseDto.Success(res));
-        }
-
-        [HttpPost("bank/paging")]
-        public async Task<IActionResult> GetBankQuestionPaging([FromBody] GetRequest request, [FromQuery] bool isMine)
+        [HttpPost("search")]
+        public async Task<IActionResult> SearchQuestions([FromBody] GetRequest request, [FromQuery] bool isMine)
         {
             if (isMine)
             {
                 var userId = ClaimUtil.GetUserId(User);
+                if (userId == null)
+                {
+                    throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục"); 
+                }
+
                 request.Filters.Add(new Filter
                 {
                     Property = nameof(Question.LearnMsUserId),
@@ -58,11 +56,31 @@ namespace HoangCN.LearnMS.Controllers
                     Type = FilterType.String
                 });
             }
-            var res = await _baseBL.Get<BankQuestionDto>(request);
+            var res = await _questionService.Get<QuestionDto>(request);
             return Ok(ApiResponseDto.Success(res));
         }
 
-        [HttpGet("bank/saved")]
+        public override async Task<IActionResult> GetById(Guid id)
+        {
+            var res = await _questionService.GetQuestionContent(ClaimUtil.GetUserId(User), id);
+            return Ok(ApiResponseDto.Success(res));
+        }
+
+        [HttpPost("answers")]
+        public async Task<IActionResult> GetQuestionAnswers(List<Guid> questionIds)
+        {
+            var res = await _questionService.GetAnswersContent(ClaimUtil.GetUserId(User), questionIds);
+            return Ok(ApiResponseDto.Success(res));
+        }
+
+        [HttpPost("key")]
+        public async Task<IActionResult> GetQuestionKey(List<Guid> questionIds)
+        {
+            var res = await _questionService.GetQuestionCorrectAnswer(ClaimUtil.GetUserId(User), questionIds);
+            return Ok(ApiResponseDto.Success(res));
+        }
+
+        [HttpGet("saved")]
         [AuthAction]
         public async Task<IActionResult> GetSavedQuestions()
         {
@@ -71,7 +89,7 @@ namespace HoangCN.LearnMS.Controllers
             return Ok(ApiResponseDto.Success(res));
         }
 
-        [HttpPost("bank/saved")]
+        [HttpPost("saved")]
         [AuthAction]
         public async Task<IActionResult> GetSavedQuestions([FromBody] ToggleUserSavedRequest request)
         {

@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { message } from 'ant-design-vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -72,6 +74,7 @@ const router = createRouter({
     {
       path: '/personal',
       component: () => import('@/views/personal/PersonalLayout.vue'),
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -145,16 +148,23 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAdmin) {
-    const saved = localStorage.getItem('cn_user_profile')
-    let isAdmin = true // Tạm thời bypass để review giao diện
-    if (saved) {
-      try {
-        const data = JSON.parse(saved)
-        // Bypass
-      } catch (e) { }
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+  
+  if (!authStore.isInitialized) {
+    await authStore.checkAuthSession()
+  }
+
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!authStore.isLoggedIn) {
+      message.warning('Vui lòng đăng nhập để truy cập trang này')
+      next('/')
+      return
     }
+  }
+
+  if (to.meta.requiresAdmin) {
+    const isAdmin = authStore.user?.roleName === 'Admin'
     if (!isAdmin) {
       next('/personal/profile')
       return

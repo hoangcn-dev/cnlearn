@@ -1,9 +1,9 @@
 ﻿namespace HoangCN.LearnMS.Enums
 {
     /// <summary>
-    /// Quyền truy cập của đề
+    /// Quyền truy cập của câu hỏi trắc nghiệm
     /// </summary>
-    public enum ExamAccessType
+    public enum QuestionAccessType
     {
         /// <summary>
         /// Công khai (Mọi người đều có thể xem và làm)

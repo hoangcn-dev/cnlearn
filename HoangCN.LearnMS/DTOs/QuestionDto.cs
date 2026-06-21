@@ -7,7 +7,7 @@ namespace HoangCN.LearnMS.DTOs
     /// <summary>
     /// DTO chi tiết của câu hỏi phục vụ hiển thị và lưu trữ ở Client
     /// </summary>
-    public class BankQuestionDto
+    public class QuestionDto
     {
         public Guid QuestionId { get; set; }
         public string? QuestionSlug { get; set; }
@@ -22,7 +22,6 @@ namespace HoangCN.LearnMS.DTOs
 
         [ForeignTable(EntityType = typeof(QuestionCategory))]
         public Guid QuestionCategoryId { get; set; }
-
 
         public int AttemptCount { get; set; } = 0;
         public Guid LearnMsUserId { get; set; }

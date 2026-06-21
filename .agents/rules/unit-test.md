@@ -23,6 +23,7 @@ trigger: always_on
 # 4. Agent Behavior & Constraints
 - When adding a new feature or business method, you must write corresponding test scenarios (including happy paths and exception scenarios).
 - Ensure all tests are independent and do not affect each other's state.
+- Khi gặp lỗi trong UnitTest, không được tự ý sửa đổi code ngay lập tức mà phải trình bày lỗi, nguyên nhân, và cách khắc phục, đợi duyệt mới được thực hiện.
 
 # 5. Testing Standards
 - Avoid over-mocking the DL Interfaces. Prioritize using `FakeReadDL` and `FakeWriteDL` by adding mock data directly to the mock list (e.g., `_fakeReadDL.QueryResults.Add(...)`) to keep the code concise and clean.

@@ -6,11 +6,9 @@ using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Metadata;
 using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
-using HoangCN.Core.DL.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.Collections;
 using System.Linq.Expressions;
 using System.Reflection;
 using static Dapper.SqlMapper;
@@ -40,9 +38,10 @@ namespace HoangCN.Core.DL.Implementation
         /// Thực hiện lưu danh sách thực thể tự động đệ quy làm phẳng cây thực thể,
         /// đồng bộ khóa ngoại và dọn dẹp các con mồ côi (Orphan Disposal)
         /// </summary>
-        public async Task<List<TEntity>> SaveEntities<TEntity, TParentEntity>(List<TEntity> entities, TParentEntity? parent = null) 
-            where TParentEntity : BaseEntity
-            where TEntity : BaseEntity
+        public async Task<List<TEntity>> SaveEntities<TEntity>(
+            List<TEntity> entities, 
+            TEntity? parent = null,
+            Action<List<TEntity>>? onRollback = null) where TEntity : BaseEntity, new()
         {
             if (entities == null || entities.Count == 0)
             {
@@ -187,6 +186,7 @@ namespace HoangCN.Core.DL.Implementation
             catch
             {
                 await RollbackTransactionAsync();
+                onRollback?.Invoke(entities);
                 throw;
             }
         }
@@ -595,6 +595,11 @@ namespace HoangCN.Core.DL.Implementation
                 {
                     if (!graph.Updates.ContainsKey(type)) graph.Updates[type] = new List<BaseEntity>();
                     graph.Updates[type].Add(entity);
+                }
+                else if (entity.State == ModalState.Delete)
+                {
+                    if (!graph.Deletes.ContainsKey(type)) graph.Deletes[type] = new List<BaseEntity>();
+                    graph.Deletes[type].Add(entity);
                 }
 
                 var childProps = type.GetProperties()

@@ -1,6 +1,8 @@
 using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -87,9 +89,42 @@ namespace HoangCN.LearnMS.Entities
         public Guid QuestionCategoryId { get; set; }
 
         /// <summary>
+        /// Nguồn
+        /// </summary>
+        [DisplayName("Nguồn")]
+        public string? Source { get; set; }
+
+        /// <summary>
+        /// Nguồn
+        /// </summary>
+        [DisplayName("Đề thi nguồn chứa câu hỏi")]
+        public Guid? SourceExamId { get; set; }
+
+        /// <summary>
         /// Danh sách đáp án đi kèm câu hỏi (Không map trực tiếp xuống DB)
         /// </summary>
         [NotMapped]
         public List<QuestionAnswer> Answers { get; set; } = [];
+    }
+
+    public class QuestionConfiguration : IEntityTypeConfiguration<Question>
+    {
+        public void Configure(EntityTypeBuilder<Question> builder)
+        {
+            builder.ToTable("Question");
+            builder.HasIndex(q => q.QuestionSlug).IsUnique();
+            builder.HasIndex(q => q.QuestionCategoryId);
+            builder.HasIndex(q => q.LearnMsUserId);
+
+            builder.HasOne<QuestionCategory>()
+                   .WithMany()
+                   .HasForeignKey(q => q.QuestionCategoryId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(q => q.LearnMsUserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

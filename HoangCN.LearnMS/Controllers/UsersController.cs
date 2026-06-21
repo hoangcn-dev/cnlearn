@@ -1,13 +1,12 @@
+using HoangCN.Core.BL.Attributes.AuthAction;
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
-using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Utils;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace HoangCN.LearnMS.Controllers
 {

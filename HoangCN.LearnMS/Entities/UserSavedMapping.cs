@@ -1,6 +1,7 @@
 ﻿using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -36,5 +37,17 @@ namespace HoangCN.LearnMS.Entities
 
         [ForeignKey(nameof(UserId))]
         public LearnMsUser User { get; set; }
+    }
+
+    public class UserSavedMappingConfiguration : IEntityTypeConfiguration<UserSavedMapping>
+    {
+        public void Configure(EntityTypeBuilder<UserSavedMapping> builder)
+        {
+            builder.ToTable("UserSavedMapping");
+            builder.HasOne(us => us.User)
+                   .WithMany()
+                   .HasForeignKey(us => us.UserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

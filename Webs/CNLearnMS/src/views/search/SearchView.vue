@@ -39,6 +39,7 @@
           <CategorySelect 
             v-model:value="filters.category" 
             :categories="availableCategories"
+            :disable-parents="true"
             placeholder="Tất cả danh mục..."
             class="w-100"
             show-all-option

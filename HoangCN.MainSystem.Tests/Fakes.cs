@@ -10,6 +10,7 @@ using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Entities;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
 
 namespace HoangCN.MainSystem.Tests
 {
@@ -214,6 +215,11 @@ namespace HoangCN.MainSystem.Tests
         public List<object> UpdatedEntities { get; } = new();
         public List<object> DeletedEntities { get; } = new();
 
+        public Microsoft.EntityFrameworkCore.DbSet<TEntity> GetDbSet<TEntity>() where TEntity : class
+        {
+            throw new NotImplementedException();
+        }
+
         public IQueryable<TEntity> GetQueryable<TEntity>() where TEntity : class
         {
             return new List<TEntity>().AsQueryable();
@@ -223,6 +229,23 @@ namespace HoangCN.MainSystem.Tests
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
         public Task SaveChangesAsync() => Task.CompletedTask;
+
+        public Task<List<TEntity>> SaveEntities<TEntity>(List<TEntity> entities, TEntity? parent = null, Action<List<TEntity>>? onRollback = null)
+            where TEntity : BaseEntity, new()
+        {
+            InsertedEntities.AddRange(entities.Where(e => e.State == ModalState.Insert).Cast<object>());
+            UpdatedEntities.AddRange(entities.Where(e => e.State == ModalState.Update).Cast<object>());
+            DeletedEntities.AddRange(entities.Where(e => e.State == ModalState.Delete).Cast<object>());
+            return Task.FromResult(entities);
+        }
+
+        public Task SaveRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        {
+            InsertedEntities.AddRange(entities.Where(e => e.State == ModalState.Insert).Cast<object>());
+            UpdatedEntities.AddRange(entities.Where(e => e.State == ModalState.Update).Cast<object>());
+            DeletedEntities.AddRange(entities.Where(e => e.State == ModalState.Delete).Cast<object>());
+            return Task.CompletedTask;
+        }
 
         public Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
         {
@@ -251,6 +274,11 @@ namespace HoangCN.MainSystem.Tests
     {
         public List<Role> Roles { get; set; } = new();
 
+        public Task SaveEntities(IEnumerable<Role> entities)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task<List<TResult>> GetByCondition<TResult>(Expression<Func<Role, bool>> condition)
         {
             var func = condition.Compile();
@@ -265,16 +293,16 @@ namespace HoangCN.MainSystem.Tests
             return Task.FromResult(count);
         }
 
-        public Task<TResult?> GetSingleByCondition<TResult>(Expression<Func<Role, bool>> condition)
+        public Task<TResult?> GetFirstByCondition<TResult>(Expression<Func<Role, bool>> condition)
         {
             var func = condition.Compile();
             var matched = Roles.Where(func).Cast<TResult>().FirstOrDefault();
             return Task.FromResult<TResult?>(matched);
         }
 
-        public Task InsertAsync(List<Role> entities) => throw new NotImplementedException();
-        public Task UpdateAsync(List<Role> entities) => throw new NotImplementedException();
-        public Task DeleteAsync(DeleteRequest request) => throw new NotImplementedException();
+        public Task InsertEntities(List<Role> entities) => throw new NotImplementedException();
+        public Task UpdateEntities(List<Role> entities) => throw new NotImplementedException();
+        public Task DeleteEntities(DeleteRequest request) => throw new NotImplementedException();
         public Task<ResultDto<TResult>> Get<TResult>(GetRequest request) => throw new NotImplementedException();
         public Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<Role, bool>> condition) => throw new NotImplementedException();
         public Task<TResult?> GetById<TResult>(Guid id) => throw new NotImplementedException();

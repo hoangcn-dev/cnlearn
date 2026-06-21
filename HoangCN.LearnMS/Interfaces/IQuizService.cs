@@ -1,9 +1,7 @@
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.LearnMS.Entities;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
-using System;
-using System.Threading.Tasks;
+using HoangCN.LearnMS.Entities;
 
 namespace HoangCN.LearnMS.Interfaces
 {

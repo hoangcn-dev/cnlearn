@@ -1,5 +1,7 @@
 using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -37,5 +39,24 @@ namespace HoangCN.LearnMS.Entities
 
         [DisplayName("Số lần thoát toàn màn hình")]
         public int FullscreenExitCount { get; set; }
+    }
+
+    public class ExamSessionConfiguration : IEntityTypeConfiguration<ExamSession>
+    {
+        public void Configure(EntityTypeBuilder<ExamSession> builder)
+        {
+            builder.ToTable("ExamSession");
+            builder.HasIndex(es => new { es.CandidateId, es.QuizId }).IsUnique();
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(es => es.CandidateId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<Quiz>()
+                   .WithMany()
+                   .HasForeignKey(es => es.QuizId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

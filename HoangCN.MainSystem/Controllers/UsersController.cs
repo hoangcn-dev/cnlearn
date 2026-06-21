@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Enums;
+using HoangCN.Core.BL.Attributes.AuthAction;
+using System.Security.Claims;
+using HoangCN.Core.Common.Utils;
 
 namespace HoangCN.MainSystem.Controllers
 {
@@ -57,8 +60,8 @@ namespace HoangCN.MainSystem.Controllers
         [AuthAction]
         public async Task<IActionResult> GetMe()
         {
-            var userId = await _userService.CheckAuth(User);
-            var info = await _userService.GetLoginSessionInfo(userId);
+            var userId = ClaimUtil.GetUserId(User);
+            var info = await _userService.GetLoginSessionInfo(userId!.Value);
             return Ok(ApiResponseDto.Success(info));
         }
 
@@ -72,8 +75,8 @@ namespace HoangCN.MainSystem.Controllers
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            var userId = await _userService.CheckAuth(User);
-            await _userService.ChangePassword(userId, request);
+            var userId = ClaimUtil.GetUserId(User);
+            await _userService.ChangePassword(userId!.Value, request);
             return Ok(ApiResponseDto.Success("Đổi mật khẩu thành công."));
         }
     }

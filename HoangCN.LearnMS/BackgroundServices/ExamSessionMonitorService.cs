@@ -68,7 +68,7 @@ namespace HoangCN.LearnMS.BackgroundServices
                     session.Status = ExamSessionStatus.Disconnected;
                 }
 
-                await examSessionService.UpdateAsync(expiredSessions);
+                await examSessionService.UpdateEntities(expiredSessions);
                 _logger.LogInformation($"Auto-disconnected {expiredSessions.Count} expired exam sessions.");
             }
         }

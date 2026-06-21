@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -45,5 +47,25 @@ namespace HoangCN.LearnMS.Entities
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Trả lời đúng")]
         public bool IsCorrect { get; set; } = false;
+    }
+
+    public class ExamAttemptDetailConfiguration : IEntityTypeConfiguration<ExamAttemptDetail>
+    {
+        public void Configure(EntityTypeBuilder<ExamAttemptDetail> builder)
+        {
+            builder.ToTable("ExamAttemptDetail");
+            builder.HasIndex(ead => ead.ExamAttemptId);
+            builder.HasIndex(ead => ead.QuestionId);
+
+            builder.HasOne<ExamAttempt>()
+                   .WithMany()
+                   .HasForeignKey(ead => ead.ExamAttemptId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne<Question>()
+                   .WithMany()
+                   .HasForeignKey(ead => ead.QuestionId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

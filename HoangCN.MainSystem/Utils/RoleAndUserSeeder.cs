@@ -42,7 +42,7 @@ namespace HoangCN.MainSystem.Utils
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await roleBL.InsertAsync(new List<Role> { adminRole });
+                    await roleBL.InsertEntities(new List<Role> { adminRole });
                 }
 
                 if (userRole == null)
@@ -55,7 +55,7 @@ namespace HoangCN.MainSystem.Utils
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await roleBL.InsertAsync(new List<Role> { userRole });
+                    await roleBL.InsertEntities(new List<Role> { userRole });
                 }
 
                 // 2. Seed Admin User nếu chưa tồn tại
@@ -81,7 +81,7 @@ namespace HoangCN.MainSystem.Utils
                         CreatedDate = DateTime.UtcNow,
                         IsDeleted = false
                     };
-                    await userService.InsertAsync(new List<User> { adminUser });
+                    await userService.InsertEntities(new List<User> { adminUser });
                 }
             }
         }

@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace HoangCN.Core.BL.Base
+namespace HoangCN.Core.BL.Attributes.AuthAction
 {
     public class AuthActionFillter : IAsyncActionFilter
     {

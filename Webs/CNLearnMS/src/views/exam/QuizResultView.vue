@@ -181,6 +181,7 @@
               :index="idx + 1"
               mode="result"
               :chosen-answer-indexes="getChosenAnswerIndexes(q)"
+              :correct-answer-ids="correctAnswerMap[q.id || q.questionId]"
             />
           </div>
         </div>
@@ -194,6 +195,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import QuestionCard from '@/components/QuestionCard.vue'
+import { getQuestionAnswers, getQuestionKeys } from '@/api/questions'
 
 interface Attempt {
   attemptId: string
@@ -226,6 +228,7 @@ const leaderboard = ref<LeaderboardRow[]>([])
 const isQuizOwner = ref(false)
 
 const quizQuestions = ref<any[]>([])
+const correctAnswerMap = ref<Record<string, string[]>>({})
 
 const getAttemptAnswerForQuestion = (questionId: string) => {
   if (!attempt.value || !attempt.value.answers) return null
@@ -351,32 +354,70 @@ onMounted(() => {
     ]
   }
 
-  if (found && !found.answers) {
-    const total = quizQuestions.value.length
-    const scoreVal = found.score || 9.0
-    const correctCount = Math.round((scoreVal / 10.0) * total)
-    
-    found.answers = quizQuestions.value.map((q: any, qIdx: number) => {
-      const isCorrect = qIdx < correctCount
-      const correctIdxs = q.answers
-        .map((a: any, i: number) => a.isCorrectAnswer ? i : -1)
-        .filter((i: number) => i !== -1)
-      
-      let selected = []
-      if (isCorrect) {
-        selected = correctIdxs
-      } else {
-        const incorrectIdx = q.answers.findIndex((a: any) => !a.isCorrectAnswer)
-        selected = incorrectIdx !== -1 ? [incorrectIdx] : [0]
+  // Load answers and keys from APIs dynamically
+  const fetchResultAnswersAndKeys = async () => {
+    if (quizQuestions.value.length > 0) {
+      try {
+        const questionIds = quizQuestions.value.map((q: any) => q.id || q.questionId)
+        const [answersRes, keysRes] = await Promise.all([
+          getQuestionAnswers(questionIds),
+          getQuestionKeys(questionIds)
+        ])
+
+        if (answersRes && answersRes.isSuccess && answersRes.data) {
+          const allAnswers = answersRes.data
+          quizQuestions.value.forEach((q: any) => {
+            const qId = q.id || q.questionId
+            const qAnswers = allAnswers.filter((a: any) => a.questionId === qId)
+            if (qAnswers.length > 0) {
+              q.answers = qAnswers.map((a: any, idx: number) => ({
+                id: a.questionAnswerId || a.id,
+                questionAnswerId: a.questionAnswerId || a.id,
+                stringContent: a.stringContent,
+                indexChar: String.fromCharCode(65 + idx)
+              }))
+            }
+          })
+        }
+
+        if (keysRes && keysRes.isSuccess && keysRes.data?.correctMap) {
+          correctAnswerMap.value = keysRes.data.correctMap
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải chi tiết đáp án và key từ API:', err)
       }
-      return {
-        questionId: q.id || q.questionId,
-        selectedAnswerIndexes: selected
-      }
-    })
+    }
   }
 
-  generateLeaderboard(found)
+  fetchResultAnswersAndKeys().then(() => {
+    if (found && !found.answers) {
+      const total = quizQuestions.value.length
+      const scoreVal = found.score || 9.0
+      const correctCount = Math.round((scoreVal / 10.0) * total)
+      
+      found.answers = quizQuestions.value.map((q: any, qIdx: number) => {
+        const isCorrect = qIdx < correctCount
+        const correctIds = correctAnswerMap.value[q.id || q.questionId] || []
+        
+        let selected: number[] = []
+        if (q.answers && q.answers.length > 0) {
+          if (isCorrect) {
+            selected = q.answers
+              .map((a: any, i: number) => correctIds.includes(a.id || a.questionAnswerId) ? i : -1)
+              .filter((i: number) => i !== -1)
+          } else {
+            const incorrectIdx = q.answers.findIndex((a: any) => !correctIds.includes(a.id || a.questionAnswerId))
+            selected = incorrectIdx !== -1 ? [incorrectIdx] : [0]
+          }
+        }
+        return {
+          questionId: q.id || q.questionId,
+          selectedAnswerIndexes: selected
+        }
+      })
+    }
+    generateLeaderboard(found)
+  })
 })
 
 const generateLeaderboard = (myAttempt: Attempt) => {

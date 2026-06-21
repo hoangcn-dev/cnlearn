@@ -1,15 +1,10 @@
-using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Security.Claims;
-using System.Threading.Tasks;
-
-using HoangCN.Core.BL.Base;
 
 namespace HoangCN.LearnMS.Controllers
 {

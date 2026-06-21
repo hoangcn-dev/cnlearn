@@ -6,6 +6,7 @@ using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.DL.Interfaces;
 using System.Collections;
 using HoangCN.Core.Common.Metadata;
+using HoangCN.Core.Common.Base;
 
 namespace HoangCN.Core.DL.Utils
 {
@@ -165,6 +166,13 @@ namespace HoangCN.Core.DL.Utils
         /// </summary>
         public static void CommonValidate(IEnumerable items, params string[] excepts)
         {
+            string[] auditProp = [
+                nameof(BaseEntity.CreatedBy),
+                nameof(BaseEntity.CreatedDate),
+                nameof(BaseEntity.ModifiedBy),
+                nameof(BaseEntity.ModifiedDate),
+            ];
+
             // 1. Kiểm tra các điều kiện trong bộ nhớ (Required, StringLength) trước - Hoàn toàn không gọi DB
             foreach (var item in items)
             {
@@ -173,14 +181,16 @@ namespace HoangCN.Core.DL.Utils
 
                 foreach (var prop in metadata.Properties)
                 {
+                    // Bỏ qua kiểm tra các trường audit mặc định
+                    if (auditProp.Contains(prop.PropertyName)) continue;
+
                     if (excepts.Contains(prop.PropertyName)) continue;
 
                     var v = prop.PropertyInfo.GetValue(item);
 
                     // Kiểm tra null hoặc trống [Required]
                     var isNullOrEmpty = prop.RequiredAttr != null && (v is null ||
-                                        v is string strV && string.IsNullOrEmpty(strV) ||
-                                        v is Guid guidV && guidV == Guid.Empty);
+                                        v is string strV && string.IsNullOrEmpty(strV));
                     if (isNullOrEmpty)
                     {
                         var msg = !string.IsNullOrEmpty(prop.RequiredAttr.ErrorMessage)

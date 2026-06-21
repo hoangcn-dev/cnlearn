@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -181,5 +183,25 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [NotMapped]
         public bool IsMyCreated { get; set; }
+    }
+
+    public class QuizConfiguration : IEntityTypeConfiguration<Quiz>
+    {
+        public void Configure(EntityTypeBuilder<Quiz> builder)
+        {
+            builder.ToTable("Quiz");
+            builder.HasIndex(q => q.ExamId);
+            builder.HasIndex(q => q.UserId);
+
+            builder.HasOne<Exam>()
+                   .WithMany()
+                   .HasForeignKey(q => q.ExamId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(q => q.UserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

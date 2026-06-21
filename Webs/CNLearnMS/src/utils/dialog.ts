@@ -86,4 +86,13 @@ export const showDialog = (options: DialogOptions) => {
   }
 
   render(vnode, container);
+
+  return {
+    destroy: () => {
+      if (vnode.component && vnode.component.props) {
+        vnode.component.props.visible = false;
+      }
+      removeDialog();
+    }
+  };
 };

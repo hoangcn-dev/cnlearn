@@ -22,7 +22,7 @@ namespace HoangCN.LearnMS.DB
             );
 
             // Chỉ định quét chính xác thực thể của LearnMS khi chạy Migration
-            var provider = new EntityAssemblyProvider(new[] { typeof(Question).Assembly });
+            var provider = new EntityAssemblyProvider([typeof(Question).Assembly]);
 
             return new DynamicDbContext(optionsBuilder.Options, provider);
         }

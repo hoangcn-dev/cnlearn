@@ -45,13 +45,6 @@ export const logout = async (): Promise<any> => {
 import { get as learnMsGet, post as learnMsPost } from './config/axios';
 
 /**
- * Ensure the user is registered in the LearnMS domain
- */
-export const ensureLearnMsUser = async (user: any) => {
-  return await learnMsPost('/api/users/ensure', user);
-};
-
-/**
  * Get user profile details specific to LearnMS
  */
 export const getLearnMsUserProfile = async () => {

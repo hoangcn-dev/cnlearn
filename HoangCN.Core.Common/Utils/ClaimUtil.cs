@@ -42,5 +42,13 @@ namespace HoangCN.Core.Common.Utils
             return userId;
         }
 
+        /// <summary>
+        /// Lấy role name từ ClaimsPrincipal
+        /// </summary>
+        public static string GetRoleName(ClaimsPrincipal? claims)
+        {
+            return claims?.FindFirst(ClaimTypes.Role)?.Value
+                ?? throw new UnauthorizedException("Thông tin xác thực không hợp lệ");
+        }
     }
 }

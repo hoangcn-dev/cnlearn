@@ -53,32 +53,18 @@ namespace HoangCN.LearnMS.Services
                 FullName = fullName,
                 Email = email,
                 Biography = "Chưa có thông tin cá nhân",
-                PhoneNumber = null
+                PhoneNumber = null,
+                State = ModalState.Insert
             };
 
-            await InsertAsync([newUser]);
+            await InsertEntities([newUser]);
 
             return newUser;
         }
 
-        /// <summary>
-        /// Tiền xử lý trước khi lưu LearnMsUser
-        /// Ghi đè phương thức này để bỏ qua cơ chế tự phát sinh ID mặc định của BaseBL, 
-        /// do UserId được đồng bộ trực tiếp từ cổng Identity (MainSystem) sang.
-        /// </summary>
-        protected override async Task BeforeInsert(List<LearnMsUser> entities)
+        protected override async Task HandleBeforeUpdate(List<LearnMsUser> entities)
         {
-            await base.BeforeInsert(entities);
-            foreach (var entity in entities)
-            {
-                entity.CreatedBy = "System";
-                entity.ModifiedBy = "System";
-            }
-        }
-
-        protected override async Task BeforeUpdate(List<LearnMsUser> entities)
-        {
-            await base.BeforeUpdate(entities);
+            await base.HandleBeforeUpdate(entities);
             foreach (var entity in entities)
             {
                 // Không cho phép cập nhật Email sau khi đã tạo tài khoản, vì đây là thông tin đồng bộ từ cổng Identity

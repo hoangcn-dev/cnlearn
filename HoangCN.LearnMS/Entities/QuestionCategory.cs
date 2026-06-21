@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -36,5 +38,20 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Danh mục cha")]
         public Guid? ParentId { get; set; }
+    }
+
+    public class QuestionCategoryConfiguration : IEntityTypeConfiguration<QuestionCategory>
+    {
+        public void Configure(EntityTypeBuilder<QuestionCategory> builder)
+        {
+            builder.ToTable("QuestionCategory");
+            builder.HasIndex(c => c.QuestionCategorySlug).IsUnique();
+            builder.HasIndex(c => c.ParentId);
+
+            builder.HasOne<QuestionCategory>()
+                   .WithMany()
+                   .HasForeignKey(c => c.ParentId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

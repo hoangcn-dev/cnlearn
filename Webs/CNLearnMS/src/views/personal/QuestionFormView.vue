@@ -424,7 +424,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
@@ -659,6 +659,19 @@ const saveDraft = () => {
   message.success('Đã lưu bản nháp thành công!')
 }
 
+// Watcher tự động lưu nháp dưới nền với debounce 1 giây
+let autoSaveTimer: any = null
+watch(questionsList, (newVal) => {
+  if (!isEditMode.value) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = setTimeout(() => {
+      const str = JSON.stringify(newVal)
+      localStorage.setItem('cn_questions_draft', str)
+      latestSavedDraft.value = str
+    }, 1000)
+  }
+}, { deep: true })
+
 const canResetDraft = computed(() => {
   return !!latestSavedDraft.value || !!initialUploadBackup.value
 })
@@ -679,14 +692,16 @@ const resetToLatestDraft = () => {
 const confirmClearAll = () => {
   Modal.confirm({
     title: 'Xác nhận xóa sạch danh sách?',
-    content: 'Bạn có chắc chắn muốn xóa toàn bộ các câu hỏi hiện tại trên màn hình preview? Bạn có thể Reset nếu đã lưu nháp.',
+    content: 'Bạn có chắc chắn muốn xóa toàn bộ các câu hỏi hiện tại trên màn hình preview? Hành động này cũng sẽ xóa bản nháp đã lưu.',
     okText: 'Xóa sạch',
     okType: 'danger',
     cancelText: 'Hủy bỏ',
     onOk() {
       questionsList.value = []
       currentPage.value = 1
-      message.info('Đã làm sạch danh sách câu hỏi.')
+      localStorage.removeItem('cn_questions_draft')
+      latestSavedDraft.value = ''
+      message.info('Đã làm sạch danh sách câu hỏi và xóa bản nháp.')
     }
   })
 }

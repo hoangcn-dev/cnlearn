@@ -116,7 +116,7 @@ namespace HoangCN.MainSystem.Tests
             };
 
             // Act & Assert
-            await Assert.ThrowsAsync<BadRequestException>(() => _userService.InsertAsync([user]));
+            await Assert.ThrowsAsync<BadRequestException>(() => _userService.InsertEntities([user]));
         }
 
         [Fact]
@@ -134,7 +134,7 @@ namespace HoangCN.MainSystem.Tests
             };
 
             // Act
-            await _userService.InsertAsync([user]);
+            await _userService.InsertEntities([user]);
 
             // Assert
             Assert.NotEmpty(user.PasswordSalt);
@@ -176,7 +176,7 @@ namespace HoangCN.MainSystem.Tests
             _fakeReadDL.QueryResults.Add(dbUser);
 
             // Act
-            await _userService.UpdateAsync([incomingUser]);
+            await _userService.UpdateEntities([incomingUser]);
 
             // Assert
             Assert.Equal("hashed_old_password", incomingUser.Password);
@@ -217,7 +217,7 @@ namespace HoangCN.MainSystem.Tests
             _fakeReadDL.QueryResults.Add(dbUser);
 
             // Act
-            await _userService.UpdateAsync([incomingUser]);
+            await _userService.UpdateEntities([incomingUser]);
 
             // Assert
             Assert.NotEqual("brand_new_plain_password", incomingUser.Password);

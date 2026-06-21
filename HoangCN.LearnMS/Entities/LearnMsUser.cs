@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -51,5 +53,14 @@ namespace HoangCN.LearnMS.Entities
         [StringLength(1000, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
         [DisplayName("Giới thiệu bản thân")]
         public string? Biography { get; set; }
+    }
+
+    public class LearnMsUserConfiguration : IEntityTypeConfiguration<LearnMsUser>
+    {
+        public void Configure(EntityTypeBuilder<LearnMsUser> builder)
+        {
+            builder.ToTable("LearnMsUser");
+            builder.HasIndex(u => u.Email).IsUnique();
+        }
     }
 }

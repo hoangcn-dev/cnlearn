@@ -1,6 +1,6 @@
 ﻿namespace HoangCN.LearnMS.DTOs
 {
-    public class BankQuestionWithAnswersDto : BankQuestionDto
+    public class BankQuestionWithAnswersDto : QuestionDto
     {
         public List<BankAnswerDto> Answers { get; set; } = [];
     }

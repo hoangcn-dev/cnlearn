@@ -4,8 +4,12 @@ import 'ant-design-vue/dist/reset.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import Antd from 'ant-design-vue'
+import Antd, { message } from 'ant-design-vue'
 import { createPinia } from 'pinia'
+
+message.config({
+  maxCount: 1,
+});
 
 const app = createApp(App)
 app.use(createPinia())

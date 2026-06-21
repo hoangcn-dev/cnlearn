@@ -1,5 +1,7 @@
 using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -22,5 +24,19 @@ namespace HoangCN.LearnMS.Entities
 
         [DisplayName("Loại vi phạm")]
         public ExamViolationType ViolationType { get; set; }
+    }
+
+    public class ExamCheatLogConfiguration : IEntityTypeConfiguration<ExamCheatLog>
+    {
+        public void Configure(EntityTypeBuilder<ExamCheatLog> builder)
+        {
+            builder.ToTable("ExamCheatLog");
+            builder.HasIndex(ecl => ecl.SessionId);
+
+            builder.HasOne<ExamSession>()
+                   .WithMany()
+                   .HasForeignKey(ecl => ecl.SessionId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }

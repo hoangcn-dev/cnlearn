@@ -5,6 +5,7 @@ using HoangCN.Core.BL.Base;
 using Xunit;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Attributes.AuthAction;
 
 namespace HoangCN.MainSystem.Tests
 {

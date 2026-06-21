@@ -1,6 +1,6 @@
 using System;
 
-namespace HoangCN.Core.BL.Base
+namespace HoangCN.Core.BL.Attributes.AuthAction
 {
     /// <summary>
     /// Thuộc tính cấu hình phân quyền cho action trong BaseController

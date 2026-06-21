@@ -11,6 +11,8 @@ using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Enums;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.Requests;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Services
 {
@@ -24,6 +26,16 @@ namespace HoangCN.LearnMS.Services
         private readonly IBaseBL<QuestionAnswer> _answerService;
         private readonly ILogger<QuestionService> _logger;
 
+        /// <summary>
+        /// Khởi tạo QuestionService với các dependency cần thiết
+        /// </summary>
+        /// <param name="baseReadDL">Lớp truy cập dữ liệu đọc (Dapper)</param>
+        /// <param name="baseWriteDL">Lớp truy cập dữ liệu ghi (EF Core)</param>
+        /// <param name="categoryService">Dịch vụ quản lý danh mục câu hỏi</param>
+        /// <param name="logger">Lớp ghi log hệ thống</param>
+        /// <param name="httpContextAccessor">Truy cập HttpContext của request hiện tại</param>
+        /// <param name="saveService">Dịch vụ lưu trữ câu hỏi yêu thích của user</param>
+        /// <param name="answerService">Dịch vụ quản lý đáp án câu hỏi</param>
         public QuestionService(
             IBaseReadDL baseReadDL,
             IBaseWriteDL baseWriteDL,
@@ -39,109 +51,73 @@ namespace HoangCN.LearnMS.Services
             _answerService = answerService;
         }
 
-        protected override async Task BeforeInsert(List<Question> entities)
+        public async Task<QuestionCorrectAnswerMappingDto> GetQuestionCorrectAnswer(Guid? userId, List<Guid> questionIds)
         {
-            await base.BeforeInsert(entities);
-            GenerateSlugForQuestions(entities);
-            await ValidateLeafCategories(entities);
-            AssignAuthor(entities);
-            AssignQuestionAnswer(entities);
+            // Chỉ lấy được đáp án câu hỏi khi nó tồn tại và public | hoặc chỉ có tác giả nếu đang private
+            var validQuestions = await GetByCondition<QuestionIdDto>(q =>
+                questionIds.Contains(q.QuestionId) &&
+                (q.AccessType == QuestionAccessType.Public ||
+                q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId));
+
+            var validQuestionIds = validQuestions.Select(q => q.QuestionId).ToList();
+
+            var answers = await _answerService.GetByCondition<QuestionAnswerDto>(a =>
+                validQuestionIds.Contains(a.QuestionId) &&
+                a.IsCorrectAnswer);
+
+            return new QuestionCorrectAnswerMappingDto
+            {
+                CorrectMap = answers
+                    .GroupBy(a => a.QuestionId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(a => a.QuestionAnswerId).ToList()
+                    )
+            }; 
         }
 
-        protected override async Task BeforeUpdate(List<Question> entities)
+        public async Task<List<QuestionAnswerDto>> GetAnswersContent(Guid? userId, List<Guid> questionIds)
         {
-            await base.BeforeUpdate(entities);
-            GenerateSlugForQuestions(entities);
-            await ValidateLeafCategories(entities);
-            AssignAuthor(entities);
-            AssignQuestionAnswer(entities);
+            // Chỉ lấy được câu hỏi khi nó tồn tại và public | hoặc chỉ có tác giả nếu đang private
+            var validQuestions = await GetByCondition<QuestionIdDto>(q =>
+                questionIds.Contains(q.QuestionId) &&
+                (q.AccessType == QuestionAccessType.Public ||
+                q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId));
+
+            var validQuestionIds = validQuestions.Select(q => q.QuestionId).ToList();
+
+            var answers = await _answerService.GetByCondition<QuestionAnswerDto>(a => 
+                validQuestionIds.Contains(a.QuestionId));
+            return answers;
         }
 
-        private void AssignQuestionAnswer(List<Question> questions)
+        public async Task<QuestionDto> GetQuestionContent(Guid? userId, Guid questionId)
         {
-            foreach (var question in questions)
+            // Chỉ lấy được câu hỏi khi nó tồn tại và public | hoặc chỉ có tác giả nếu đang private
+            var qContent = await GetFirstByCondition<QuestionDto>(q => 
+                q.QuestionId == questionId && 
+                (q.AccessType == QuestionAccessType.Public ||
+                q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId));
+
+            if (qContent == null)
             {
-                foreach(var answer in question.Answers)
-                {
-                    answer.QuestionId = question.QuestionId;
-                }
+                throw new BadRequestException("Câu hỏi không tồn tại hoặc bị giới hạn quyền truy cập");
             }
-        }
 
-        private void AssignAuthor(List<Question> questions)
-        {
-            var userId = ClaimUtil.GetUserId(_httpContextAccessor.HttpContext?.User);
-            if (userId == null)
-            {
-                throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục");
-            }
-            foreach (var question in questions)
-            {
-                question.LearnMsUserId = userId!.Value;
-            }
-        }
-
-        private void GenerateSlugForQuestions(List<Question> entities)
-        {
-            foreach (var entity in entities)
-            {
-                if (entity == null) continue;
-
-                // Tự sinh slug từ nội dung nếu rỗng
-                if (string.IsNullOrWhiteSpace(entity.QuestionSlug))
-                {
-                    if (string.IsNullOrWhiteSpace(entity.StringContent))
-                    {
-                        throw new BadRequestException("Nội dung câu hỏi không được phép để trống.");
-                    }
-                    entity.QuestionSlug = SlugUtil.GenerateSlug(entity.StringContent);
-                }
-                else
-                {
-                    entity.QuestionSlug = SlugUtil.GenerateSlug(entity.QuestionSlug);
-                }
-            }
-        }
-
-        private async Task ValidateLeafCategories(List<Question> entities)
-        {
-            var categoryIds = entities
-                .Select(q => q.QuestionCategoryId)
-                .Where(id => id != Guid.Empty)
-                .Distinct()
-                .ToList();
-
-            if (categoryIds.Count == 0) return;
-
-            var nullableCategoryIds = categoryIds.Select(id => (Guid?)id).ToList();
-
-            // Tìm xem có danh mục con bất kỳ nào có ParentId nằm trong danh sách categoryIds đang xét hay không
-            var childCategories = await _categoryService.GetByCondition<QuestionCategory>(c => nullableCategoryIds.Contains(c.ParentId) && !c.IsDeleted);
-
-            if (childCategories.Count > 0)
-            {
-                var violatedCategoryIds = childCategories
-                    .Select(c => c.ParentId!.Value)
-                    .Distinct()
-                    .ToList();
-
-                var parentCategories = await _categoryService.GetByCondition<QuestionCategory>(c => violatedCategoryIds.Contains(c.QuestionCategoryId));
-                var categoryNames = parentCategories.Select(c => c.QuestionCategoryName).ToList();
-
-                var violatedNames = string.Join(", ", categoryNames);
-                throw new BadRequestException($"Không thể lưu câu hỏi vào danh mục cha (danh mục chứa danh mục con): {violatedNames}. Chỉ được phép lưu câu hỏi vào danh mục cấp lá.");
-            }
+            return qContent;
         }
 
         /// <summary>
         /// Lấy chi tiết một câu hỏi trong ngân hàng đề kèm theo toàn bộ đáp án của nó sử dụng Multiple Query
         /// </summary>
-         public async Task<BankQuestionWithAnswersDto> GetBankQuestionWithAnswers(Guid questionId)
+        /// <param name="questionId">Mã định danh của câu hỏi</param>
+        /// <returns>Đối tượng DTO chứa thông tin câu hỏi và danh sách đáp án liên quan</returns>
+        public async Task<BankQuestionWithAnswersDto> GetBankQuestionWithAnswers(Guid questionId)
         {
             var param = new DynamicParameters();
 
             // Tạo câu sql lấy thông tin câu hỏi
-            var questionQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<Question, BankQuestionDto>(
+            var questionQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<Question, QuestionDto>(
                 isGetOnlyOne: true,
                 q => q.QuestionId == questionId,
                 param);
@@ -177,6 +153,11 @@ namespace HoangCN.LearnMS.Services
             return questionWithAnswers;
         }
 
+        /// <summary>
+        /// Lấy danh sách các câu hỏi đã lưu (yêu thích) của một học viên/người dùng cụ thể
+        /// </summary>
+        /// <param name="userId">Mã định danh của người dùng</param>
+        /// <returns>Danh sách DTO chứa thông tin các câu hỏi đã được lưu</returns>
         public async Task<List<SavedDto>> GetSavedQuestions(Guid userId)
         {
             var saveQuestions = await _saveService.GetByCondition<SavedDto>(
@@ -184,9 +165,13 @@ namespace HoangCN.LearnMS.Services
             return saveQuestions;
         }
 
+        /// <summary>
+        /// Thực hiện bật/tắt (lưu hoặc bỏ lưu) một câu hỏi vào danh sách yêu thích của người dùng
+        /// </summary>
+        /// <param name="request">Yêu cầu chứa thông tin UserId, TargetId và trạng thái lưu</param>
         public async Task ToggleQuestion(ToggleUserSavedRequest request)
         {
-            var mapping = await _saveService.GetSingleByCondition<UserSavedMapping>(
+            var mapping = await _saveService.GetFirstByCondition<UserSavedMapping>(
                 s => s.UserId == request.UserId &&
                 s.TargetId == request.TargetId);
 
@@ -211,7 +196,7 @@ namespace HoangCN.LearnMS.Services
 
             if (request.IsSaved)
             {
-                await _saveService.InsertAsync([new () {
+                await _saveService.InsertEntities([new () {
                     TargetId = request.TargetId,
                     SaveType = SaveType.Question,
                     UserId = request.UserId
@@ -219,7 +204,7 @@ namespace HoangCN.LearnMS.Services
             }
             else
             {
-                await _saveService.DeleteAsync(new DeleteRequest()
+                await _saveService.DeleteEntities(new DeleteRequest()
                 {
                     Ids = [ mapping!.UserSavedMappingId ]
                 });
@@ -228,80 +213,107 @@ namespace HoangCN.LearnMS.Services
         }
 
         #region Override
-        protected override async Task AfterInsert(List<Question> entities)
+        /// <summary>
+        /// Tiền xử lý trước khi thêm mới danh sách câu hỏi
+        /// </summary>
+        /// <param name="entities">Danh sách câu hỏi cần thêm mới</param>
+        protected override async Task HandleBeforeInsert(List<Question> entities)
         {
-            // Cập nhật 
-            foreach (var q in entities)
-            {
-                q.Answers.ForEach(q => q.QuestionId = q.QuestionId);
-            }
-            await _answerService.InsertAsync(entities.SelectMany(q => q.Answers).ToList());
+            await base.HandleBeforeInsert(entities);
+            GenerateSlugForQuestions(entities);
+            await ValidateLeafCategories(entities);
+            AssignAuthor(entities);
         }
 
-        protected override async Task AfterUpdate(List<Question> entities)
+        /// <summary>
+        /// Tiền xử lý trước khi cập nhật danh sách câu hỏi
+        /// </summary>
+        /// <param name="entities">Danh sách câu hỏi cần cập nhật</param>
+        protected override async Task HandleBeforeUpdate(List<Question> entities)
         {
-            var changeAnswers = new List<QuestionAnswer>();
-            
-            // Lấy các đáp án cũ cần cập nhật
-            changeAnswers.AddRange(entities.SelectMany(e => e.Answers.Where(a => a.QuestionAnswerId != Guid.Empty)));
+            await base.HandleBeforeUpdate(entities);
+            GenerateSlugForQuestions(entities);
+            await ValidateLeafCategories(entities);
+        }
 
-            // Thêm các đáp án cũ cần xóa (ko có trong danh sách gửi lên)
-            var updateIds = changeAnswers.Select(e => e.QuestionAnswerId);
-            var questionIds = entities.Select(e => e.QuestionId);
-            changeAnswers.AddRange(await _answerService.GetByCondition<QuestionAnswer>(a =>
-                questionIds.Contains(a.QuestionId) && !updateIds.Contains(a.QuestionAnswerId)));
-            
-            // Thêm các đáp án mới
-            foreach (var question in entities)
+        /// <summary>
+        /// Gán thông tin người dùng sở hữu (tác giả) cho các câu hỏi dựa trên token đăng nhập
+        /// </summary>
+        /// <param name="questions">Danh sách câu hỏi đang xử lý</param>
+        private void AssignAuthor(List<Question> questions)
+        {
+            var userId = ClaimUtil.GetUserId(_httpContextAccessor.HttpContext?.User);
+            if (userId == null)
             {
-
-                if (question.QuestionId != Guid.Empty)
-                {
-                    await _answerService.UpdateAsync(question.Answers);
-                }
-                else
-                {
-                    await _answerService.InsertAsync(question.Answers)
-                }
-                //if (question.Answers != null && question.Answers.Count > 0)
-                //{
-                    //// 1. Dọn dẹp toàn bộ đáp án cũ của câu hỏi này (nếu có - áp dụng cho cả Update)
-                    //var currentAnswers = await _answerService.GetByCondition<QuestionAnswer>(qa => qa.QuestionId == question.QuestionId);
-                    //if (currentAnswers.Count > 0)
-                    //{
-                    //    await _baseWriteDL.DeleteRangeAsync(currentAnswers);
-                    //}
-
-                    //// 2. Gán QuestionId, khởi tạo ID và kế thừa thông tin Audit cho các đáp án mới
-                    //foreach (var answer in question.Answers)
-                    //{
-                    //    answer.QuestionAnswerId = answer.QuestionAnswerId == Guid.Empty ? Guid.NewGuid() : answer.QuestionAnswerId;
-                    //    answer.QuestionId = question.QuestionId;
-                        
-                    //    // Kế thừa thông tin Audit từ thực thể Question cha để tránh lỗi CreatedBy null khi INSERT đáp án mới
-                    //    answer.CreatedBy = question.ModifiedBy ?? question.CreatedBy ?? "System";
-                    //    answer.CreatedDate = question.ModifiedDate ?? (question.CreatedDate == default ? DateTime.UtcNow : question.CreatedDate);
-                    //}
-
-                    //// 3. Thêm mới các đáp án vào DB
-                    //await _baseWriteDL.InsertRangeAsync(question.Answers);
-                //}
+                throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục");
+            }
+            foreach (var question in questions)
+            {
+                question.LearnMsUserId = userId!.Value;
             }
         }
 
-        protected override async Task AfterDelete(List<Question> entities)
+        /// <summary>
+        /// Tự động sinh SEO slug thân thiện cho câu hỏi dựa vào nội dung văn bản
+        /// </summary>
+        /// <param name="entities">Danh sách câu hỏi cần sinh slug</param>
+        private async Task GenerateSlugForQuestions(List<Question> entities)
         {
-            foreach (var question in entities)
+            foreach (var entity in entities)
             {
-                // Tự động xóa toàn bộ đáp án liên kết khi câu hỏi bị xóa
-                var currentAnswers = await _answerService.GetByCondition<QuestionAnswer>(qa => qa.QuestionId == question.QuestionId);
-                if (currentAnswers.Count > 0)
+                if (entity == null) continue;
+
+                if (string.IsNullOrWhiteSpace(entity.StringContent))
                 {
-                    await _baseWriteDL.DeleteRangeAsync(currentAnswers);
+                    throw new BadRequestException("Nội dung câu hỏi không được phép để trống.");
                 }
+                entity.QuestionSlug = SlugUtil.GenerateSlug(entity.StringContent);
             }
         }
+
+        /// <summary>
+        /// Kiểm tra và đảm bảo các câu hỏi chỉ được lưu vào danh mục cấp lá (không chứa danh mục con)
+        /// </summary>
+        /// <param name="entities">Danh sách câu hỏi cần kiểm tra danh mục</param>
+        private async Task ValidateLeafCategories(List<Question> entities)
+        {
+            var categoryIds = entities
+                .Select(q => q.QuestionCategoryId)
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (categoryIds.Count == 0) return;
+
+            var nullableCategoryIds = categoryIds.Select(id => (Guid?)id).ToList();
+
+            // Tìm xem có danh mục con bất kỳ nào có ParentId nằm trong danh sách categoryIds đang xét hay không
+            var childCategories = await _categoryService.GetByCondition<QuestionCategory>(c => nullableCategoryIds.Contains(c.ParentId) && !c.IsDeleted);
+
+            if (childCategories.Count > 0)
+            {
+                var violatedCategoryIds = childCategories
+                    .Select(c => c.ParentId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var parentCategories = await _categoryService.GetByCondition<QuestionCategory>(c => violatedCategoryIds.Contains(c.QuestionCategoryId));
+                var categoryNames = parentCategories.Select(c => c.QuestionCategoryName).ToList();
+
+                var violatedNames = string.Join(", ", categoryNames);
+                throw new BadRequestException($"Không thể lưu câu hỏi vào danh mục cha (danh mục chứa danh mục con): {violatedNames}. Chỉ được phép lưu câu hỏi vào danh mục cấp lá.");
+            }
+        }
+
         #endregion
+    }
+
+    /// <summary>
+    /// DTO nội bộ dùng để tối ưu hóa truy vấn lấy ID câu hỏi
+    /// </summary>
+    internal class QuestionIdDto
+    {
+        public Guid QuestionId { get; set; }
     }
 }
 

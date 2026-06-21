@@ -1,15 +1,12 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
+using HoangCN.Core.BL.Attributes.AuthAction;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace HoangCN.Core.BL.Base
 {
@@ -25,7 +22,7 @@ namespace HoangCN.Core.BL.Base
         [NonAction]
         public Dictionary<string, AuthActionSettings> GetPolicies()
         {
-            var controllerType = this.GetType();
+            var controllerType = GetType();
             var defaultPolicies = _defaultPoliciesCache.GetOrAdd(controllerType, type =>
             {
                 var policies = new Dictionary<string, AuthActionSettings>();
@@ -72,7 +69,7 @@ namespace HoangCN.Core.BL.Base
         }
     }
 
-    public class CRUDController<TEntity> : BaseController where TEntity : BaseEntity
+    public class CRUDController<TEntity> : BaseController where TEntity : BaseEntity, new()
     {
         protected readonly IBaseBL<TEntity> _baseBL;
 
@@ -109,21 +106,21 @@ namespace HoangCN.Core.BL.Base
         [HttpPost]
         public virtual async Task<IActionResult> Insert([FromBody] List<TEntity> entities)
         {
-            await _baseBL.InsertAsync(entities);
+            await _baseBL.InsertEntities(entities);
             return Ok(ApiResponseDto.Success());
         }
 
         [HttpPut]
         public virtual async Task<IActionResult> Update([FromBody] List<TEntity> entities)
         {
-            await _baseBL.UpdateAsync(entities);
+            await _baseBL.UpdateEntities(entities);
             return Ok(ApiResponseDto.Success());
         }
 
         [HttpPost("delete")]
         public virtual async Task<IActionResult> Delete([FromBody] DeleteRequest request)
         {
-            await _baseBL.DeleteAsync(request);
+            await _baseBL.DeleteEntities(request);
             return Ok(ApiResponseDto.Success());
         }
     }

@@ -27,9 +27,11 @@ namespace HoangCN.Core.DL.Interfaces
         /// <summary>
         /// Lưu danh sách entity tự động đệ quy và đồng bộ khóa ngoại
         /// </summary>
-        Task<List<TEntity>> SaveEntities<TEntity, TParentEntity>(List<TEntity> entities, TParentEntity? parent = null)
-            where TParentEntity : BaseEntity
-            where TEntity : BaseEntity;
+        Task<List<TEntity>> SaveEntities<TEntity>(
+            List<TEntity> entities, 
+            TEntity? parent = null,
+            Action<List<TEntity>>? onRollback = null)
+            where TEntity : BaseEntity, new();
 
         /// <summary>
         /// Cập nhật trạng thái thay đổi của entity trong DbContext (theo dõi hoặc không theo dõi)

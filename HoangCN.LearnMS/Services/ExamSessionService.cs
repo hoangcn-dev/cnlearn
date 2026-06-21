@@ -39,13 +39,13 @@ namespace HoangCN.LearnMS.Services
                 FullscreenExitCount = 0
             };
 
-            await InsertAsync(new List<ExamSession> { session });
+            await InsertEntities(new List<ExamSession> { session });
             return session.SessionId;
         }
 
         public async Task ProcessHeartbeatAsync(Guid sessionId, Guid candidateId, ExamSessionHeartbeatRequest request)
         {
-            var session = await GetById<ExamSession>(sessionId);
+            var session = await GetFirstByCondition<ExamSession>(es => es.SessionId == sessionId);
             if (session == null || session.CandidateId != candidateId)
             {
                 throw new NotFoundException("Không tìm thấy phiên làm bài");
@@ -61,7 +61,7 @@ namespace HoangCN.LearnMS.Services
             {
                 session.Status = ExamSessionStatus.Disconnected;
                 session.IsActive = false;
-                await UpdateAsync(new List<ExamSession> { session });
+                await UpdateEntities(new List<ExamSession> { session });
                 throw new ForbiddenException("Phiên làm bài đã mất kết nối quá thời gian cho phép (1 phút). Hệ thống sẽ tự động nộp bài.");
             }
 
@@ -82,24 +82,24 @@ namespace HoangCN.LearnMS.Services
                         ViolationType = log.ViolationType
                     });
                 }
-                await _cheatLogBL.InsertAsync(newLogs);
+                await _cheatLogBL.InsertEntities(newLogs);
             }
 
             if (session.FullscreenExitCount >= 3)
             {
                 session.Status = ExamSessionStatus.Disqualified;
                 session.IsActive = false;
-                await UpdateAsync(new List<ExamSession> { session });
+                await UpdateEntities(new List<ExamSession> { session });
                 throw new ForbiddenException("Bạn đã thoát toàn màn hình 3 lần. Bài thi bị hủy tự động.");
             }
 
             session.LastHeartbeatAt = now;
-            await UpdateAsync(new List<ExamSession> { session });
+            await UpdateEntities(new List<ExamSession> { session });
         }
 
         public async Task LogCheatAsync(Guid sessionId, Guid candidateId, ExamCheatLogRequest request)
         {
-            var session = await GetById<ExamSession>(sessionId);
+            var session = await GetFirstByCondition<ExamSession>(es => es.SessionId == sessionId);
             if (session == null || session.CandidateId != candidateId)
             {
                 throw new NotFoundException("Không tìm thấy phiên làm bài");
@@ -121,7 +121,7 @@ namespace HoangCN.LearnMS.Services
                 ViolationType = request.ViolationType
             };
 
-            await _cheatLogBL.InsertAsync(new List<ExamCheatLog> { newLog });
+            await _cheatLogBL.InsertEntities(new List<ExamCheatLog> { newLog });
 
             if (session.FullscreenExitCount >= 3)
             {
@@ -129,7 +129,7 @@ namespace HoangCN.LearnMS.Services
                 session.IsActive = false;
             }
 
-            await UpdateAsync(new List<ExamSession> { session });
+            await UpdateEntities(new List<ExamSession> { session });
 
             if (session.Status == ExamSessionStatus.Disqualified)
             {
@@ -139,7 +139,7 @@ namespace HoangCN.LearnMS.Services
 
         public async Task SubmitSessionAsync(Guid sessionId, Guid candidateId)
         {
-            var session = await GetById<ExamSession>(sessionId);
+            var session = await GetFirstByCondition<ExamSession>(es => es.SessionId == sessionId);
             if (session == null || session.CandidateId != candidateId)
             {
                 throw new NotFoundException("Không tìm thấy phiên làm bài");
@@ -149,7 +149,7 @@ namespace HoangCN.LearnMS.Services
             {
                 session.IsActive = false;
                 session.Status = ExamSessionStatus.Submitted;
-                await UpdateAsync(new List<ExamSession> { session });
+                await UpdateEntities(new List<ExamSession> { session });
             }
         }
     }

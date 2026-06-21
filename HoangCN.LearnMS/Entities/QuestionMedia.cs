@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -35,5 +37,19 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Thứ tự hiển thị")]
         public int OrderInList { get; set; } = 0;
+    }
+
+    public class QuestionMediaConfiguration : IEntityTypeConfiguration<QuestionMedia>
+    {
+        public void Configure(EntityTypeBuilder<QuestionMedia> builder)
+        {
+            builder.ToTable("QuestionMedia");
+            builder.HasIndex(qm => qm.QuestionId);
+
+            builder.HasOne<Question>()
+                   .WithMany()
+                   .HasForeignKey(qm => qm.QuestionId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }

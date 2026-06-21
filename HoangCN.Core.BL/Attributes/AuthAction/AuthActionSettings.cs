@@ -1,4 +1,4 @@
-namespace HoangCN.Core.BL.Base
+namespace HoangCN.Core.BL.Attributes.AuthAction
 {
     /// <summary>
     /// Định nghĩa các thiết lập cho các action có trong BaseController

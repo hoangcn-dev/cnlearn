@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -88,5 +90,31 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Thời gian kết thúc")]
         public DateTime? FinishedDate { get; set; }
+    }
+
+    public class ExamAttemptConfiguration : IEntityTypeConfiguration<ExamAttempt>
+    {
+        public void Configure(EntityTypeBuilder<ExamAttempt> builder)
+        {
+            builder.ToTable("ExamAttempt");
+            builder.HasIndex(ea => ea.UserId);
+            builder.HasIndex(ea => ea.ExamId);
+            builder.HasIndex(ea => ea.QuizId);
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(ea => ea.UserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<Exam>()
+                   .WithMany()
+                   .HasForeignKey(ea => ea.ExamId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<Quiz>()
+                   .WithMany()
+                   .HasForeignKey(ea => ea.QuizId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

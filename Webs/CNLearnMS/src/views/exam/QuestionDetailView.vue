@@ -55,6 +55,7 @@
           :question="question"
           :index="1"
           mode="detail"
+          :correct-answer-ids="correctAnswerIds"
         />
       </div>
     </div>
@@ -76,7 +77,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import axios from 'axios'
-import { getQuestionDetails, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
+import { getQuestionDetails, toggleSaveQuestion, getSavedQuestionIds, getQuestionAnswers, getQuestionKeys } from '@/api/questions'
 import QuestionCard from '@/components/QuestionCard.vue'
 
 const route = useRoute()
@@ -135,6 +136,7 @@ interface Question {
 
 const loading = ref(true)
 const question = ref<Question | null>(null)
+const correctAnswerIds = ref<string[]>([])
 
 const loadQuestion = async () => {
   loading.value = true
@@ -142,13 +144,27 @@ const loadQuestion = async () => {
     const res = await getQuestionDetails(questionId)
     if (res && res.isSuccess && res.data) {
       const qData = res.data
+
+      // Gọi tiếp API lấy câu trả lời và keys sau khi lấy câu hỏi thành công
+      const [answersRes, keysRes] = await Promise.all([
+        getQuestionAnswers([questionId]),
+        getQuestionKeys([questionId])
+      ])
+
+      const answersList = (answersRes && answersRes.isSuccess && answersRes.data) ? answersRes.data : []
+      const correctMap = (keysRes && keysRes.isSuccess && keysRes.data?.correctMap) ? keysRes.data.correctMap : {}
+      correctAnswerIds.value = correctMap[questionId] || []
+
       question.value = {
         questionId: qData.questionId,
         stringContent: qData.stringContent || 'Nội dung câu hỏi',
         explaination: qData.explaination || 'Chưa có giải thích chi tiết',
         level: qData.level || 0,
         createdDate: qData.modifiedDate ? new Date(qData.modifiedDate) : new Date(),
-        answers: qData.answers || []
+        answers: answersList.map((a: any) => ({
+          questionAnswerId: a.questionAnswerId,
+          stringContent: a.stringContent
+        }))
       }
     } else {
       question.value = null
