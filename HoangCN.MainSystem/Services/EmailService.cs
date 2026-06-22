@@ -2,12 +2,8 @@ using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace HoangCN.MainSystem.Services
 {

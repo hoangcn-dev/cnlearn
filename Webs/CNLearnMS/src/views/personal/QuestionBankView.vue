@@ -22,7 +22,7 @@
         <!-- Search & Filter -->
         <div class="d-flex gap-2 align-items-center flex-grow-1" style="max-width: 500px;">
           <div class="flex-grow-1" style="max-width: 320px;">
-            <a-input v-model:value="filters.search" placeholder="Tìm kiếm nội dung..." allow-clear>
+            <a-input v-model:value="request.key" placeholder="Tìm kiếm nội dung..." allow-clear>
               <template #prefix>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               </template>
@@ -47,7 +47,7 @@
     <!-- Separate Table Card -->
     <div class="card bg-white mb-5 p-3 pt-0">
       <!-- List Tabs -->
-      <a-tabs v-model:activeKey="listTab" class="custom-list-tabs mb-2">
+      <a-tabs id="question-bank-tabs" v-model:activeKey="listTab" class="custom-list-tabs mb-2">
         <a-tab-pane key="mine" tab="Của tôi" />
         <a-tab-pane key="saved" tab="Đã lưu" />
       </a-tabs>
@@ -57,10 +57,10 @@
         <a-table 
           :columns="columns" 
           :data-source="questions" 
-          row-key="id"
+          row-key="questionId"
           :pagination="{
-            current: currentPage,
-            pageSize: pageSize,
+            current: request.page,
+            pageSize: request.size,
             total: totalItems,
             showSizeChanger: false,
             size: 'small'
@@ -71,22 +71,12 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'stringContent'">
-              <div class="fw-semibold text-dark-blue text-truncate-2" style="max-width: 380px;">
+              <div class="fw-semibold text-dark-blue text-truncate-2 question-title-link" style="cursor: pointer;" @click="goToEditPage(record.questionId)">
                 {{ record.stringContent }}
               </div>
               <div class="text-secondary small mt-1">
-                {{ (record.answers || []).length }} đáp án • Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explanation || 'Không có' }}</span>
+                <span class="fst-italic text-truncate-1 d-inline-block align-middle">{{ record.questionCategoryName || 'Chưa phân loại' }}</span>
               </div>
-            </template>
-
-            <template v-else-if="column.key === 'category'">
-              <span class="badge bg-light text-dark border">{{ getCategoryName(record.questionCategoryId || (record.categoryIds && record.categoryIds[0])) }}</span>
-            </template>
-
-            <template v-else-if="column.key === 'level'">
-              <span :class="getLevelBadgeClass(record.level)">
-                {{ getLevelText(record.level) }}
-              </span>
             </template>
 
             <template v-else-if="column.key === 'actions'">
@@ -97,14 +87,14 @@
                   </button>
                   <template #overlay>
                     <a-menu>
-                      <a-menu-item key="view" @click="viewQuestionDetail(record.id)">
+                      <a-menu-item key="view" @click="viewQuestionDetail(record.questionId)">
                         <span class="d-flex align-items-center gap-2 text-secondary small">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                           Xem chi tiết
                         </span>
                       </a-menu-item>
-                      <a-menu-item key="save-toggle" @click="handleToggleSave(record.id)">
-                        <span v-if="listTab === 'saved' || savedQuestionIdsList.includes(record.id)" class="d-flex align-items-center gap-2 text-secondary small">
+                      <a-menu-item key="save-toggle" @click="handleToggleSave(record.questionId)">
+                        <span v-if="listTab === 'saved' || savedQuestionIdsList.includes(record.questionId)" class="d-flex align-items-center gap-2 text-secondary small">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                           Bỏ lưu câu hỏi
                         </span>
@@ -113,13 +103,13 @@
                           Lưu câu hỏi
                         </span>
                       </a-menu-item>
-                      <a-menu-item key="edit" @click="goToEditPage(record.id)">
+                      <a-menu-item key="edit" @click="goToEditPage(record.questionId)">
                         <span class="d-flex align-items-center gap-2 text-secondary small">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
                           Chỉnh sửa
                         </span>
                       </a-menu-item>
-                      <a-menu-item key="delete" @click="confirmDelete(record.id)">
+                      <a-menu-item key="delete" @click="confirmDelete(record.questionId)">
                         <span class="d-flex align-items-center gap-2 text-secondary small">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                           Xóa câu hỏi
@@ -146,11 +136,14 @@
       <div class="py-2">
         <div class="mb-3">
           <label class="form-label small fw-semibold">Danh mục môn học:</label>
-          <a-select v-model:value="filters.categoryId" style="width: 100%" placeholder="Tất cả môn học" allow-clear>
-            <a-select-option v-for="cat in categories" :key="cat.questionCategoryId" :value="cat.questionCategoryId">
-              {{ cat.name }}
-            </a-select-option>
-          </a-select>
+          <CategorySelect
+            v-model:value="filters.categoryId"
+            :categories="categories"
+            :disable-parents="true"
+            placeholder="Tất cả môn học"
+            class="w-100"
+            show-all-option
+          />
         </div>
         <div class="mb-3">
           <label class="form-label small fw-semibold">Độ khó:</label>
@@ -167,16 +160,10 @@
             <a-select-option :value="1">🌐 Công khai (Public)</a-select-option>
           </a-select>
         </div>
-        <div class="mb-2">
-          <label class="form-label small fw-semibold d-block">Tác giả:</label>
-          <a-radio-group v-model:value="filters.scope" button-style="solid" size="small" class="w-100 d-flex">
-            <a-radio-button value="all" class="flex-grow-1 text-center">Tất cả</a-radio-button>
-            <a-radio-button value="mine" class="flex-grow-1 text-center">Của tôi</a-radio-button>
-          </a-radio-group>
-        </div>
+
         <div class="border-top pt-2 mt-4 d-flex justify-content-between align-items-center">
           <button class="btn btn-link btn-xs text-secondary p-0 text-decoration-none small" @click="resetFilters">Đặt lại bộ lọc</button>
-          <button class="btn btn-indigo text-white btn-sm px-4" @click="filterModalOpen = false">Áp dụng</button>
+          <button class="btn btn-indigo text-white btn-sm px-4" @click="applyFilters">Áp dụng</button>
         </div>
       </div>
     </a-modal>
@@ -184,58 +171,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, getCurrentInstance } from 'vue'
 import { useRouter } from 'vue-router'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
-import { getQuestionsPaging, deleteQuestions, getSavedQuestionsPaging, getDoneQuestionsPaging, toggleSaveQuestion, getSavedQuestionIds } from '@/api/questions'
+import { CategorySelect } from '@/components/category'
+import { getQuestionsPaging, deleteQuestions, getSavedQuestions, toggleSaveQuestion } from '@/api/questions'
+import type { GetRequest, Filter } from '@/models/get-request'
+import { FilterGroupType, FilterOperator, FilterType } from '@/models/get-request'
+import type { QuestionDto } from '@/models/questions'
+import { QuestionLevel } from '@/models/questions'
+import type { QuestionCategory } from '@/models/category'
+import { showDialog } from '@/utils/dialog'
+import { scrollToTop } from '@/utils/scroll'
 
 const router = useRouter()
 
-interface Answer {
-  stringContent: string
-  isCorrectAnswer: boolean
-}
-
-interface Question {
-  id: string
-  slug: string
-  stringContent: string
-  explanation: string
-  level: number
-  type: number
-  accessType: number
-  questionCategoryId?: string
-  categoryIds?: string[]
-  answers: Answer[]
-  isMyCreated?: boolean
-}
-
-interface Category {
-  questionCategoryId: string
-  name: string
-}
-
-// Categories list loaded from API
-const categories = ref<Category[]>([])
-const questions = ref<Question[]>([])
-
-const listTab = ref('mine')
+const categories = ref<QuestionCategory[]>([])
+const questions = ref<QuestionDto[]>([])
+const listTab = ref<'mine'|'saved'>('mine')
 const filterModalOpen = ref(false)
-
-// Pagination state
-const currentPage = ref(1)
-const pageSize = ref(8)
 const totalItems = ref(0)
 const loading = ref(false)
+const savedQuestionIdsList = ref<string[]>([])
 
-// Filters state
+const request = ref<GetRequest>({
+  page: 1,
+  size: 8,
+  isPaging: true,
+  key: "",
+  filters: [],
+  filterGroupType: FilterGroupType.And,
+})
+
 const filters = reactive({
-  search: '',
   categoryId: undefined as string | undefined,
   level: undefined as number | undefined,
-  accessType: undefined as number | undefined,
-  scope: 'all' // all | mine
+  accessType: undefined as number | undefined
 })
 
 const activeFiltersCount = computed(() => {
@@ -243,7 +215,6 @@ const activeFiltersCount = computed(() => {
   if (filters.categoryId !== undefined) count++
   if (filters.level !== undefined) count++
   if (filters.accessType !== undefined) count++
-  if (filters.scope !== 'all') count++
   return count
 })
 
@@ -253,97 +224,77 @@ const resetFilters = () => {
   filters.categoryId = undefined
   filters.level = undefined
   filters.accessType = undefined
-  filters.scope = 'all'
+  applyFilters()
+}
+
+const applyFilters = () => {
+  const apiFilters: Filter[] = []
+  if (filters.categoryId) {
+    apiFilters.push({
+      property: 'QuestionCategoryId',
+      operator: FilterOperator.Equal,
+      value: filters.categoryId,
+      type: FilterType.String
+    })
+  }
+  if (filters.level !== undefined) {
+    apiFilters.push({
+      property: 'Level',
+      operator: FilterOperator.Equal,
+      value: filters.level,
+      type: FilterType.Number
+    })
+  }
+  if (filters.accessType !== undefined) {
+    apiFilters.push({
+      property: 'AccessType',
+      operator: FilterOperator.Equal,
+      value: filters.accessType,
+      type: FilterType.Number
+    })
+  }
+  request.value.filters = apiFilters
+  request.value.page = 1
+  filterModalOpen.value = false
+  fetchQuestions()
 }
 
 // Columns config
 const columns = [
   { title: 'Nội dung câu hỏi', dataIndex: 'stringContent', key: 'stringContent' },
-  { title: 'Danh mục', dataIndex: 'category', key: 'category', width: '260px' },
-  { title: 'Độ khó', dataIndex: 'level', key: 'level', width: '120px' },
   { title: 'Thao tác', key: 'actions', width: '90px' }
 ]
 
-const getCategoryName = (catId?: string) => {
-  if (!catId) return 'Chuyên đề chung'
-  const found = categories.value.find(c => c.questionCategoryId === catId)
-  return found ? found.name : 'Chuyên đề chung'
-}
-
-const getLevelText = (lvl: number) => {
-  if (lvl === 2) return 'Khó'
-  if (lvl === 1) return 'Trung bình'
-  return 'Dễ'
-}
-
-const getLevelBadgeClass = (lvl: number) => {
-  if (lvl === 2) return 'badge bg-danger text-white fs-9 fw-normal'
-  if (lvl === 1) return 'badge bg-warning text-dark fs-9 fw-normal'
-  return 'badge bg-success text-white fs-9 fw-normal'
-}
-
-// API fetch questions
 const fetchQuestions = async () => {
   loading.value = true
   try {
-    const apiFilters: any[] = []
-    let fetchFunc = getQuestionsPaging
+    if (listTab.value === 'saved') {
+      // Bước 1: Tải danh sách ID đã lưu
+      await fetchSavedQuestionIds()
+      
+      if (savedQuestionIdsList.value.length === 0) {
+        questions.value = []
+        totalItems.value = 0
+        return
+      }
 
-    // 1. Tab filtering
-    if (listTab.value === 'mine') {
-      apiFilters.push({
-        property: 'IsMyCreated',
-        operator: 'Equal',
-        value: true,
-        type: 'Bool'
-      })
-    } else if (listTab.value === 'saved') {
-      fetchFunc = getSavedQuestionsPaging
-    } else if (listTab.value === 'done') {
-      fetchFunc = getDoneQuestionsPaging
-    }
-
-    // 2. Extra Filters from modal
-    if (filters.categoryId) {
-      apiFilters.push({
-        property: 'CategoryId',
-        operator: 'Equal',
-        value: filters.categoryId,
-        type: 'String'
-      })
-    }
-    if (filters.level !== undefined) {
-      apiFilters.push({
-        property: 'Level',
-        operator: 'Equal',
-        value: filters.level,
-        type: 'Number'
-      })
-    }
-    if (filters.accessType !== undefined) {
-      apiFilters.push({
-        property: 'AccessType',
-        operator: 'Equal',
-        value: filters.accessType,
-        type: 'Number'
-      })
-    }
-    // (Đã loại bỏ bộ lọc scope === 'mine' vì backend không cho phép truyền userId kiểu text)
-
-    const payload = {
-      page: currentPage.value,
-      size: pageSize.value,
-      key: filters.search || undefined,
-      filters: apiFilters,
-      sortBy: 'CreatedDate',
-      isAsc: false,
-      isPaging: true
-    }
-
-    const res = await fetchFunc(payload)
-    if (res && res.isSuccess && res.data) {
-      questions.value = res.data.items || []
-      totalItems.value = res.data.total || 0
+      // Bước 2: Gọi API phân trang với Ids câu hỏi đã lưu
+      const requestCopy = {
+        ...request.value,
+        ids: savedQuestionIdsList.value
+      }
+      const res = await getQuestionsPaging(requestCopy, false)
+      if (res && res.isSuccess && res.data) {
+        questions.value = res.data.items || []
+        totalItems.value = res.data.total || 0
+      }
+    } else {
+      request.value.ids = []
+      const res = await getQuestionsPaging(request.value, true)
+      if (res && res.isSuccess && res.data) {
+        questions.value = res.data.items || []
+        totalItems.value = res.data.total || 0
+      }
     }
   } catch (error) {
     console.error('Lỗi tải danh sách câu hỏi:', error)
@@ -352,44 +303,75 @@ const fetchQuestions = async () => {
   }
 }
 
-// Table change handler for paging
 const handleTableChange = (pagination: any) => {
-  currentPage.value = pagination.current
+  request.value.page = pagination.current
   fetchQuestions()
+  scrollToTop('#question-bank-tabs')
 }
 
-// Debounce helper
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
-  return function (this: any, ...args: Parameters<T>) {
-    if (timeoutId) clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => {
-      fn.apply(this, args)
-    }, delay)
+const fetchCategories = async () => {
+  try {
+    const res = await getAllCate()
+    if (res && res.isSuccess && res.data) {
+      categories.value = res.data.items || []
+    }
+  } catch (err) {
+    console.error(err)
   }
 }
 
-const debouncedFetch = debounce(() => {
-  currentPage.value = 1
-  fetchQuestions()
-}, 300)
+const fetchSavedQuestionIds = async () => {
+  try {
+    const res = await getSavedQuestions()
+    if (res && res.isSuccess && res.data) {
+      savedQuestionIdsList.value = (res.data || []).map((q: any) => q.targetId)
+    }
+  } catch (err) {
+    console.error('Lỗi lấy danh sách ID đã lưu:', err)
+  }
+}
 
-// Watchers for search & filters
-watch(() => filters.search, () => {
-  debouncedFetch()
-})
+const handleToggleSave = async (id: string) => {
+  try {
+    const isCurrentlySaved = savedQuestionIdsList.value.includes(id)
+    const res = await toggleSaveQuestion({
+      TargetId: id,
+      IsSaved: !isCurrentlySaved
+    })
+    if (res && res.isSuccess) {
+      if (!isCurrentlySaved) {
+        message.success('Đã lưu câu hỏi thành công!')
+        savedQuestionIdsList.value.push(id)
+      } else {
+        message.success('Đã bỏ lưu câu hỏi!')
+        savedQuestionIdsList.value = savedQuestionIdsList.value.filter(x => x !== id)
+        if (listTab.value === 'saved') {
+          fetchQuestions()
+        }
+      }
+    } else {
+      message.error(res.errorMessage || 'Thao tác thất bại')
+    }
+  } catch (err) {
+    console.error('Lỗi khi lưu/bỏ lưu câu hỏi:', err)
+    message.error('Đã xảy ra lỗi khi thực hiện thao tác')
+  }
+}
 
-watch(() => [filters.categoryId, filters.level, filters.accessType, filters.scope], () => {
-  currentPage.value = 1
-  fetchQuestions()
+let timeoutId: any = null
+watch(() => request.value.key, () => {
+  if (timeoutId) clearTimeout(timeoutId)
+  timeoutId = setTimeout(() => {
+    request.value.page = 1
+    fetchQuestions()
+  }, 300)
 })
 
 watch(listTab, () => {
-  currentPage.value = 1
+  request.value.page = 1
   fetchQuestions()
 })
 
-// Routing
 const goToCreatePage = () => {
   router.push('/personal/questions/create')
 }
@@ -402,20 +384,23 @@ const viewQuestionDetail = (id: string) => {
   router.push(`/question/${id}`)
 }
 
-// Actions
+const instance = getCurrentInstance()
+const appContext = instance?.appContext
+
 const confirmDelete = (id: string) => {
-  Modal.confirm({
+  showDialog({
     title: 'Xác nhận xóa câu hỏi',
     content: 'Bạn có chắc chắn muốn xóa câu hỏi này khỏi Ngân hàng câu hỏi?',
     okText: 'Xóa câu hỏi',
-    okType: 'danger',
     cancelText: 'Hủy bỏ',
-    async onOk() {
+    buttonType: 'danger',
+    appContext,
+    onOk: async () => {
       try {
         const res = await deleteQuestions([id])
         if (res && res.isSuccess) {
           message.success('Đã xóa câu hỏi thành công!')
-          fetchQuestions()
+          await fetchQuestions()
         } else {
           message.error(res.errorMessage || 'Xóa câu hỏi thất bại')
         }
@@ -426,61 +411,16 @@ const confirmDelete = (id: string) => {
   })
 }
 
-// Categories load
-const fetchCategories = async () => {
-  try {
-    const res = await getAllCate()
-    if (res && res.isSuccess && res.data) {
-      categories.value = res.data.items || []
-    }
-  } catch (error) {
-    console.error('Lỗi tải danh mục:', error)
-  }
-}
-
-const savedQuestionIdsList = ref<string[]>([])
-
-const fetchSavedQuestionIds = async () => {
-  try {
-    const res = await getSavedQuestionIds()
-    if (res && res.isSuccess && res.data) {
-      savedQuestionIdsList.value = res.data
-    }
-  } catch (e) {
-    console.error('Lỗi tải danh sách ID đã lưu:', e)
-  }
-}
-
-const handleToggleSave = async (id: string) => {
-  try {
-    const res = await toggleSaveQuestion(id)
-    if (res && res.isSuccess) {
-      const isSaved = res.data
-      if (isSaved) {
-        message.success('Đã lưu câu hỏi thành công!')
-        if (!savedQuestionIdsList.value.includes(id)) {
-          savedQuestionIdsList.value.push(id)
-        }
-      } else {
-        message.success('Đã bỏ lưu câu hỏi thành công!')
-        savedQuestionIdsList.value = savedQuestionIdsList.value.filter(savedId => savedId !== id)
-        if (listTab.value === 'saved') {
-          questions.value = questions.value.filter(q => q.id !== id)
-          totalItems.value = Math.max(0, totalItems.value - 1)
-        }
-      }
-    } else {
-      message.error(res.errorMessage || 'Lỗi khi thực hiện thao tác')
-    }
-  } catch (error) {
-    message.error('Không thể thực hiện tác vụ lưu câu hỏi')
-  }
-}
+// onMounted(async () => {
+//   await fetchCategories()
+//   await fetchSavedQuestionIds()
+//   await fetchQuestions()
+// })
 
 onMounted(async () => {
-  await fetchCategories()
-  await fetchSavedQuestionIds()
-  await fetchQuestions()
+  fetchCategories()
+  fetchSavedQuestionIds()
+  fetchQuestions()
 })
 </script>
 
@@ -589,5 +529,14 @@ onMounted(async () => {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+.question-title-link {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.question-title-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
 }
 </style>

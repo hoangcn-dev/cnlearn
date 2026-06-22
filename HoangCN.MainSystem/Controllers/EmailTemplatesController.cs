@@ -1,10 +1,9 @@
-﻿using HoangCN.Core.Common.Model.DTOs;
-using HoangCN.MainSystem.Interfaces;
+using HoangCN.Core.BL.Attributes.AuthAction;
+using HoangCN.Core.BL.Base;
+using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.Common.Enums;
 using HoangCN.MainSystem.Entities;
-using HoangCN.MainSystem.Enums;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace HoangCN.MainSystem.Controllers
 {
@@ -13,44 +12,20 @@ namespace HoangCN.MainSystem.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = nameof(RoleNames.Admin))]
-    public class EmailTemplatesController : ControllerBase
+    public class EmailTemplatesController : CRUDController<EmailTemplate>
     {
-        private readonly IEmailTemplateService _emailTemplateService;
-
-        public EmailTemplatesController(IEmailTemplateService emailTemplateService)
+        public EmailTemplatesController(IBaseBL<EmailTemplate> baseBL) : base(baseBL)
         {
-            _emailTemplateService = emailTemplateService;
         }
 
-        /// <summary>
-        /// Lấy tất cả danh sách các mẫu template email hiện có
-        /// </summary>
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+        protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
         {
-            var templates = await _emailTemplateService.GetAllTemplatesAsync();
-            return Ok(ApiResponseDto.Success(templates));
-        }
-
-        /// <summary>
-        /// Lấy chi tiết một mẫu template theo mã code
-        /// </summary>
-        [HttpGet("{code}")]
-        public async Task<IActionResult> GetByCode(string code)
-        {
-            var template = await _emailTemplateService.GetTemplateAsync(code);
-            return Ok(ApiResponseDto.Success(template));
-        }
-
-        /// <summary>
-        /// Thêm mới hoặc cập nhật thông tin mẫu template email
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> Save([FromBody] EmailTemplate template)
-        {
-            await _emailTemplateService.SaveTemplateAsync(template);
-            return Ok(ApiResponseDto.Success("Lưu mẫu email thành công."));
+            builder.Protect(nameof(GetAll), nameof(RoleNames.Admin));
+            builder.Protect(nameof(GetById), nameof(RoleNames.Admin));
+            builder.Protect(nameof(GetPaging), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Insert), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Update), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Delete), nameof(RoleNames.Admin));
         }
     }
 }

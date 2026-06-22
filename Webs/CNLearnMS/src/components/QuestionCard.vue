@@ -72,7 +72,7 @@
             <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
               <!-- Result / Revealed Correct Answer -->
               <a-tag 
-                v-if="shouldShowCorrectAnswers && ans.isCorrectAnswer" 
+                v-if="shouldShowCorrectAnswers && isAnsCorrect(ans)" 
                 color="success" 
                 class="m-0 fs-9"
               >
@@ -81,7 +81,7 @@
               
               <!-- Result / Revealed Incorrect User Selection -->
               <a-tag 
-                v-if="shouldShowIncorrectSelections && isAnsChosen(ans, aIdx) && !ans.isCorrectAnswer" 
+                v-if="shouldShowIncorrectSelections && isAnsChosen(ans, aIdx) && !isAnsCorrect(ans)" 
                 color="error" 
                 class="m-0 fs-9"
               >
@@ -90,7 +90,7 @@
 
               <!-- Result / Correct User Selection (just mark "Bạn chọn" since correct answer is already shown) -->
               <a-tag 
-                v-if="mode === 'result' && isAnsChosen(ans, aIdx) && ans.isCorrectAnswer" 
+                v-if="mode === 'result' && isAnsChosen(ans, aIdx) && isAnsCorrect(ans)" 
                 color="blue" 
                 class="m-0 fs-9"
               >
@@ -121,26 +121,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import FormulaRenderer from './formula-editor/FormulaRenderer.vue'
+import type { Question as BaseQuestion, QuestionAnswer } from '@/models/questions'
 
-interface Answer {
+interface Answer extends Partial<QuestionAnswer> {
   id?: string
-  questionAnswerId?: string
   stringContent: string
-  isCorrectAnswer?: boolean
   indexChar?: string
 }
 
-interface Question {
-  id?: string
-  questionId?: string
-  stringContent: string
-  explaination?: string
-  explanation?: string
-  level?: number
-  type?: number
+interface Question extends Omit<Partial<BaseQuestion>, 'answers'> {
   answers: Answer[]
   chosenAnswerIds?: string[]
   isConfirmed?: boolean
+  explanation?: string
 }
 
 interface Props {
@@ -150,12 +143,14 @@ interface Props {
   showResultInstant?: boolean
   // Specifically for result mode which maps chosen answers by indexes:
   chosenAnswerIndexes?: number[]
+  correctAnswerIds?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   mode: 'practice',
   showResultInstant: false,
-  chosenAnswerIndexes: () => []
+  chosenAnswerIndexes: () => [],
+  correctAnswerIds: () => []
 })
 
 const emit = defineEmits<{
@@ -211,7 +206,7 @@ const isCorrectResult = computed(() => {
   if (props.mode !== 'result') return false
   
   const correctIndexes = props.question.answers
-    .map((ans, idx) => (ans.isCorrectAnswer ? idx : -1))
+    .map((ans, idx) => (isAnsCorrect(ans) ? idx : -1))
     .filter(idx => idx !== -1)
   
   const chosen = props.chosenAnswerIndexes || []
@@ -248,15 +243,20 @@ const getIndexChar = (ans: Answer, aIdx: number): string => {
   return String.fromCharCode(65 + aIdx)
 }
 
+const isAnsCorrect = (ans: Answer): boolean => {
+  const ansId = ans.id || ans.questionAnswerId
+  return !!(ans.isCorrectAnswer || (props.correctAnswerIds && ansId && props.correctAnswerIds.includes(ansId)))
+}
+
 // Get styles/classes for option boxes
 const getOptionBoxClass = (ans: Answer, aIdx: number) => {
   const chosen = isAnsChosen(ans, aIdx)
   
   if (isConfirmedOrResult.value) {
-    if (ans.isCorrectAnswer) {
+    if (isAnsCorrect(ans)) {
       return 'border-success bg-success-soft text-success fw-semibold shadow-sm'
     }
-    if (chosen && !ans.isCorrectAnswer) {
+    if (chosen && !isAnsCorrect(ans)) {
       return 'border-danger bg-danger-soft text-danger fw-semibold shadow-sm'
     }
     return 'border-light bg-light text-secondary opacity-75'

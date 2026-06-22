@@ -19,6 +19,7 @@ message.config({
 
 let lastErrorMessage = "";
 let lastErrorTime = 0;
+let lastTabOpenTime = 0;
 
 /**
  * Trích xuất thông tin thông báo lỗi chuẩn hóa từ API response hoặc Axios error
@@ -47,6 +48,19 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error: any) => {
+    // Xử lý tự động mở tab login khi gặp lỗi 401
+    if (error.response?.status === 401) {
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/auth') && !currentPath.includes('/login-success')) {
+        const now = Date.now();
+        if (now - lastTabOpenTime > 5000) {
+          lastTabOpenTime = now;
+          const loginUrl = `${window.location.origin}/auth?return_url=${encodeURIComponent('/login-success')}`;
+          window.open(loginUrl, '_blank');
+        }
+      }
+    }
+
     const msg = getErrorMessage(error);
     
     // Chỉ hiển thị toast lỗi nếu không phải là endpoint kiểm tra auth

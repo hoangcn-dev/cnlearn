@@ -1,12 +1,9 @@
 using HoangCN.Core.Common.Exceptions;
-using HoangCN.LearnMS.DTOs.Attempts;
-using HoangCN.LearnMS.Entities;
+using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.LearnMS.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Controllers
 {
@@ -22,97 +19,44 @@ namespace HoangCN.LearnMS.Controllers
             _attemptService = attemptService;
         }
 
-        [HttpPost("submit")]
-        public async Task<IActionResult> SubmitAttempt([FromBody] ExamAttemptSubmitDto submitDto)
-        {
-            try
-            {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
-                {
-                    throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
-                }
+        //[HttpPost("submit")]
+        //public async Task<IActionResult> SubmitAttempt([FromBody] ExamAttemptSubmitDto submitDto)
+        //{
+        //    var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
+        //    {
+        //        throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        //    }
 
-                var result = await _attemptService.SubmitAttemptAsync(userId, submitDto);
-                
-                return Ok(new
-                {
-                    IsSuccess = true,
-                    Data = result
-                });
-            }
-            catch (UnauthorizedException ex)
-            {
-                return StatusCode(401, new
-                {
-                    IsSuccess = false,
-                    ErrorMessage = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Lỗi khi nộp bài: " + ex.Message
-                });
-            }
-        }
+        //    var result = await _attemptService.SubmitAttemptAsync(userId, submitDto);
+            
+        //    return Ok(ApiResponseDto.Success(result));
+        //}
 
-        [HttpGet("history/exams")]
-        public async Task<IActionResult> GetExamHistory([FromQuery] int page = 1, [FromQuery] int size = 10)
-        {
-            try
-            {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
-                {
-                    throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
-                }
+        //[HttpGet("history/exams")]
+        //public async Task<IActionResult> GetExamHistory([FromQuery] int page = 1, [FromQuery] int size = 10)
+        //{
+        //    var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
+        //    {
+        //        throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        //    }
 
-                var result = await _attemptService.GetExamAttemptHistoryAsync(userId, page, size);
-                return Ok(new
-                {
-                    IsSuccess = true,
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Lỗi khi lấy lịch sử bài thi: " + ex.Message
-                });
-            }
-        }
+        //    var result = await _attemptService.GetExamAttemptHistoryAsync(userId, page, size);
+        //    return Ok(ApiResponseDto.Success(result));
+        //}
 
-        [HttpGet("history/questions")]
-        public async Task<IActionResult> GetQuestionHistory([FromQuery] int page = 1, [FromQuery] int size = 10)
-        {
-            try
-            {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
-                {
-                    throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
-                }
+        //[HttpGet("history/questions")]
+        //public async Task<IActionResult> GetQuestionHistory([FromQuery] int page = 1, [FromQuery] int size = 10)
+        //{
+        //    var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out Guid userId))
+        //    {
+        //        throw new UnauthorizedException("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+        //    }
 
-                var result = await _attemptService.GetQuestionAttemptHistoryAsync(userId, page, size);
-                return Ok(new
-                {
-                    IsSuccess = true,
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Lỗi khi lấy lịch sử câu hỏi: " + ex.Message
-                });
-            }
-        }
+        //    var result = await _attemptService.GetQuestionAttemptHistoryAsync(userId, page, size);
+        //    return Ok(ApiResponseDto.Success(result));
+        //}
     }
 }

@@ -1,21 +1,19 @@
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.Core.BL.Utils;
-using HoangCN.Core.Common.Exceptions;
-using HoangCN.MainSystem.Entities;
-using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
+using HoangCN.Core.DL.Utils;
 using HoangCN.MainSystem.DTOs;
-using HoangCN.MainSystem.Enums;
+using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Interfaces;
+using HoangCN.MainSystem.Models;
 using HoangCN.MainSystem.Requests;
 using HoangCN.MainSystem.Utils;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
 using Microsoft.Extensions.Options;
-using HoangCN.MainSystem.Models;
-using HoangCN.Core.Common.Utils;
+using System.Security.Claims;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -109,7 +107,7 @@ namespace HoangCN.MainSystem.Services
             };
 
             // 4. Lưu xuống cơ sở dữ liệu
-            await InsertAsync(new List<User> { user });
+            await InsertEntities([user]);
         }
 
         /// <summary>
@@ -164,13 +162,9 @@ namespace HoangCN.MainSystem.Services
                 AvatarImageFileId = userAuth.AvatarImageFileId,
                 RoleId = userAuth.RoleId,
                 LastLogin = DateTime.UtcNow,
-                CreatedBy = userAuth.CreatedBy,
-                CreatedDate = userAuth.CreatedDate,
-                ModifiedBy = userAuth.ModifiedBy,
-                ModifiedDate = DateTime.UtcNow
             };
             
-            await UpdateAsync([user]);
+            await _baseWriteDL.SaveEntities([user]);
 
             // Sinh JWT Token bằng cách khởi tạo Role inline từ RoleName có sẵn trong DTO
             var role = new Role { RoleName = userAuth.RoleName };
@@ -293,7 +287,7 @@ namespace HoangCN.MainSystem.Services
             user.ModifiedDate = DateTime.UtcNow;
 
             // Lưu thay đổi vào DB
-            await UpdateAsync([ user ]);
+            await UpdateEntities([ user ]);
 
             // Nếu đã sử dụng mật khẩu tạm thời thành công để đổi sang mật khẩu chính thức, xóa mật khẩu tạm thời khỏi Redis
             if (isTempPasswordUsed)
@@ -306,18 +300,18 @@ namespace HoangCN.MainSystem.Services
         /// <summary>
         /// Tiền xử lý trước khi thêm mới (Tự sinh mã tài khoản và mã hóa mật khẩu cho tài khoản mới)
         /// </summary>
-        protected override async Task BeforeInsert(List<User> entities)
+        protected override async Task HandleBeforeInsert(List<User> entities)
         {
-            await base.BeforeInsert(entities);
+            await base.HandleBeforeUpdate(entities);
 
             // Truy vấn lấy thông tin Role Admin từ database
-            var adminRoles = await _roleBL.GetByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString());
-            var adminRole = adminRoles.FirstOrDefault();
+            var adminRole = await _roleBL.GetFirstByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString())
+                ?? throw new ServerErrorException("Dữ liệu vai trò đang bị lỗi");
 
             foreach (var user in entities)
             {
-                // Chặn tạo tài khoản mới gán vai trò Admin
-                if (adminRole != null && user.RoleId == adminRole.RoleId)
+                // Chặn tạo tài khoản mới gán vai trò Admin (chỉ áp dụng đối với các request gọi từ API)
+                if (user.RoleId == adminRole.RoleId)
                 {
                     throw new BadRequestException("Không được phép tạo tài khoản với quyền Admin.");
                 }
@@ -341,43 +335,36 @@ namespace HoangCN.MainSystem.Services
         /// <summary>
         /// Tiền xử lý trước khi cập nhật
         /// </summary>
-        protected override async Task BeforeUpdate(List<User> entities)
+        protected override async Task HandleBeforeUpdate(List<User> entities)
         {
-            await base.BeforeUpdate(entities);
+            await base.HandleBeforeUpdate(entities);
+
+            // Chỉ admin mới được phép cập nhật user
+            var requestUserRole = ClaimUtil.GetRoleName(_accesstor?.HttpContext?.User);
+            if (requestUserRole != RoleNames.Admin.ToString())
+            {
+                throw new ForbiddenException("Bạn không có quyền thực hiện thức năng này");
+            }
+            var adminId = ClaimUtil.GetUserId(_accesstor?.HttpContext?.User);
 
             // Truy vấn lấy thông tin Role Admin từ database
-            var adminRoles = await _roleBL.GetByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString());
-            var adminRole = adminRoles.FirstOrDefault();
+            var adminRole = await _roleBL.GetFirstByCondition<Role>(r => r.RoleName == RoleNames.Admin.ToString())
+                ?? throw new ServerErrorException("Dữ liệu vai trò đang bị lỗi");
 
-            if (entities.Count > 0)
+            foreach (var user in entities)
             {
-                var userIds = entities.Select(u => u.UserId).ToList();
-                var dbUsersResult = await Get<User>(new GetRequest { Ids = userIds, IsPaging = false });
-                var dbUserMap = dbUsersResult.Items.ToDictionary(u => u.UserId);
+                // Không thay đổi được mật khẩu trong bất cứ trường hợp nào khác cập nhật bằng ChangePassword
+                _baseWriteDL.SetChanged(user, u => u.Password, false);
+                _baseWriteDL.SetChanged(user, u => u.PasswordSalt, false);
 
-                // Lấy ID tài khoản người dùng hiện tại đang đăng nhập
-                var currentUserIdStr = _accesstor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                Guid.TryParse(currentUserIdStr, out Guid currentUserId);
-
-                foreach (var user in entities)
+                // Ràng buộc bảo vệ tài khoản admin
+                if (user.UserId != adminId && user.RoleId == adminRole.RoleId)
                 {
-                    if (dbUserMap.TryGetValue(user.UserId, out var dbUser))
-                    {
-                        // 1. Chặn nâng cấp tài khoản thường lên Admin
-                        if (adminRole != null && user.RoleId == adminRole.RoleId && dbUser.RoleId != adminRole.RoleId)
-                        {
-                            throw new BadRequestException("Không được phép nâng cấp tài khoản lên quyền Admin.");
-                        }
-
-                        // 2. Chặn tài khoản admin tự sửa đổi vai trò của chính mình
-                        if (currentUserId != Guid.Empty && user.UserId == currentUserId && adminRole != null && dbUser.RoleId == adminRole.RoleId)
-                        {
-                            if (dbUser.RoleId != user.RoleId)
-                            {
-                                throw new BadRequestException("Tài khoản Admin không được phép tự thay đổi vai trò của chính mình.");
-                            }
-                        }
-                    }
+                    throw new BadRequestException("Không được phép cập nhật quyền của tài khoản lên admin");
+                }
+                if (user.UserId == adminId && user.RoleId != adminRole.RoleId)
+                {
+                    throw new BadRequestException("Không được phép cập nhật quyền của tài khoản admin");
                 }
             }
         }
@@ -402,15 +389,6 @@ namespace HoangCN.MainSystem.Services
                 });
             }
             await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Kiểm tra xác thực và lấy UserId từ ClaimsPrincipal
-        /// </summary>
-        public async Task<Guid> CheckAuth(ClaimsPrincipal principal)
-        {
-            var userId = ClaimUtil.GetUserId(principal);
-            return await Task.FromResult(userId ?? throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện chức năng này"));
         }
     }
 }

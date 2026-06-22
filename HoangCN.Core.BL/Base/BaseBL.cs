@@ -1,13 +1,14 @@
 using Dapper;
 using HoangCN.Core.BL.Interfaces;
-using HoangCN.Core.BL.Metadata;
 using HoangCN.Core.BL.Utils;
 using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.Common.Metadata;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Utils;
 using HoangCN.Core.DL.Interfaces;
+using HoangCN.Core.DL.Utils;
 using Microsoft.AspNetCore.Http;
 using System.Linq.Expressions;
 
@@ -16,7 +17,7 @@ namespace HoangCN.Core.BL.Base
     /// <summary>
     /// Lớp triển khai cho giao diện cơ sở tầng nghiệp vụ sử dụng kết hợp EF Core và Dapper
     /// </summary>
-    public class BaseBL<TEntity> : IBaseBL<TEntity> where TEntity : BaseEntity
+    public class BaseBL<TEntity> : IBaseBL<TEntity> where TEntity : BaseEntity, new()
     {
         protected readonly IBaseReadDL _baseReadDL;
         protected readonly IBaseWriteDL _baseWriteDL;
@@ -33,40 +34,132 @@ namespace HoangCN.Core.BL.Base
         }
 
         /// <summary>
-        /// Xóa nhiều đối tượng thông qua danh sách ID
+        /// Thêm mới danh sách entity tự động đệ quy
         /// </summary>
-        public virtual async Task DeleteAsync(DeleteRequest request)
+        public async Task InsertEntities(List<TEntity> handingEntities)
         {
-            var res = await Get<TEntity>(new GetRequest { Ids = request.Ids });
-            if (res.Items.Count == 0)
-            {
-                return;
-            }
+            await HandleBeforeInsert(handingEntities);
+            ValidateUtil.CommonValidate(handingEntities);
+            var changedEntities = await _baseWriteDL.SaveEntities(handingEntities);
+            await HandleAfterInsert(changedEntities);
+        }
 
+        /// <summary>
+        /// Cập nhật danh sách entity tự động đệ quy và đồng bộ khóa ngoại
+        /// </summary>
+        public async Task UpdateEntities(List<TEntity> entities)
+        {
+            await HandleBeforeUpdate(entities);
+            ValidateUtil.CommonValidate(entities);
+            var changedEntities = await _baseWriteDL.SaveEntities(entities);
+            await HandleAfterUpdate(changedEntities);
+        }
 
-            await _baseWriteDL.BeginTransactionAsync();
-            try
+        /// <summary>
+        /// Xóa danh sách thực thể
+        /// </summary>
+        public async Task DeleteEntities(DeleteRequest request)
+        {
+            List<TEntity> entityWrappers = [];
+            entityWrappers.AddRange(request.Ids.Select(id =>
             {
-                await _baseWriteDL.DeleteRangeAsync(res.Items);
-                await AfterDelete(res.Items);
-                await _baseWriteDL.CommitTransactionAsync();
-            }
-            catch
-            {
-                await _baseWriteDL.RollbackTransactionAsync();
-                throw;
-            }
+                var entity = new TEntity
+                {
+                    State = ModalState.Delete
+                };
+                entity.SetValueByPropName($"{typeof(TEntity).Name}Id", id);
+
+                return entity;
+            }));
+            await HandleBeforeDelete(entityWrappers);
+            var changedEntities = await _baseWriteDL.SaveEntities(entityWrappers);
+            await HandleAfterDelete(changedEntities);
+        }
+
+        /// <summary>
+        /// Xử lý sau khi xóa
+        /// </summary>
+        protected virtual async Task HandleAfterDelete(List<TEntity> changedEntities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý trước khi xóa
+        /// </summary>
+        protected virtual async Task HandleBeforeDelete(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý khi xóa bị lỗi
+        /// </summary>
+        protected virtual async Task HandleOnDeleteFail(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý sau khi thêm mới
+        /// </summary>
+        protected virtual async Task HandleAfterInsert(List<TEntity> changedEntities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý trước khi thêm mới
+        /// </summary>
+        protected virtual async Task HandleBeforeInsert(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý khi thêm mới thất bại
+        /// </summary>
+        protected virtual async Task HandleInsertFail(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý sau khi cập nhật
+        /// </summary>
+        protected virtual async Task HandleAfterUpdate(List<TEntity> changedEntities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý trước khi cập nhật
+        /// </summary>
+        protected virtual async Task HandleBeforeUpdate(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Xử lý khi cập nhật thất bại
+        /// </summary>
+        protected virtual async Task HandleUpdateFail(List<TEntity> entities)
+        {
+            await Task.CompletedTask;
         }
 
         /// <summary>
         /// Lấy danh sách đối tượng sử dụng Dapper (Read DB)
         /// </summary>
-        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request)
+        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null)
         {
             var parameters = new DynamicParameters();
             var mainTableName = typeof(TEntity).Name;
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters);
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(
+                request, 
+                parameters,
+                condition != null? ExpressionToFilterTranslator.Translate(condition) : null);
             var sortClause = BuildSQLUtil.BuildSortClaude<TEntity>(request);
 
             var result = new ResultDto<TResult>();
@@ -74,7 +167,7 @@ namespace HoangCN.Core.BL.Base
             if (request.IsPaging)
             {
                 // 1. Tính tổng số dòng (COUNT) sử dụng Dapper
-                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {whereClause}";
+                var countSql = $"SELECT COUNT(*) {BuildSQLUtil.BuildFromClaude<TEntity, TResult>()} {whereClause}";
                 var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
                 result.Total = totalCount;
                 result.Page = request.Page ?? 1;
@@ -98,210 +191,73 @@ namespace HoangCN.Core.BL.Base
             return result;
         }
 
+        
         /// <summary>
-        /// Lấy danh sách đối tượng sử dụng Dapper (Read DB) kèm điều kiện Expression
-        /// </summary>
-        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>> condition)
-        {
-            var parameters = new DynamicParameters();
-            var mainTableName = typeof(TEntity).Name;
-            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity>(request, parameters);
-            var sortClause = BuildSQLUtil.BuildSortClaude<TEntity>(request);
-
-            // Dịch Expression thành SQL và gộp tham số
-            var exprWhere = BuildSQLUtil.BuildWhereClauseFromExpression<TEntity>(condition, out var exprParams);
-            if (exprParams != null)
-            {
-                parameters.AddDynamicParams(exprParams);
-            }
-
-            // Gộp 2 điều kiện WHERE
-            var finalWhereClause = "";
-            if (!string.IsNullOrWhiteSpace(whereClause) && !string.IsNullOrWhiteSpace(exprWhere))
-            {
-                // Gộp AND (cắt bỏ từ khóa 'WHERE ' ở đầu exprWhere)
-                finalWhereClause = whereClause + " AND " + exprWhere.Substring(6);
-            }
-            else if (!string.IsNullOrWhiteSpace(whereClause))
-            {
-                finalWhereClause = whereClause;
-            }
-            else if (!string.IsNullOrWhiteSpace(exprWhere))
-            {
-                finalWhereClause = exprWhere;
-            }
-
-            var result = new ResultDto<TResult>();
-
-            if (request.IsPaging)
-            {
-                // 1. Tính tổng số dòng (COUNT) sử dụng Dapper
-                var countSql = $"SELECT COUNT(*) FROM `{mainTableName}` {finalWhereClause}";
-                var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
-                result.Total = totalCount;
-                result.Page = request.Page ?? 1;
-                result.Size = request.Size ?? 10;
-
-                // 2. Lấy danh sách phần tử (PAGING) sử dụng Dapper
-                var pagingSql = $"{selectFromSql} {finalWhereClause} {sortClause}" + BuildSQLUtil.BuildPagingClaude(result.Page, result.Size, parameters);
-                var items = await _baseReadDL.ExecuteQueryText<TResult>(pagingSql, parameters);
-                result.Items = items.ToList();
-            }
-            else
-            {
-                var sql = $"{selectFromSql} {finalWhereClause} {sortClause}";
-                var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);
-                result.Items = items.ToList();
-                result.Total = result.Items.Count;
-                result.Page = 1;
-                result.Size = result.Total > 0 ? result.Total : 1;
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Lấy chi tiết đối tượng theo ID sử dụng Dapper
+        /// Lấy chi tiết đối tượng theo ID sử dụng Dapper tối ưu hóa
         /// </summary>
         public async Task<TResult?> GetById<TResult>(Guid id)
         {
-            var request = GetRequest.GetByIdRequest(id);
-            var res = await Get<TResult>(request);
-            if (res != null && res.Items.Count > 0)
-            {
-                return res.Items[0];
-            }
-            return default;
-        }
-
-        /// <summary>
-        /// Thêm mới danh sách thực thể
-        /// </summary>
-        public virtual async Task InsertAsync(List<TEntity> entities)
-        {
-            if (entities == null || entities.Count == 0)
-            {
-                throw new BadRequestException("Dữ liệu trống hoặc sai định dạng");
-            }
-
-            await BeforeInsert(entities);
-            ValidateUtil.CommonValidate(entities);
-            await ValidateUtil.CheckExist(entities, _baseReadDL);
-
-            await _baseWriteDL.BeginTransactionAsync();
-            try
-            {
-                await _baseWriteDL.InsertRangeAsync(entities);
-                await AfterSave(entities);
-                await _baseWriteDL.CommitTransactionAsync();
-            }
-            catch
-            {
-                await _baseWriteDL.RollbackTransactionAsync();
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Cập nhật danh sách thực thể
-        /// </summary>
-        public virtual async Task UpdateAsync(List<TEntity> entities)
-        {
-            if (entities == null || entities.Count == 0)
-            {
-                throw new BadRequestException("Dữ liệu trống hoặc sai định dạng");
-            }
-
-            await BeforeUpdate(entities);
-            ValidateUtil.CommonValidate(entities);
-            await ValidateUtil.ValidatePkExists(entities, _baseReadDL);
-            await ValidateUtil.CheckExist(entities, _baseReadDL);
-
-            await _baseWriteDL.BeginTransactionAsync();
-            try
-            {
-                await _baseWriteDL.UpdateRangeAsync(entities);
-                await AfterSave(entities);
-                await _baseWriteDL.CommitTransactionAsync();
-            }
-            catch
-            {
-                await _baseWriteDL.RollbackTransactionAsync();
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Hàm hậu xử lý trước khi xóa
-        /// </summary>
-        protected virtual async Task AfterDelete(List<TEntity> entities)
-        {
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Hậu xử lý sau khi lưu thành công đối tượng
-        /// </summary>
-        protected virtual async Task AfterSave(List<TEntity> entities)
-        {
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Tiền xử lý trước khi thêm mới (tự động gán PK và thông tin Audit)
-        /// </summary>
-        protected virtual async Task BeforeInsert(List<TEntity> entities)
-        {
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
             var pkPropName = metadata.PrimaryKeyName;
-            var pkProp = metadata.Properties.FirstOrDefault(p => p.PropertyName == pkPropName);
 
-            var now = DateTime.Now;
-            foreach (var entity in entities)
-            {
-                // Đảm bảo thêm mới ID nếu chưa có (chỉ áp dụng cho PK kiểu GUID)
-                if (pkProp != null)
-                {
-                    Guid.TryParse(pkProp.PropertyInfo.GetValue(entity)?.ToString(), out Guid id);
-                    if (id == Guid.Empty)
-                    {
-                        pkProp.PropertyInfo.SetValue(entity, Guid.NewGuid());
-                    }
-                }
+            // Xây dựng biểu thức Lambda động: entity => entity.PrimaryKey == id
+            var parameter = Expression.Parameter(typeof(TEntity), "entity");
+            var property = Expression.Property(parameter, pkPropName);
+            var constant = Expression.Constant(id);
+            var equal = Expression.Equal(property, constant);
+            var lambda = Expression.Lambda<Func<TEntity, bool>>(equal, parameter);
 
-                entity.CreatedBy = ClaimUtil.GetUserName(_httpContextAccessor.HttpContext?.User);
-                entity.CreatedDate = now;
-                entity.ModifiedDate = now;
-                entity.IsDeleted = false;
-            }
-            //await BeforeSave(entities);
+            return await GetFirstByCondition<TResult>(lambda);
         }
 
-        /// <summary>
-        /// Tiền xử lý trước khi cập nhật (tự động gán thông tin Audit)
-        /// </summary>
-        protected virtual async Task BeforeUpdate(List<TEntity> entities)
-        {
-            var now = DateTime.Now;
-            foreach (var entity in entities)
-            {
-                entity.ModifiedBy = ClaimUtil.GetUserName(_httpContextAccessor.HttpContext?.User);
-                entity.ModifiedDate = now;
-            }
-        }
 
         /// <summary>
         /// Lấy danh sách đối tượng theo biểu thức lambda chỉ định
         /// </summary>
         public async Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
         {
+            var parameters = new DynamicParameters();
             var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
-            var whereClause = BuildSQLUtil.BuildWhereClauseFromExpression<TEntity>(condition, out var parameters);
+            
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters, extraGroup);
 
             var sql = $"{selectFromSql} {whereClause}";
             var items = await _baseReadDL.ExecuteQueryText<TResult>(sql, parameters);
             return [.. items];
+        }
+
+        /// <summary>
+        /// Đếm thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)
+        /// </summary>
+        public async Task<int> CountByCondition(Expression<Func<TEntity, bool>> condition)
+        {
+            var parameters = new DynamicParameters();
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TEntity>(request, parameters, extraGroup);
+            
+            var countSql = $"SELECT COUNT(*) {BuildSQLUtil.BuildFromClaude<TEntity, TEntity>()} {whereClause}";
+            var totalCount = await _baseReadDL.ExecuteQueryToGetFirstResult<int>(countSql, parameters);
+            return totalCount;
+        }
+
+        /// <summary>
+        /// Lấy một đối tượng duy nhất theo điều kiện chỉ định sử dụng Dapper tối ưu hóa
+        /// </summary>
+        public async Task<TResult?> GetFirstByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
+        {
+            var parameters = new DynamicParameters();
+            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
+            
+            var extraGroup = ExpressionToFilterTranslator.Translate(condition);
+            var request = new GetRequest { IsPaging = false };
+            var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(request, parameters, extraGroup);
+
+            // Thêm giới hạn 1 dòng (LIMIT 1) để tối ưu hóa hiệu năng truy vấn của MySQL
+            var sql = $"{selectFromSql} {whereClause} LIMIT 1";
+            return await _baseReadDL.ExecuteQuerySingle<TResult>(sql, parameters);
         }
     }
 }

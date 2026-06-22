@@ -39,6 +39,7 @@
           <CategorySelect 
             v-model:value="filters.category" 
             :categories="availableCategories"
+            :disable-parents="true"
             placeholder="Tất cả danh mục..."
             class="w-100"
             show-all-option
@@ -155,7 +156,7 @@
                       </div>
                     </div>
                     <h3 class="card-title h5 fw-bold text-dark-blue mb-3 flex-grow-1 line-clamp-2">
-                      {{ category.name }}
+                      {{ category.questionCategoryName }}
                     </h3>
                     <div class="d-flex align-items-center justify-content-between text-indigo mt-auto pt-3 border-top border-light">
                       <span class="fs-7 fw-semibold">Xem các đề thi</span>
@@ -385,7 +386,7 @@ const loadQuizzes = async () => {
         return {
           id: e.examId,
           title: e.name,
-          categoryName: cat ? cat.name : 'Danh mục chung',
+          categoryName: cat ? cat.questionCategoryName : 'Danh mục chung',
           categoryId: e.categoryId,
           duration: e.duration,
           questionCount: counts[e.examId] || 0,
@@ -448,7 +449,7 @@ const filteredCategories = computed(() => {
   let result = [...availableCategories.value]
   if (filters.q.trim() !== '') {
     const query = filters.q.toLowerCase().trim()
-    result = result.filter(c => c.name.toLowerCase().includes(query))
+    result = result.filter(c => c.questionCategoryName.toLowerCase().includes(query))
   }
   return result
 })
@@ -496,7 +497,7 @@ const goToCategoryDetail = (category: QuestionCategory) => {
   router.push({
     name: 'quiz-list',
     params: { id: category.questionCategoryId },
-    query: { name: category.name }
+    query: { name: category.questionCategoryName }
   })
 }
 

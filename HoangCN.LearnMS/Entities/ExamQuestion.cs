@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -39,5 +41,27 @@ namespace HoangCN.LearnMS.Entities
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Thứ tự hiển thị")]
         public int SortOrder { get; set; } = 0;
+
+        [NotMapped]
+        public Question Question { get; set; }
+    }
+
+    public class ExamQuestionConfiguration : IEntityTypeConfiguration<ExamQuestion>
+    {
+        public void Configure(EntityTypeBuilder<ExamQuestion> builder)
+        {
+            builder.ToTable("ExamQuestion");
+            builder.HasIndex(eq => new { eq.ExamId, eq.QuestionId }).IsUnique();
+
+            builder.HasOne<Exam>()
+                   .WithMany()
+                   .HasForeignKey(eq => eq.ExamId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne<Question>()
+                   .WithMany()
+                   .HasForeignKey(eq => eq.QuestionId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

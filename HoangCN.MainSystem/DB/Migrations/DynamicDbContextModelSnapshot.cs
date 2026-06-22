@@ -21,7 +21,7 @@ namespace HoangCN.MainSystem.Migrations
 
             modelBuilder.Entity("HoangCN.MainSystem.Entities.EmailTemplate", b =>
                 {
-                    b.Property<Guid>("FileResourceId")
+                    b.Property<Guid>("EmailTemplateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
@@ -57,7 +57,7 @@ namespace HoangCN.MainSystem.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
-                    b.HasKey("FileResourceId");
+                    b.HasKey("EmailTemplateId");
 
                     b.HasIndex("TemplateCode")
                         .IsUnique();

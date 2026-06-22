@@ -1,3 +1,4 @@
+using HoangCN.Core.BL.Interfaces;
 using HoangCN.MainSystem.Entities;
 using Microsoft.AspNetCore.Http;
 using System;
@@ -8,7 +9,7 @@ namespace HoangCN.MainSystem.Interfaces
     /// <summary>
     /// Giao diện quản lý lưu trữ, truy vấn và xóa file tài nguyên
     /// </summary>
-    public interface IFileService
+    public interface IFileService : IBaseBL<ResourceFile>
     {
         /// <summary>
         /// Lưu file từ IFormFile vào thư mục upload vật lý và tạo đối tượng ResourceFile tương ứng trong CSDL

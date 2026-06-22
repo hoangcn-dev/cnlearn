@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -41,15 +43,9 @@ namespace HoangCN.LearnMS.Entities
         /// Số điện thoại
         /// </summary>
         [StringLength(20, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+        [Phone(ErrorMessage = "{0} không đúng định dạng.")]
         [DisplayName("Số điện thoại")]
         public string? PhoneNumber { get; set; }
-
-        /// <summary>
-        /// Vai trò người dùng (Thay đổi để thử nghiệm phân quyền)
-        /// </summary>
-        [StringLength(50, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        [DisplayName("Vai trò")]
-        public string? Role { get; set; }
 
         /// <summary>
         /// Giới thiệu bản thân
@@ -57,5 +53,14 @@ namespace HoangCN.LearnMS.Entities
         [StringLength(1000, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
         [DisplayName("Giới thiệu bản thân")]
         public string? Biography { get; set; }
+    }
+
+    public class LearnMsUserConfiguration : IEntityTypeConfiguration<LearnMsUser>
+    {
+        public void Configure(EntityTypeBuilder<LearnMsUser> builder)
+        {
+            builder.ToTable("LearnMsUser");
+            builder.HasIndex(u => u.Email).IsUnique();
+        }
     }
 }

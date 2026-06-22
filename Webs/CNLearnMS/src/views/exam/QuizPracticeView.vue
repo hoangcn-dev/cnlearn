@@ -252,6 +252,7 @@
             :index="currentIdx + 1"
             mode="practice"
             :show-result-instant="config.showResultInstant"
+            :correct-answer-ids="currentQuestion!.correctAnswerIds"
             @choose-answer="(ans: any) => chooseAnswer(currentQuestion!, ans)"
           />
 
@@ -304,6 +305,7 @@
             :index="idx + 1"
             mode="practice"
             :show-result-instant="config.showResultInstant"
+            :correct-answer-ids="q.correctAnswerIds"
             @choose-answer="(ans: any) => chooseAnswer(q, ans)"
           />
         </div>
@@ -319,7 +321,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getExamQuestions, getExamsPaging, getExamQuestionCounts } from '@/api/exams'
 import { submitAttempt } from '@/api/attempts'
-import { checkAnswer } from '@/api/questions'
+import { getQuestionAnswers, getQuestionKeys } from '@/api/questions'
 import QuestionCard from '@/components/QuestionCard.vue'
 
 const route = useRoute()
@@ -449,6 +451,7 @@ interface PracticeQuestion {
   answers: Answer[]
   chosenAnswerIds: string[]
   isConfirmed?: boolean
+  correctAnswerIds?: string[]
 }
 
 const questions = ref<PracticeQuestion[]>([])
@@ -499,25 +502,38 @@ const fetchQuestions = async () => {
   try {
     const res = await getExamQuestions(quizId.value)
     if (res && res.data) {
-      const list: PracticeQuestion[] = res.data.map((q: any) => ({
-        id: q.id,
-        stringContent: q.stringContent,
-        explaination: q.explanation || '',
-        level: q.level,
-        type: q.type || 0,
-        chosenAnswerIds: [],
-        isConfirmed: false,
-        answers: (q.answers || []).map((a: any, idx: number) => {
-          const ansId = a.questionAnswerId;
-          if (!ansId) throw new Error('Dữ liệu đáp án không hợp lệ (thiếu QuestionAnswerId)')
-          return {
-            id: ansId,
-            stringContent: a.stringContent,
-            isCorrectAnswer: a.isCorrectAnswer ?? false,
-            indexChar: String.fromCharCode(65 + idx)
-          }
-        })
-      }))
+      const questionList = res.data
+
+      // Gọi tiếp API lấy danh sách câu trả lời cho các câu hỏi của đề thi này
+      const questionIds = questionList.map((q: any) => q.id || q.questionId)
+      const answersRes = await getQuestionAnswers(questionIds)
+      const allAnswers = (answersRes && answersRes.isSuccess && answersRes.data) ? answersRes.data : []
+
+      const list: PracticeQuestion[] = questionList.map((q: any) => {
+        const qId = q.id || q.questionId
+        const qAnswers = allAnswers.filter((a: any) => a.questionId === qId)
+        
+        return {
+          id: qId,
+          stringContent: q.stringContent,
+          explaination: q.explanation || q.explaination || '',
+          level: q.level,
+          type: q.type || 0,
+          chosenAnswerIds: [],
+          isConfirmed: false,
+          correctAnswerIds: [],
+          answers: qAnswers.map((a: any, idx: number) => {
+            const ansId = a.id || a.questionAnswerId || a.QuestionAnswerId;
+            if (!ansId) throw new Error('Dữ liệu đáp án không hợp lệ (thiếu QuestionAnswerId)')
+            return {
+              id: ansId,
+              stringContent: a.stringContent,
+              isCorrectAnswer: false, // sẽ được kiểm tra thông qua correctAnswerIds của câu hỏi
+              indexChar: String.fromCharCode(65 + idx)
+            }
+          })
+        }
+      })
 
       // Shuffle logic if requested
       if (config.shuffleQuestions) {
@@ -594,17 +610,10 @@ const revealCurrentResult = async () => {
 
   if (!q.isConfirmed) {
     try {
-      const res = await checkAnswer({
-        questionId: q.id,
-        selectedAnswerIds: q.chosenAnswerIds
-      })
-      if (res && res.data) {
-        const checkResult = res.data
-        q.explaination = checkResult.explanation || q.explaination
-        // Cập nhật isCorrectAnswer từ backend
-        q.answers.forEach(a => {
-          a.isCorrectAnswer = checkResult.correctAnswerIds.includes(a.id)
-        })
+      const res = await getQuestionKeys([q.id])
+      if (res && res.isSuccess && res.data?.correctMap) {
+        const correctMap = res.data.correctMap
+        q.correctAnswerIds = correctMap[q.id] || []
       }
     } catch (error) {
       message.error('Lỗi khi chấm đáp án.')

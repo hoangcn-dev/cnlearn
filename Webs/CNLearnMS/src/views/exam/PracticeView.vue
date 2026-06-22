@@ -61,15 +61,15 @@
         <div class="card h-100 border-0 rounded-4 shadow-sm card-glowing overflow-hidden d-flex flex-column" @click="goToCategoryDetail(category)">
           <div class="p-4 d-flex flex-column h-100 hover-pointer">
             <div class="d-flex justify-content-between align-items-start mb-3">
-              <span class="category-badge px-2.5 py-1 rounded-3 fs-7" :style="getBadgeStyle(category.name)">
-                {{ getSubjectCategory(category.name) }}
+              <span class="category-badge px-2.5 py-1 rounded-3 fs-7" :style="getBadgeStyle(category.questionCategoryName)">
+                {{ getSubjectCategory(category.questionCategoryName) }}
               </span>
               <div class="quiz-count-bubble d-flex align-items-center gap-1-5">
                 <span class="count fw-bold">{{ getQuizCount(category.questionCategoryId) }} đề thi</span>
               </div>
             </div>
             <h3 class="card-title h5 fw-bold text-dark-blue mb-3 flex-grow-1 line-clamp-2">
-              {{ category.name }}
+              {{ category.questionCategoryName }}
             </h3>
             <div class="d-flex align-items-center justify-content-between text-indigo mt-auto pt-3 border-top border-light">
               <span class="fs-7 fw-semibold">Khám phá đề thi</span>
@@ -149,15 +149,15 @@ let observer: IntersectionObserver | null = null
 
 // Mock dataset in case backend API is not available or doesn't have categories
 const MOCK_CATEGORIES: QuestionCategory[] = [
-  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, slug: "toan-hoc-thpt-quoc-gia", name: "Toán Học - Luyện Thi THPT Quốc Gia" },
-  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: null, slug: "vat-ly-12-chuyen-de", name: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
-  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, slug: "hoa-hoc-huu-co", name: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
-  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: null, slug: "tieng-anh-ielts-reading", name: "Tiếng Anh - IELTS Reading Academic" },
-  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, slug: "lich-su-viet-nam-hien-dai", name: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
-  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, slug: "sinh-hoc-di-truyen-bien-di", name: "Sinh Học - Di Truyền Học & Biến Dị" },
-  { questionCategoryId: "c07a92a2-a69f-4143-8589-da11688d7d07", parentId: null, slug: "tin-hoc-lap-trinh-c", name: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
-  { questionCategoryId: "c08a92a2-a69f-4143-8589-da11688d7d08", parentId: null, slug: "dia-ly-kinh-te-xa-hoi", name: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
-  { questionCategoryId: "c09a92a2-a69f-4143-8589-da11688d7d09", parentId: null, slug: "giao-duc-cong-dan", name: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
+  { questionCategoryId: "c01a92a2-a69f-4143-8589-da11688d7d01", parentId: null, questionCategorySlug: "toan-hoc-thpt-quoc-gia", questionCategoryName: "Toán Học - Luyện Thi THPT Quốc Gia" },
+  { questionCategoryId: "c02a92a2-a69f-4143-8589-da11688d7d02", parentId: null, questionCategorySlug: "vat-ly-12-chuyen-de", questionCategoryName: "Vật Lý 12 - Chuyên Đề Dòng Điện Xoay Chiều" },
+  { questionCategoryId: "c03a92a2-a69f-4143-8589-da11688d7d03", parentId: null, questionCategorySlug: "hoa-hoc-huu-co", questionCategoryName: "Hóa Học - Chuyên Đề Hóa Hữu Cơ" },
+  { questionCategoryId: "c04a92a2-a69f-4143-8589-da11688d7d04", parentId: null, questionCategorySlug: "tieng-anh-ielts-reading", questionCategoryName: "Tiếng Anh - IELTS Reading Academic" },
+  { questionCategoryId: "c05a92a2-a69f-4143-8589-da11688d7d05", parentId: null, questionCategorySlug: "lich-su-viet-nam-hien-dai", questionCategoryName: "Lịch Sử - Lịch Sử Việt Nam Cận & Hiện Đại" },
+  { questionCategoryId: "c06a92a2-a69f-4143-8589-da11688d7d06", parentId: null, questionCategorySlug: "sinh-hoc-di-truyen-bien-di", questionCategoryName: "Sinh Học - Di Truyền Học & Biến Dị" },
+  { questionCategoryId: "c07a92a2-a69f-4143-8589-da11688d7d07", parentId: null, questionCategorySlug: "tin-hoc-lap-trinh-c", questionCategoryName: "Tin Học - Lập Trình C++ Cơ Bản & Nâng Cao" },
+  { questionCategoryId: "c08a92a2-a69f-4143-8589-da11688d7d08", parentId: null, questionCategorySlug: "dia-ly-kinh-te-xa-hoi", questionCategoryName: "Địa Lý - Địa Lý Kinh Tế Xã Hội Việt Nam" },
+  { questionCategoryId: "c09a92a2-a69f-4143-8589-da11688d7d09", parentId: null, questionCategorySlug: "giao-duc-cong-dan", questionCategoryName: "Giáo Dục Công Dân - Đạo Đức & Pháp Luật" }
 ]
 
 // Get quiz counts based on Category ID to keep them stable and realistic
@@ -247,7 +247,7 @@ const goToCategoryDetail = (category: QuestionCategory) => {
   router.push({
     name: 'quiz-list',
     params: { id: category.questionCategoryId },
-    query: { name: category.name }
+    query: { name: category.questionCategoryName }
   })
 }
 

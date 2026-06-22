@@ -12,6 +12,10 @@ namespace HoangCN.Core.DL.Implementation
     {
         private readonly string _connectionString;
 
+        /// <summary>
+        /// Khởi tạo BaseReadDL với chuỗi kết nối tương ứng
+        /// </summary>
+        /// <param name="connectionString">Chuỗi kết nối cơ sở dữ liệu đọc</param>
         public BaseReadDL(string connectionString)
         {
             if (string.IsNullOrEmpty(connectionString))
@@ -19,6 +23,23 @@ namespace HoangCN.Core.DL.Implementation
                 throw new ArgumentNullException(nameof(connectionString), "Chuỗi kết nối cơ sở dữ liệu đọc không được để trống.");
             }
             _connectionString = connectionString;
+        }
+
+        /// <summary>
+        /// Thực thi truy vấn nhiều kết quả (Multiple Result Sets)
+        /// </summary>
+        public async Task<TResult> ExecuteQueryMultiple<TResult>(
+            string query,
+            Func<SqlMapper.GridReader, Task<TResult>> readerFunc,
+            DynamicParameters? parameters = null)
+        {
+            using (var conn = new MySqlConnection(_connectionString))
+            {
+                using (var multi = await conn.QueryMultipleAsync(query, parameters, commandType: CommandType.Text))
+                {
+                    return await readerFunc(multi);
+                }
+            }
         }
 
         /// <summary>
@@ -40,6 +61,17 @@ namespace HoangCN.Core.DL.Implementation
             using (var conn = new MySqlConnection(_connectionString))
             {
                 return await conn.ExecuteScalarAsync<TResult>(query, parameters, commandType: CommandType.Text);
+            }
+        }
+
+        /// <summary>
+        /// Thực thi truy vấn lấy một dòng dữ liệu duy nhất từ database đọc
+        /// </summary>
+        public async Task<TRow?> ExecuteQuerySingle<TRow>(string query, DynamicParameters? parameters = null)
+        {
+            using (var conn = new MySqlConnection(_connectionString))
+            {
+                return await conn.QueryFirstOrDefaultAsync<TRow>(query, parameters, commandType: CommandType.Text);
             }
         }
     }

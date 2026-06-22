@@ -40,8 +40,8 @@ namespace HoangCN.LearnMS.Utils
             // Đăng ký QuizService để xử lý phân quyền và nghiệp vụ bài kiểm tra
             services.AddScoped<IQuizService, QuizService>();
 
-            // Đăng ký ExamSessionBL cho tính năng chống gian lận
-            services.AddScoped<IExamSessionBL, ExamSessionBL>();
+            // Đăng ký ExamSessionService cho tính năng chống gian lận
+            services.AddScoped<IExamSessionService, ExamSessionService>();
 
             // Đăng ký Job kiểm tra phiên thi hết hạn
             services.AddHostedService<HoangCN.LearnMS.BackgroundServices.ExamSessionMonitorService>();

@@ -3,17 +3,19 @@ using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.MainSystem.Interfaces;
 using HoangCN.MainSystem.Requests;
-using HoangCN.MainSystem.Enums;
-using HoangCN.MainSystem.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Enums;
+using HoangCN.Core.BL.Attributes.AuthAction;
+using System.Security.Claims;
+using HoangCN.Core.Common.Utils;
 
 namespace HoangCN.MainSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
-    public class UsersController : BaseController<User>
+    public class UsersController : CRUDController<User>
     {
         private readonly IUserService _userService;
 
@@ -22,8 +24,17 @@ namespace HoangCN.MainSystem.Controllers
             _userService = userService;
         }
 
+        protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
+        {
+            builder.Protect(nameof(GetAll), nameof(RoleNames.Admin));
+            builder.Protect(nameof(GetById), nameof(RoleNames.Admin));
+            builder.Protect(nameof(GetPaging), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Insert), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Update), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Delete), nameof(RoleNames.Admin));
+        }
+
         [HttpPost("signup")]
-        [AllowAnonymous]
         public async Task<IActionResult> SignUp([FromBody] SignUpRequest request)
         {
             await _userService.SignUp(request);
@@ -31,7 +42,6 @@ namespace HoangCN.MainSystem.Controllers
         }
 
         [HttpPost("signin")]
-        [AllowAnonymous]
         public async Task<IActionResult> SignIn([FromBody] SignInRequest request)
         {
             await _userService.SignIn(request);
@@ -40,7 +50,6 @@ namespace HoangCN.MainSystem.Controllers
 
 
         [HttpPost("forgot-password")]
-        [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             await _userService.ForgotPassword(request);
@@ -48,15 +57,15 @@ namespace HoangCN.MainSystem.Controllers
         }
 
         [HttpGet("me")]
+        [AuthAction]
         public async Task<IActionResult> GetMe()
         {
-            var userId = await _userService.CheckAuth(User);
-            var info = await _userService.GetLoginSessionInfo(userId);
+            var userId = ClaimUtil.GetUserId(User);
+            var info = await _userService.GetLoginSessionInfo(userId!.Value);
             return Ok(ApiResponseDto.Success(info));
         }
 
         [HttpPost("logout")]
-        [AllowAnonymous]
         public async Task<IActionResult> SignOut()
         {
             await _userService.SignOut();
@@ -66,56 +75,10 @@ namespace HoangCN.MainSystem.Controllers
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            var userId = await _userService.CheckAuth(User);
-            await _userService.ChangePassword(userId, request);
+            var userId = ClaimUtil.GetUserId(User);
+            await _userService.ChangePassword(userId!.Value, request);
             return Ok(ApiResponseDto.Success("Đổi mật khẩu thành công."));
         }
-
-        #region Hạn chế quyền Admin đối với các tác vụ CRUD người dùng
-
-        [HttpGet]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> GetAll()
-        {
-            return await base.GetAll();
-        }
-
-        [HttpGet("{id}")]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> GetById(Guid id)
-        {
-            return await base.GetById(id);
-        }
-
-        [HttpPost("paging")]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> GetPaging([FromBody] GetRequest request)
-        {
-            return await base.GetPaging(request);
-        }
-
-        [HttpPost]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> Insert([FromBody] List<User> entities)
-        {
-            return await base.Insert(entities);
-        }
-
-        [HttpPut]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> Update([FromBody] List<User> entities)
-        {
-            return await base.Update(entities);
-        }
-
-        [HttpPost("delete")]
-        [Authorize(Roles = nameof(RoleNames.Admin))]
-        public override async Task<IActionResult> Delete([FromBody] DeleteRequest request)
-        {
-            return await base.Delete(request);
-        }
-
-        #endregion
     }
 }
 

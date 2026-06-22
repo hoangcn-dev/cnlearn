@@ -149,8 +149,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { CategorySelect, type CategoryNode, type QuestionCategory, buildCategoryTree } from '@/components/category'
-import { getAllCate, saveCategories, deleteCategories } from '@/api/categories'
+import { CategorySelect, type CategoryNode, type QuestionCategory, buildCategoryTree, getRecursiveChildIds, generateSlug } from '@/components/category'
+import { getAllCate, addCategories, updateCategories, deleteCategories } from '@/api/categories'
 
 // State variables
 const activeTab = ref('categories')
@@ -214,16 +214,11 @@ const filteredTreeData = computed(() => {
 const availableParentCategories = computed(() => {
   if (!isEditing.value) return flatCategories.value
   
-  const excludedIds = new Set<string>([editingForm.id])
-  const addDescendants = (parentId: string) => {
-    flatCategories.value
-      .filter(c => c.parentId === parentId)
-      .forEach(c => {
-        excludedIds.add(c.questionCategoryId)
-        addDescendants(c.questionCategoryId)
-      })
-  }
-  addDescendants(editingForm.id)
+  const currentCategory = flatCategories.value.find(c => c.questionCategoryId === editingForm.id)
+  if (!currentCategory) return flatCategories.value
+  
+  const childIds = getRecursiveChildIds(currentCategory, flatCategories.value)
+  const excludedIds = new Set<string>([editingForm.id, ...childIds])
   
   return flatCategories.value.filter(cat => !excludedIds.has(cat.questionCategoryId))
 })
@@ -235,7 +230,7 @@ const reconstructedFullName = computed(() => {
   if (editingForm.parentId) {
     const parent = flatCategories.value.find(c => c.questionCategoryId === editingForm.parentId)
     if (parent) {
-      return `${parent.name} - ${editingForm.localName.trim()}`
+      return `${parent.questionCategoryName} - ${editingForm.localName.trim()}`
     }
   }
   
@@ -244,21 +239,7 @@ const reconstructedFullName = computed(() => {
 
 // Auto generate slug from local name
 const autoGenerateSlug = () => {
-  if (!editingForm.localName) {
-    editingForm.slug = ''
-    return
-  }
-  
-  let str = editingForm.localName.toLowerCase()
-  // Remove accents
-  str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  // Replace d -> dd
-  str = str.replace(/[đĐ]/g, 'd')
-  // Replace non-alphanumeric characters with spaces
-  str = str.replace(/[^a-z0-9\s-]/g, '')
-  // Trim and replace multiple spaces with single hyphen
-  str = str.trim().replace(/\s+/g, '-')
-  editingForm.slug = str
+  editingForm.slug = generateSlug(editingForm.localName)
 }
 
 // Select a node in the tree to edit
@@ -271,10 +252,10 @@ const handleSelectNode = (keys: any[], info: any) => {
   const original = info.node.originalItem as QuestionCategory
   isEditing.value = true
   editingForm.id = original.questionCategoryId
-  editingForm.slug = original.slug || ''
+  editingForm.slug = original.questionCategorySlug || ''
   
   // Local name is the last part of full name split by ' - '
-  const parts = original.name.split(' - ')
+  const parts = original.questionCategoryName.split(' - ')
   editingForm.localName = parts[parts.length - 1] || ''
   editingForm.parentId = original.parentId || ''
 }
@@ -303,7 +284,7 @@ const handleSave = async () => {
   // Double check duplicates
   const fullName = reconstructedFullName.value
   const duplicate = flatCategories.value.find(c => 
-    c.name.toLowerCase() === fullName.toLowerCase() && 
+    c.questionCategoryName.toLowerCase() === fullName.toLowerCase() && 
     c.questionCategoryId !== editingForm.id
   )
   if (duplicate) {
@@ -316,13 +297,13 @@ const handleSave = async () => {
   // Create payload
   const payloadItem = {
     questionCategoryId: editingForm.id || undefined,
-    name: fullName,
-    slug: editingForm.slug.trim(),
+    questionCategoryName: fullName,
+    questionCategorySlug: editingForm.slug.trim(),
     parentId: editingForm.parentId || null
   }
 
   try {
-    const res = await saveCategories([payloadItem])
+    const res = isEditing.value ? await updateCategories([payloadItem]) : await addCategories([payloadItem])
     if (res.isSuccess) {
       message.success(isEditing.value ? 'Cập nhật danh mục thành công!' : 'Tạo danh mục mới thành công!')
       await fetchCategories()

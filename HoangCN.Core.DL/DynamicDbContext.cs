@@ -28,6 +28,9 @@ namespace HoangCN.Core.DL
 
             foreach (var assembly in _scanAssemblies)
             {
+                // Tự động tìm và áp dụng tất cả các class kế thừa IEntityTypeConfiguration trong Assembly
+                modelBuilder.ApplyConfigurationsFromAssembly(assembly);
+
                 // Tìm kiếm tất cả các class kế thừa từ BaseEntity và không phải class abstract
                 var entityTypes = assembly.GetTypes()
                     .Where(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(BaseEntity)));

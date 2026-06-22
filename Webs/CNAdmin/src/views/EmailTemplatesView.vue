@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+F<script lang="ts" setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
@@ -22,7 +22,7 @@ const loadTemplates = async () => {
   try {
     const res = await getAllTemplates();
     if (res.isSuccess) {
-      templatesList.value = res.data || [];
+      templatesList.value = res.data?.items || res.data || [];
     } else {
       message.error(getErrorMessage(res, 'Không thể tải danh sách mẫu email.'));
     }
@@ -40,7 +40,7 @@ onMounted(() => {
 
 // Navigate to dedicated edit page
 const handleEdit = (record: EmailTemplate) => {
-  router.push({ name: 'email-template-edit', params: { code: record.templateCode } });
+  router.push({ name: 'email-template-edit', params: { id: record.emailTemplateId } });
 };
 </script>
 
@@ -83,7 +83,7 @@ const handleEdit = (record: EmailTemplate) => {
           <p class="text-secondary small">Hệ thống chưa thiết lập mẫu email nào.</p>
         </div>
 
-        <div v-for="item in filteredTemplates" :key="item.fileResourceId" class="col-12 col-md-6 col-lg-4 text-start">
+        <div v-for="item in filteredTemplates" :key="item.emailTemplateId" class="col-12 col-md-6 col-lg-4 text-start">
           <div class="glass-card h-100 p-4 border rounded shadow-sm d-flex flex-column justify-content-between position-relative overflow-hidden">
             <!-- Background Accent Blob -->
             <div class="accent-blob"></div>
@@ -91,7 +91,7 @@ const handleEdit = (record: EmailTemplate) => {
             <div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <span class="badge badge-code px-2.5 py-1.5 rounded-pill font-monospace fw-semibold">{{ item.templateCode }}</span>
-                <span class="small text-muted font-monospace text-truncate ms-2" style="max-width: 140px;">ID: {{ item.fileResourceId.substring(0, 8) }}...</span>
+                <span class="small text-muted font-monospace text-truncate ms-2" style="max-width: 140px;">ID: {{ item.emailTemplateId }}...</span>
               </div>
 
               <h5 class="fw-bold text-dark mb-2 text-truncate">{{ item.subject }}</h5>
@@ -103,10 +103,7 @@ const handleEdit = (record: EmailTemplate) => {
             </div>
 
             <!-- Card Bottom Metrics -->
-            <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-auto">
-              <div class="small text-muted">
-                Tạo bởi: <strong class="text-dark">{{ item.createdBy || 'Hệ thống' }}</strong>
-              </div>
+            <div class="d-flex justify-content-end align-items-center border-top pt-3 mt-auto">
               <div class="d-flex gap-2">
                 <a-button type="default" size="middle" class="d-flex align-items-center rounded-3 px-3" @click="handleEdit(item)">
                   <template #icon><EditOutlined class="text-primary" /></template> Sửa
@@ -119,7 +116,7 @@ const handleEdit = (record: EmailTemplate) => {
 
       <!-- Mode 2: Standard Clean Table -->
       <div v-else class="bg-white rounded-3 border shadow-sm p-3">
-        <a-table :dataSource="filteredTemplates" :rowKey="(r: any) => r.fileResourceId" :loading="loading" :pagination="{ pageSize: 8 }">
+        <a-table :dataSource="filteredTemplates" :rowKey="(r: any) => r.emailTemplateId" :loading="loading" :pagination="{ pageSize: 8 }">
           <a-table-column title="Mã mẫu (Code)" dataIndex="templateCode" key="templateCode">
             <template #default="{ text }">
               <span class="badge badge-code px-2.5 py-1.5 rounded font-monospace">{{ text }}</span>

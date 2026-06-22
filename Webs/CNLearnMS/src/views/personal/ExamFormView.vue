@@ -664,9 +664,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
-import { getQuestionsPaging } from '@/api/questions'
+import { getQuestionsPaging, saveQuestions } from '@/api/questions'
 import { getAllExams, getExamQuestions, saveExamDetails } from '@/api/exams'
-import { getAllQuizzes, saveQuizDetails } from '@/api/quizzes'
+import { getAllQuizzes, addQuizDetails, updateQuizDetails } from '@/api/quizzes'
 
 const route = useRoute()
 const router = useRouter()
@@ -1484,6 +1484,17 @@ const saveSingleQuestion = () => {
   singleQuestionModalOpen.value = false
 }
 
+const generateUUID = (): string => {
+  try {
+    return self.crypto.randomUUID()
+  } catch (e) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+}
+
 const ensureGuid = (id: string): string => {
   const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
   return isGuid ? id : '00000000-0000-0000-0000-000000000000'
@@ -1509,6 +1520,20 @@ const saveForm = async (isDraft = false) => {
     message.error('Đề thi phải chứa ít nhất 1 câu hỏi! Vui lòng chọn hoặc nạp thêm câu hỏi.')
     return
   }
+
+  // Generate actual GUID for new questions/answers so they are stable and unique during batching
+  questionsList.value.forEach(q => {
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(q.id)
+    if (!isGuid || q.id === '00000000-0000-0000-0000-000000000000') {
+      q.id = generateUUID()
+    }
+    q.answers.forEach(ans => {
+      const isAnsGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ans.questionAnswerId || '')
+      if (!isAnsGuid || ans.questionAnswerId === '00000000-0000-0000-0000-000000000000') {
+        ans.questionAnswerId = generateUUID()
+      }
+    })
+  })
 
   const editId = route.params.id as string | undefined
   let targetExamId = editId
@@ -1548,7 +1573,7 @@ const saveForm = async (isDraft = false) => {
       level: q.level,
       type: q.type,
       accessType: q.accessType,
-      questionCategoryId: ensureGuid(q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds[0] : (formData.categoryId || categories.value[0]?.id || '')),
+      questionCategoryId: ensureGuid((q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds[0] : (formData.categoryId || categories.value[0]?.id || '')) || ''),
       categoryIds: q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds : [formData.categoryId || categories.value[0]?.id || ''],
       answers: q.answers.map(ans => ({
         questionAnswerId: ensureGuid(ans.questionAnswerId || ''),
@@ -1558,8 +1583,54 @@ const saveForm = async (isDraft = false) => {
     }))
   }
 
+  const totalQuestions = payload.questions.length
+  let hideLoading: any = null
+
+  if (totalQuestions > 0) {
+    const batchSize = 20
+    const totalBatches = Math.ceil(totalQuestions / batchSize)
+    
+    // Save questions in batches sequentially to prevent overloading
+    for (let i = 0; i < totalBatches; i++) {
+      const start = i * batchSize
+      const end = Math.min(start + batchSize, totalQuestions)
+      const batchQuestions = payload.questions.slice(start, end)
+      
+      const percent = Math.round((end / totalQuestions) * 100)
+      const loadingMsg = `Đang lưu câu hỏi: ${end}/${totalQuestions} (${percent}%)`
+      
+      if (hideLoading) {
+        hideLoading()
+      }
+      hideLoading = message.loading(loadingMsg, 0)
+      
+      try {
+        const qres = await saveQuestions(batchQuestions)
+        if (!qres || !qres.isSuccess) {
+          if (hideLoading) hideLoading()
+          message.error(qres?.errorMessage || `Lỗi khi lưu lô câu hỏi thứ ${i + 1}.`)
+          return
+        }
+      } catch (err) {
+        if (hideLoading) hideLoading()
+        console.error('Lỗi lưu câu hỏi theo lô:', err)
+        message.error(`Đã xảy ra lỗi khi kết nối máy chủ để lưu lô câu hỏi thứ ${i + 1}.`)
+        return
+      }
+    }
+  }
+
+  // Once all batches are saved successfully, show the finalizing message and save the exam
+  if (hideLoading) {
+    hideLoading()
+  }
+  hideLoading = message.loading('Đang hoàn tất đề thi...', 0)
+
   try {
     const res = await saveExamDetails(payload)
+    if (hideLoading) {
+      hideLoading()
+    }
     if (res && res.isSuccess && res.data) {
       const savedExamId = res.data.examId
 
@@ -1595,7 +1666,7 @@ const saveForm = async (isDraft = false) => {
             sendEmailReport: formData.sendEmailReport
           }
 
-          const qres = await saveQuizDetails(quizPayload)
+          const qres = await updateQuizDetails(quizPayload)
           if (!qres || !qres.isSuccess) {
             message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
             return
@@ -1635,7 +1706,7 @@ const saveForm = async (isDraft = false) => {
             sendEmailReport: formData.sendEmailReport
           }
 
-          const qres = await saveQuizDetails(quizPayload)
+          const qres = await addQuizDetails(quizPayload)
           if (!qres || !qres.isSuccess) {
             message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
             return
@@ -1660,6 +1731,9 @@ const saveForm = async (isDraft = false) => {
       message.error(res.errorMessage || 'Lỗi khi lưu đề thi.')
     }
   } catch (error) {
+    if (hideLoading) {
+      hideLoading()
+    }
     console.error('Lỗi lưu đề thi:', error)
     message.error('Đã xảy ra lỗi khi kết nối máy chủ để lưu đề thi.')
   }

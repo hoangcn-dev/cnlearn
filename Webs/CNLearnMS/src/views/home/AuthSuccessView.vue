@@ -11,7 +11,7 @@
       <!-- Content -->
       <h1 class="h3 fw-bold text-dark-blue mb-3">Đăng Nhập Thành Công!</h1>
       <p class="text-secondary mb-4 fs-7 leading-relaxed mx-auto" style="max-width: 320px;">
-        Phiên đăng nhập của bạn đã được khôi phục thành công. Vui lòng quay trở lại tab làm bài trước đó để tiếp tục nộp bài.
+        Phiên đăng nhập của bạn đã được khôi phục thành công. Vui lòng quay trở lại tab trước đó.
       </p>
 
       <!-- Action Buttons -->

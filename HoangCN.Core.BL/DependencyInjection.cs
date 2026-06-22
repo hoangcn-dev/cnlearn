@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.BL.Base;
+using HoangCN.Core.Common.Interfaces;
+using HoangCN.Core.Common.Services;
+using HoangCN.Core.BL.Attributes.AuthAction;
 
 namespace HoangCN.Core.BL
 {
@@ -16,6 +19,13 @@ namespace HoangCN.Core.BL
         {
             // Đăng ký dịch vụ nghiệp vụ cơ sở dưới dạng Open Generic
             services.AddScoped(typeof(IBaseBL<>), typeof(BaseBL<>));
+
+            // Đăng ký BaseControllerAuthorizeFillter để sử dụng trong [ServiceFilter]
+            services.AddScoped<AuthActionFillter>();
+
+            // Đăng ký HttpClient và dịch vụ HttpClientService tiện ích dùng chung
+            services.AddHttpClient();
+            services.AddScoped<IHttpClientService, HttpClientService>();
 
             return services;
         }

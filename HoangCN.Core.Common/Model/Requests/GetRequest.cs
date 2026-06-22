@@ -53,6 +53,11 @@ namespace HoangCN.Core.Common.Model.Requests
         /// </summary>
         public FilterGroupType FilterGroupType { get; set; } = FilterGroupType.And;
 
+        /// <summary>
+        /// Bộ lọc nâng cao hỗ trợ lồng đệ quy
+        /// </summary>
+        public AdvancedFilterGroup? AdvancedFilterGroup { get; set; }
+
 
         /// <summary>
         /// Factory cho tham số Get All
@@ -75,6 +80,16 @@ namespace HoangCN.Core.Common.Model.Requests
     }
 
     /// <summary>
+    /// Bộ lọc nâng cao hỗ trợ lồng đệ quy
+    /// </summary>
+    public class AdvancedFilterGroup
+    {
+        public FilterGroupType GroupType { get; set; } = FilterGroupType.And;
+        public List<Filter>? Filters { get; set; }
+        public List<AdvancedFilterGroup>? Groups { get; set; }
+    }
+
+    /// <summary>
     /// Bộ lọc
     /// </summary>
     public class Filter
@@ -82,7 +97,7 @@ namespace HoangCN.Core.Common.Model.Requests
         /// <summary>
         /// Tên thuộc tính cần lọc
         /// </summary>
-        public string Property { get; set; }
+        public string Property { get; set; } = string.Empty;
 
         /// <summary>
         /// Toán tử lọc
@@ -92,13 +107,32 @@ namespace HoangCN.Core.Common.Model.Requests
         /// <summary>
         /// Giá trị lọc
         /// </summary>
-        public object Value { get; set; }
+        public object? Value { get; set; }
 
         /// <summary>
         /// Kiểu giá trị của cột cần lọc
         /// </summary>
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public FilterType Type { get; set; }
+
+        /// <summary>
+        /// Tên cột cần so sánh (nếu có so sánh cột với cột)
+        /// </summary>
+        public string? ColumnToCompare { get; set; }
+
+        public Filter()
+        {
+        }
+
+        public Filter(string property, FilterOperator @operator, object? value, FilterType type, string? columnToCompare = null)
+        {
+            Property = property;
+            Operator = @operator;
+            Value = value;
+            Type = type;
+            ColumnToCompare = columnToCompare;
+        }
     }
+
 }
 

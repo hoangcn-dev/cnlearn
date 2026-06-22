@@ -100,34 +100,35 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { getLoginInfo, ensureLearnMsUser, logout, getLearnMsUserProfile } from '@/api/user'
+import { getLoginInfo, logout, getLearnMsUserProfile } from '@/api/user'
 import { showDialog } from '@/utils/dialog'
 import { h, getCurrentInstance } from 'vue'
 
 const instance = getCurrentInstance()
 
+let authDialogInstance: any = null
+
 const handleAuthRequiredEvent = () => {
-  showDialog({
+  if (authDialogInstance) return
+
+  authDialogInstance = showDialog({
     appContext: instance?.appContext,
-    title: 'Yêu cầu đăng nhập',
-    okText: 'Đăng nhập ngay',
+    title: 'Phiên đăng nhập hết hạn',
+    okText: 'Đăng nhập ở tab mới',
     content: () => h('div', { class: 'text-center py-3' }, [
       h('div', { class: 'mb-3' }, [h('span', { class: 'fs-1' }, '🔒')]),
-      h('h5', { class: 'fw-bold text-dark-blue mb-2' }, 'Vui lòng đăng nhập'),
+      h('h5', { class: 'fw-bold text-dark-blue mb-2' }, 'Phiên làm việc đã hết hạn'),
       h('p', { class: 'text-secondary small mb-0' }, 
-        (route.name === 'quiz-practice' || route.name === 'quiz-room')
-        ? 'Phiên đăng nhập đã hết hạn. Hệ thống sẽ mở Tab mới để bạn đăng nhập lại. Sau khi đăng nhập thành công, hãy QUAY LẠI ĐÂY (không tải lại trang) để nộp bài.'
-        : 'Bạn cần đăng nhập để tiếp tục sử dụng tính năng này. Hãy đăng nhập tài khoản của bạn để trải nghiệm hệ thống tốt nhất.'
+        'Để bảo vệ dữ liệu bạn đang thao tác không bị mất, hệ thống sẽ mở một Tab mới để bạn đăng nhập lại. Sau khi đăng nhập thành công ở tab mới, vui lòng quay lại đây để tiếp tục.'
       )
     ]),
     onOk: () => {
-      if (route.name === 'quiz-practice' || route.name === 'quiz-room') {
-        const idServerUrl = import.meta.env.VITE_ID_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5173' : 'https://id.hoangcn.com');
-        const successUrl = encodeURIComponent(window.location.origin + '/auth-success');
-        window.open(`${idServerUrl}/auth?mode=login&return_url=${successUrl}`, '_blank');
-      } else {
-        redirectToAuth('login')
-      }
+      const idServerUrl = import.meta.env.VITE_ID_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5173' : 'https://id.hoangcn.com');
+      const successUrl = encodeURIComponent(window.location.origin + '/auth-success');
+      window.open(`${idServerUrl}/auth?mode=login&return_url=${successUrl}`, '_blank');
+    },
+    onCancel: () => {
+      authDialogInstance = null
     }
   })
 }
@@ -175,25 +176,6 @@ const checkLoginStatus = async () => {
         console.warn('Lỗi khi tải thông tin hồ sơ từ LearnMS:', e)
       }
 
-      // Nếu chưa có hồ sơ ở LearnMS, gọi ensure để đồng bộ
-      if (!learnMsProfile) {
-        try {
-          const ensureRes = await ensureLearnMsUser({
-            learnMsUserId: info.userId,
-            fullName: info.displayName || info.userName,
-            email: info.email,
-            role: info.roleName,
-            phoneNumber: '',
-            biography: ''
-          })
-          if (ensureRes && ensureRes.isSuccess && ensureRes.data) {
-            learnMsProfile = ensureRes.data
-          }
-        } catch (e) {
-          console.warn('Lỗi khởi tạo người dùng trong LearnMS:', e)
-        }
-      }
-
       // Ưu tiên lấy thông tin họ tên, vai trò từ database LearnMS
       const displayName = learnMsProfile?.fullName || info.displayName || info.userName
       const roleName = learnMsProfile?.role || info.roleName
@@ -232,6 +214,46 @@ const updateUserState = (data: any) => {
     userInitials.value = 'HV'
   }
   isLoggedIn.value = true
+}
+
+const handleWindowFocus = async () => {
+  if (!isLoggedIn.value || authDialogInstance) {
+    try {
+      const res = await getLoginInfo()
+      if (res && res.isSuccess && res.data) {
+        const info = res.data
+        
+        let learnMsProfile: any = null
+        try {
+          const msRes = await getLearnMsUserProfile()
+          if (msRes && msRes.isSuccess && msRes.data) {
+            learnMsProfile = msRes.data
+          }
+        } catch (e) {}
+
+        const displayName = learnMsProfile?.fullName || info.displayName || info.userName
+        const roleName = learnMsProfile?.role || info.roleName
+
+        const profile = {
+          userId: info.userId,
+          name: displayName,
+          email: learnMsProfile?.email || info.email,
+          role: roleName,
+          isAdmin: roleName === 'Admin'
+        }
+        localStorage.setItem('cn_user_profile', JSON.stringify(profile))
+        updateUserState(profile)
+
+        if (authDialogInstance) {
+          authDialogInstance.destroy()
+          authDialogInstance = null
+        }
+        message.success('Đăng nhập thành công!')
+      }
+    } catch (err) {
+      console.warn('Lấy thông tin đăng nhập thất bại:', err)
+    }
+  }
 }
 
 const redirectToAuth = (mode: string) => {
@@ -294,11 +316,13 @@ onMounted(() => {
   checkLoginStatus()
   window.addEventListener('scroll', checkScroll, true)
   window.addEventListener('auth-required', handleAuthRequiredEvent)
+  window.addEventListener('focus', handleWindowFocus)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', checkScroll, true)
   window.removeEventListener('auth-required', handleAuthRequiredEvent)
+  window.removeEventListener('focus', handleWindowFocus)
 })
 </script>
 

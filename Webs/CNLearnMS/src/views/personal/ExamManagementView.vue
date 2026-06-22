@@ -690,7 +690,7 @@ import { message, Modal } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { getAllCate } from '@/api/categories'
 import { getAllExams, getExamQuestions, deleteExams, getExamQuestionCounts } from '@/api/exams'
-import { getAllQuizzes, saveQuizDetails, deleteQuiz } from '@/api/quizzes'
+import { getAllQuizzes, addQuizDetails, updateQuizDetails, deleteQuiz } from '@/api/quizzes'
 import { getSavedExamIds, toggleExamBookmark } from '@/api/bookmarks'
 
 const router = useRouter()
@@ -1368,7 +1368,7 @@ const saveQuiz = async () => {
   }
 
   try {
-    const res = await saveQuizDetails(quizPayload)
+    const res = await addQuizDetails(quizPayload)
     if (res && res.isSuccess) {
       message.success(`Lên lịch tổ chức bài kiểm tra "${quizForm.title.trim()}" thành công!`)
       await fetchQuizzesList()

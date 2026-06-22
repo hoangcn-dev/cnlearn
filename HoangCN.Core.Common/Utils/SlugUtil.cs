@@ -40,6 +40,9 @@ namespace HoangCN.Core.Common.Utils
             // Thay thế tất cả khoảng trắng thành dấu gạch ngang (-)
             text = text.Replace(' ', '-');
 
+            // Cộng thêm hash 8 kí tự để tránh trùng lặp
+            text += Guid.NewGuid().ToString("N")[..8];
+
             return text;
         }
     }

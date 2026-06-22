@@ -9,12 +9,13 @@ import {
   CodeOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons-vue';
-import { getTemplateByCode, saveTemplate, type EmailTemplate } from '@/api/emailTemplate';
+import { getTemplateById, addTemplate, updateTemplate, type EmailTemplate } from '@/api/emailTemplate';
 import { getErrorMessage } from '@/api/config/axios';
 
 const route = useRoute();
 const router = useRouter();
-const templateCodeParam = route.params.code as string;
+const templateIdParam = route.params.id as string;
+const isCreate = ref<boolean>(templateIdParam === 'new' || templateIdParam === 'create');
 
 const loading = ref(false);
 const isSaving = ref(false);
@@ -22,7 +23,7 @@ const originalTemplate = ref<EmailTemplate | null>(null);
 
 // Form State
 const editingTemplate = reactive<EmailTemplate>({
-  fileResourceId: '',
+  emailTemplateId: '',
   templateCode: '',
   subject: '',
   content: '',
@@ -91,10 +92,10 @@ const formatHtml = (html: string): string => {
 const loadTemplate = async () => {
   loading.value = true;
   try {
-    const res = await getTemplateByCode(templateCodeParam);
+    const res = await getTemplateById(templateIdParam);
     if (res.isSuccess && res.data) {
       originalTemplate.value = { ...res.data };
-      editingTemplate.fileResourceId = res.data.fileResourceId;
+      editingTemplate.emailTemplateId = res.data.emailTemplateId;
       editingTemplate.templateCode = res.data.templateCode;
       editingTemplate.subject = res.data.subject;
       editingTemplate.content = formatHtml(res.data.content);
@@ -112,7 +113,9 @@ const loadTemplate = async () => {
 };
 
 onMounted(() => {
-  loadTemplate();
+  if (!isCreate.value) {
+    loadTemplate();
+  }
 });
 
 // Insert Placeholder Helper
@@ -175,13 +178,13 @@ const handleSave = async () => {
   isSaving.value = true;
   try {
     const dataToSave: EmailTemplate = {
-      fileResourceId: editingTemplate.fileResourceId,
+      emailTemplateId: editingTemplate.emailTemplateId,
       templateCode: editingTemplate.templateCode.trim(),
       subject: editingTemplate.subject.trim(),
       content: editingTemplate.content.trim(),
     };
 
-    const res = await saveTemplate(dataToSave);
+    const res = isCreate.value ? await addTemplate(dataToSave) : await updateTemplate(dataToSave);
     if (res.isSuccess) {
       message.success('Lưu mẫu email thành công!');
       router.push({ name: 'email-templates' });
@@ -211,7 +214,7 @@ const handleCancel = () => {
         </a-button>
         <div class="text-start">
           <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-            Chỉnh Sửa Email Template: <span class="badge badge-code font-monospace fs-6 px-2.5 py-1 rounded">{{ templateCodeParam }}</span>
+            Chỉnh Sửa Email Template: <span class="badge badge-code font-monospace fs-6 px-2.5 py-1 rounded">{{ templateIdParam }}</span>
           </h5>
           <p class="text-secondary small mb-0">Cấu hình thông tin mã nhận dạng, tiêu đề gửi mail và viết mã HTML cho email.</p>
         </div>
@@ -249,7 +252,7 @@ const handleCancel = () => {
               <div class="col-12 col-md-6">
                 <div class="form-label-custom">Mã tài nguyên (Guid)</div>
                 <a-input 
-                  :value="editingTemplate.fileResourceId" 
+                  :value="editingTemplate.emailTemplateId" 
                   disabled 
                   size="large" 
                   class="rounded-3 font-monospace text-muted bg-light"

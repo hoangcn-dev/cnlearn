@@ -1,4 +1,7 @@
 using HoangCN.Core.Common.Base;
+using HoangCN.LearnMS.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -16,7 +19,7 @@ namespace HoangCN.LearnMS.Entities
         /// Khóa chính
         /// </summary>
         [Key]
-        [DisplayName("Mã đề thi")]
+        [DisplayName("Mã đề")]
         public Guid ExamId { get; set; }
 
         /// <summary>
@@ -24,21 +27,21 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        [DisplayName("Tên đề thi")]
+        [DisplayName("Tên đề")]
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Mô tả chi tiết đề thi
         /// </summary>
         [StringLength(1000, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        [DisplayName("Mô tả đề thi")]
+        [DisplayName("Mô tả đề")]
         public string? Description { get; set; }
 
         /// <summary>
         /// Danh mục môn học / chuyên đề
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
-        [DisplayName("Danh mục môn học")]
+        [DisplayName("Danh mục")]
         public Guid CategoryId { get; set; }
 
         /// <summary>
@@ -46,14 +49,14 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Thời gian làm bài")]
-        public int Duration { get; set; } = 45;
+        public int DurationMin { get; set; }
 
         /// <summary>
         /// Phạm vi truy cập (0: Riêng tư, 1: Công khai)
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Phạm vi truy cập")]
-        public int AccessType { get; set; } = 1;
+        public ExamAccessType AccessType { get; set; }
 
         /// <summary>
         /// Trạng thái bản nháp
@@ -63,29 +66,45 @@ namespace HoangCN.LearnMS.Entities
         public bool IsDraft { get; set; } = false;
 
         /// <summary>
+        /// Dữ liệu nháp
+        /// </summary>
+        [DisplayName("Dữ liệu nháp")]
+        public string? DraftData { get; set; }
+
+        /// <summary>
         /// Người tạo đề
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Người tạo đề")]
-        public Guid UserId { get; set; }
+        public Guid LearnMsUserId { get; set; }
 
         /// <summary>
-        /// Đóng góp vào ngân hàng câu hỏi chung
+        /// Đóng góp vào ngân hàng câu hỏi chung 
         /// </summary>
-        [DisplayName("Đóng góp ngân hàng câu hỏi")]
+        [DisplayName("Đóng góp câu hỏi mới vào ngân hàng câu hỏi")]
         public bool ContributeToBank { get; set; } = true;
 
-        /// <summary>
-        /// Đề thi được sinh ngầm tự động phục vụ riêng cho Kỳ thi/Bài kiểm tra
-        /// Nếu là true: Không đưa vào Ngân hàng đề thi cá nhân/công khai và không tự động đóng góp câu hỏi
-        /// </summary>
-        [DisplayName("Sinh ngầm từ kỳ thi")]
-        public bool IsQuizSource { get; set; } = false;
-
-        /// <summary>
-        /// Đánh dấu đề thi này do chính user hiện tại (đang gọi API) tạo ra
-        /// </summary>
         [NotMapped]
-        public bool IsMyCreated { get; set; }
+        public List<ExamQuestion> Questions { get; set; }
+    }
+
+    public class ExamConfiguration : IEntityTypeConfiguration<Exam>
+    {
+        public void Configure(EntityTypeBuilder<Exam> builder)
+        {
+            builder.ToTable("Exam");
+            builder.HasIndex(e => e.CategoryId);
+            builder.HasIndex(e => e.LearnMsUserId);
+
+            builder.HasOne<QuestionCategory>()
+                   .WithMany()
+                   .HasForeignKey(e => e.CategoryId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(e => e.LearnMsUserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

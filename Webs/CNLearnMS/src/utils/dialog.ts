@@ -15,6 +15,7 @@ export interface DialogOptions {
   onOk?: () => void | Promise<void>;
   onCancel?: () => void;
   appContext?: AppContext;
+  buttonType?: string;
 }
 
 export const showDialog = (options: DialogOptions) => {
@@ -46,6 +47,7 @@ export const showDialog = (options: DialogOptions) => {
     showOk: options.showOk,
     cancelText: options.cancelText,
     okText: options.okText,
+    buttonType: options.buttonType,
     'onUpdate:visible': (val: boolean) => {
       if (!val) {
         removeDialog();
@@ -84,4 +86,13 @@ export const showDialog = (options: DialogOptions) => {
   }
 
   render(vnode, container);
+
+  return {
+    destroy: () => {
+      if (vnode.component && vnode.component.props) {
+        vnode.component.props.visible = false;
+      }
+      removeDialog();
+    }
+  };
 };

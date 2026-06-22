@@ -16,7 +16,7 @@ namespace HoangCN.LearnMS.Utils
         {
             parameters = new DynamicParameters();
             parameters.Add("Ids", questionIds);
-            return "SELECT * FROM QuestionAnswer WHERE QuestionId IN @Ids AND IsDeleted = 0";
+            return "SELECT * FROM QuestionAnswer WHERE QuestionId IN @Ids";
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace HoangCN.LearnMS.Utils
         {
             parameters = new DynamicParameters();
             parameters.Add("Id", questionId);
-            return "SELECT * FROM QuestionAnswer WHERE QuestionId = @Id AND IsDeleted = 0 ORDER BY OrderInList";
+            return "SELECT * FROM QuestionAnswer WHERE QuestionId = @Id ORDER BY OrderInList";
         }
 
         /// <summary>
@@ -39,12 +39,12 @@ namespace HoangCN.LearnMS.Utils
             return @"
                 SELECT DISTINCT QuestionId 
                 FROM ExamAttempt 
-                WHERE UserId = @UserId AND AttemptType = 'question' AND QuestionId IS NOT NULL AND IsDeleted = 0
+                WHERE UserId = @UserId AND AttemptType = 'question' AND QuestionId IS NOT NULL
                 UNION
                 SELECT DISTINCT d.QuestionId 
                 FROM ExamAttemptDetail d
                 INNER JOIN ExamAttempt a ON d.ExamAttemptId = a.ExamAttemptId
-                WHERE a.UserId = @UserId AND a.AttemptType != 'question' AND a.IsDeleted = 0 AND d.IsDeleted = 0";
+                WHERE a.UserId = @UserId AND a.AttemptType != 'question'";
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace HoangCN.LearnMS.Utils
         {
             parameters = new DynamicParameters();
             parameters.Add("UserId", userId);
-            return "SELECT DISTINCT QuestionId FROM UserSavedQuestion WHERE UserId = @UserId AND IsDeleted = 0";
+            return "SELECT DISTINCT QuestionId FROM UserSavedQuestion WHERE UserId = @UserId";
         }
 
         /// <summary>
@@ -66,9 +66,9 @@ namespace HoangCN.LearnMS.Utils
             if (currentUserId.HasValue)
             {
                 parameters.Add("CurrentUserId", currentUserId.Value);
-                return "SELECT ExamId FROM Exam WHERE (AccessType = 1 AND IsDraft = 0 OR UserId = @CurrentUserId) AND IsDeleted = 0";
+                return "SELECT ExamId FROM Exam WHERE (AccessType = 1 AND IsDraft = 0 OR UserId = @CurrentUserId)";
             }
-            return "SELECT ExamId FROM Exam WHERE AccessType = 1 AND IsDraft = 0 AND IsDeleted = 0";
+            return "SELECT ExamId FROM Exam WHERE AccessType = 1 AND IsDraft = 0";
         }
 
         /// <summary>
@@ -80,9 +80,9 @@ namespace HoangCN.LearnMS.Utils
             if (currentUserId.HasValue)
             {
                 parameters.Add("CurrentUserId", currentUserId.Value);
-                return "SELECT QuizId FROM Quiz WHERE (IsDraft = 0 OR UserId = @CurrentUserId) AND IsDeleted = 0";
+                return "SELECT QuizId FROM Quiz WHERE (IsDraft = 0 OR UserId = @CurrentUserId)";
             }
-            return "SELECT QuizId FROM Quiz WHERE IsDraft = 0 AND IsDeleted = 0";
+            return "SELECT QuizId FROM Quiz WHERE IsDraft = 0";
         }
 
         /// <summary>
@@ -94,9 +94,19 @@ namespace HoangCN.LearnMS.Utils
             if (currentUserId.HasValue)
             {
                 parameters.Add("CurrentUserId", currentUserId.Value);
-                return "SELECT QuestionId FROM Question WHERE (AccessType = 0 OR UserId = @CurrentUserId) AND IsDeleted = 0";
+                return "SELECT QuestionId FROM Question WHERE (AccessType = 0 OR UserId = @CurrentUserId)";
             }
-            return "SELECT QuestionId FROM Question WHERE AccessType = 0 AND IsDeleted = 0";
+            return "SELECT QuestionId FROM Question WHERE AccessType = 0";
+        }
+
+        /// <summary>
+        /// Tạo câu lệnh SQL lấy danh sách câu hỏi theo danh sách QuestionId
+        /// </summary>
+        public static string BuildQueryQuestionsByIds(List<Guid> questionIds, out DynamicParameters parameters)
+        {
+            parameters = new DynamicParameters();
+            parameters.Add("Ids", questionIds);
+            return "SELECT * FROM Question WHERE QuestionId IN @Ids";
         }
     }
 }

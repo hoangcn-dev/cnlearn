@@ -1,4 +1,6 @@
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -21,7 +23,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Đường dẫn SEO (Slug)")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string? Slug { get; set; }
+        public string? QuestionCategorySlug { get; set; }
 
         /// <summary>
         /// Tên danh mục câu hỏi
@@ -29,12 +31,27 @@ namespace HoangCN.LearnMS.Entities
         [DisplayName("Tên danh mục")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string Name { get; set; } = string.Empty;
+        public string QuestionCategoryName { get; set; } = string.Empty;
 
         /// <summary>
         /// Mã danh mục cha (để phân cấp danh mục)
         /// </summary>
         [DisplayName("Danh mục cha")]
         public Guid? ParentId { get; set; }
+    }
+
+    public class QuestionCategoryConfiguration : IEntityTypeConfiguration<QuestionCategory>
+    {
+        public void Configure(EntityTypeBuilder<QuestionCategory> builder)
+        {
+            builder.ToTable("QuestionCategory");
+            builder.HasIndex(c => c.QuestionCategorySlug).IsUnique();
+            builder.HasIndex(c => c.ParentId);
+
+            builder.HasOne<QuestionCategory>()
+                   .WithMany()
+                   .HasForeignKey(c => c.ParentId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

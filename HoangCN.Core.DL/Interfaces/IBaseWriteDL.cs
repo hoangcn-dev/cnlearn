@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using HoangCN.Core.Common.Base;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace HoangCN.Core.DL.Interfaces
 {
@@ -8,11 +9,6 @@ namespace HoangCN.Core.DL.Interfaces
     /// </summary>
     public interface IBaseWriteDL
     {
-        /// <summary>
-        /// Lấy IQueryable để thực hiện truy vấn với EF Core (hỗ trợ LINQ, Include)
-        /// </summary>
-        IQueryable<TEntity> GetQueryable<TEntity>() where TEntity : class;
-
         /// <summary>
         /// Bắt đầu một Transaction mới
         /// </summary>
@@ -29,24 +25,18 @@ namespace HoangCN.Core.DL.Interfaces
         Task RollbackTransactionAsync();
 
         /// <summary>
-        /// Lưu các thay đổi hiện tại vào database ghi
+        /// Lưu danh sách entity tự động đệ quy và đồng bộ khóa ngoại
         /// </summary>
-        Task SaveChangesAsync();
+        Task<List<TEntity>> SaveEntities<TEntity>(
+            List<TEntity> entities, 
+            TEntity? parent = null,
+            Action<List<TEntity>>? onRollback = null)
+            where TEntity : BaseEntity, new();
 
         /// <summary>
-        /// Thêm danh sách entity vào database
+        /// Cập nhật trạng thái thay đổi của entity trong DbContext (theo dõi hoặc không theo dõi)
         /// </summary>
-        Task InsertRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
-
-        /// <summary>
-        /// Cập nhật danh sách entity trong database
-        /// </summary>
-        Task UpdateRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
-
-        /// <summary>
-        /// Xóa danh sách entity (hỗ trợ cả xóa mềm/xóa cứng tùy thuộc vào IsDeleted)
-        /// </summary>
-        Task DeleteRangeAsync<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity;
+        void SetChanged<TEntity, TProperty>(TEntity entity, Expression<Func<TEntity, TProperty>> propertySelector, bool isChanged) where TEntity : BaseEntity;
     }
 }
 

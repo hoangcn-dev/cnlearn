@@ -47,10 +47,10 @@ namespace HoangCN.LearnMS.BackgroundServices
         private async Task CheckExpiredSessionsAsync()
         {
             using var scope = _scopeFactory.CreateScope();
-            var examSessionBL = scope.ServiceProvider.GetRequiredService<HoangCN.LearnMS.Interfaces.IExamSessionBL>();
+            var examSessionService = scope.ServiceProvider.GetRequiredService<HoangCN.LearnMS.Interfaces.IExamSessionService>();
 
             // Get active sessions
-            var activeSessions = await examSessionBL.GetByCondition<ExamSession>(s => s.IsActive);
+            var activeSessions = await examSessionService.GetByCondition<ExamSession>(s => s.IsActive);
 
             if (activeSessions == null || activeSessions.Count == 0)
                 return;
@@ -68,7 +68,7 @@ namespace HoangCN.LearnMS.BackgroundServices
                     session.Status = ExamSessionStatus.Disconnected;
                 }
 
-                await examSessionBL.UpdateAsync(expiredSessions);
+                await examSessionService.UpdateEntities(expiredSessions);
                 _logger.LogInformation($"Auto-disconnected {expiredSessions.Count} expired exam sessions.");
             }
         }

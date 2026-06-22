@@ -2,7 +2,6 @@ using HoangCN.Core.BL.Base;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Interfaces;
-using Microsoft.AspNetCore.Http;
 
 namespace HoangCN.MainSystem.Services
 {

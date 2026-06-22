@@ -1,13 +1,10 @@
-using HoangCN.Core.BL.Interfaces;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Model.DTOs;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Controllers
 {
@@ -16,7 +13,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class QuizzesController : BaseController<Quiz>
+    public class QuizzesController : CRUDController<Quiz>
     {
         private readonly IQuizService _quizService;
 

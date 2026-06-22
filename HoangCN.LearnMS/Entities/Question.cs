@@ -1,10 +1,12 @@
 using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Enums;
 using HoangCN.LearnMS.Enums;
-using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HoangCN.LearnMS.Entities
 {
@@ -24,7 +26,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Đường dẫn thân thiện (Slug)")]
         [StringLength(255, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-        public string? Slug { get; set; }
+        public string? QuestionSlug { get; set; }
 
         /// <summary>
         /// Nội dung câu hỏi bằng chữ
@@ -63,7 +65,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Tài khoản sở hữu")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
-        public Guid UserId { get; set; }
+        public Guid LearnMsUserId { get; set; }
 
         /// <summary>
         /// Quyền truy cập của câu hỏi
@@ -86,6 +88,43 @@ namespace HoangCN.LearnMS.Entities
         [CheckExist(MustExist = true, TargetEntity = typeof(QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
         public Guid QuestionCategoryId { get; set; }
 
+        /// <summary>
+        /// Nguồn
+        /// </summary>
+        [DisplayName("Nguồn")]
+        public string? Source { get; set; }
 
+        /// <summary>
+        /// Nguồn
+        /// </summary>
+        [DisplayName("Đề thi nguồn chứa câu hỏi")]
+        public Guid? SourceExamId { get; set; }
+
+        /// <summary>
+        /// Danh sách đáp án đi kèm câu hỏi (Không map trực tiếp xuống DB)
+        /// </summary>
+        [NotMapped]
+        public List<QuestionAnswer> Answers { get; set; } = [];
+    }
+
+    public class QuestionConfiguration : IEntityTypeConfiguration<Question>
+    {
+        public void Configure(EntityTypeBuilder<Question> builder)
+        {
+            builder.ToTable("Question");
+            builder.HasIndex(q => q.QuestionSlug).IsUnique();
+            builder.HasIndex(q => q.QuestionCategoryId);
+            builder.HasIndex(q => q.LearnMsUserId);
+
+            builder.HasOne<QuestionCategory>()
+                   .WithMany()
+                   .HasForeignKey(q => q.QuestionCategoryId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<LearnMsUser>()
+                   .WithMany()
+                   .HasForeignKey(q => q.LearnMsUserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

@@ -3,6 +3,8 @@ using HoangCN.Core.DL;
 using HoangCN.Core.DL.Implementation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using HoangCN.Core.Common.Utils;
+using HoangCN.LearnMS.Utils;
 
 namespace HoangCN.LearnMS.DB
 {
@@ -15,12 +17,12 @@ namespace HoangCN.LearnMS.DB
         {
             var optionsBuilder = new DbContextOptionsBuilder<DynamicDbContext>();
             optionsBuilder.UseMySQL(
-                "Server=localhost;Port=3306;Database=hoangcn_learn_write;Uid=root;Pwd=admin;", 
+                EnvUtil.GetValue(EnvKeys.CONNNECTION_STRING_MYSQL_LEARN_WRITE), 
                 b => b.MigrationsAssembly("HoangCN.LearnMS")
             );
 
             // Chỉ định quét chính xác thực thể của LearnMS khi chạy Migration
-            var provider = new EntityAssemblyProvider(new[] { typeof(Question).Assembly });
+            var provider = new EntityAssemblyProvider([typeof(Question).Assembly]);
 
             return new DynamicDbContext(optionsBuilder.Options, provider);
         }

@@ -1,19 +1,16 @@
-using HoangCN.LearnMS.Entities;
-using HoangCN.Core.Common.Model.DTOs;
-using HoangCN.Core.Common.Exceptions;
-using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.BL.Attributes.AuthAction;
+using HoangCN.Core.BL.Base;
 using HoangCN.Core.Common.Enums;
-using HoangCN.LearnMS.Interfaces;
+using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.Common.Model.DTOs;
+using HoangCN.Core.Common.Model.Requests;
+using HoangCN.Core.Common.Utils;
 using HoangCN.LearnMS.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+using HoangCN.LearnMS.Entities;
+using HoangCN.LearnMS.Interfaces;
+using HoangCN.LearnMS.Requests;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Security.Claims;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Controllers
 {
@@ -22,7 +19,7 @@ namespace HoangCN.LearnMS.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class QuestionsController : BaseController<Question>
+    public class QuestionsController : CRUDController<Question>
     {
         private readonly IQuestionService _questionService;
 
@@ -31,132 +28,75 @@ namespace HoangCN.LearnMS.Controllers
             _questionService = questionService;
         }
 
-        private Guid CheckAuth()
+        protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+            builder.Disable(nameof(GetAll));
+            builder.Disable(nameof(GetPaging));
+            builder.Protect(nameof(Insert), nameof(RoleNames.Admin), nameof(RoleNames.User));
+            builder.Protect(nameof(Update), nameof(RoleNames.Admin), nameof(RoleNames.User));
+            builder.Protect(nameof(Delete), nameof(RoleNames.Admin), nameof(RoleNames.User));
+        }
+
+        [HttpPost("search")]
+        public async Task<IActionResult> SearchQuestions([FromBody] GetRequest request, [FromQuery] bool isMine)
+        {
+            if (isMine)
             {
-                throw new UnauthorizedException("Vui lòng đăng nhập để thực hiện chức năng này");
+                var userId = ClaimUtil.GetUserId(User);
+                if (userId == null)
+                {
+                    throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục"); 
+                }
+
+                request.Filters.Add(new Filter
+                {
+                    Property = nameof(Question.LearnMsUserId),
+                    Operator = FilterOperator.Equal,
+                    Value = userId.ToString(),
+                    Type = FilterType.String
+                });
             }
-            return userId;
-        }
-
-        private Guid? GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid parsedId))
-            {
-                return parsedId;
-            }
-            return null;
-        }
-
-        [HttpGet]
-        public override async Task<IActionResult> GetAll()
-        {
-            var request = GetRequest.GetAllRequest();
-            var res = await _questionService.GetQuestionDetailsPagingAsync(request, GetCurrentUserId() ?? Guid.Empty);
-            return Ok(ApiResponseDto.Success(res.Items)); // Trả về Items để khớp cấu trúc mảng của GetAll
-        }
-
-        [HttpPost("paging")]
-        public override async Task<IActionResult> GetPaging([FromBody] GetRequest request)
-        {
-            var res = await _questionService.GetQuestionDetailsPagingAsync(request, GetCurrentUserId() ?? Guid.Empty);
+            var res = await _questionService.Get<QuestionDto>(request);
             return Ok(ApiResponseDto.Success(res));
         }
 
-
-        /// <summary>
-        /// Lấy danh sách câu hỏi phân trang kèm chi tiết đáp án và danh mục
-        /// Đường dẫn: POST api/questions/paging-details
-        /// </summary>
-        [HttpPost("paging-details")]
-        public async Task<IActionResult> GetPagingDetails([FromBody] GetRequest request)
+        public override async Task<IActionResult> GetById(Guid id)
         {
-            var userId = GetCurrentUserId() ?? Guid.Empty;
-            var res = await _questionService.GetQuestionDetailsPagingAsync(request, userId);
+            var res = await _questionService.GetQuestionContent(ClaimUtil.GetUserId(User), id);
             return Ok(ApiResponseDto.Success(res));
         }
 
-        /// <summary>
-        /// Lấy danh sách câu hỏi đã lưu phân trang của người dùng hiện tại
-        /// Đường dẫn: POST api/questions/saved/paging
-        /// </summary>
-        [HttpPost("saved/paging")]
-        public async Task<IActionResult> GetSavedPagingDetails([FromBody] GetRequest request)
+        [HttpPost("answers")]
+        public async Task<IActionResult> GetQuestionAnswers(List<Guid> questionIds)
         {
-            var userId = CheckAuth();
-            request ??= new GetRequest();
-            request.Filters ??= new List<Filter>();
-            request.Filters.Add(new Filter
-            {
-                Property = "IsSaved",
-                Operator = FilterOperator.Equal,
-                Value = "true",
-                Type = FilterType.String
-            });
-            var res = await _questionService.GetQuestionDetailsPagingAsync(request, userId);
+            var res = await _questionService.GetAnswersContent(ClaimUtil.GetUserId(User), questionIds);
             return Ok(ApiResponseDto.Success(res));
         }
 
-        /// <summary>
-        /// Lấy danh sách câu hỏi đã làm phân trang của người dùng hiện tại
-        /// Đường dẫn: POST api/questions/done/paging
-        /// </summary>
-        [HttpPost("done/paging")]
-        public async Task<IActionResult> GetDonePagingDetails([FromBody] GetRequest request)
+        [HttpPost("key")]
+        public async Task<IActionResult> GetQuestionKey(List<Guid> questionIds)
         {
-            var userId = CheckAuth();
-            request ??= new GetRequest();
-            request.Filters ??= new List<Filter>();
-            request.Filters.Add(new Filter
-            {
-                Property = "IsDone",
-                Operator = FilterOperator.Equal,
-                Value = "true",
-                Type = FilterType.String
-            });
-            var res = await _questionService.GetQuestionDetailsPagingAsync(request, userId);
+            var res = await _questionService.GetQuestionCorrectAnswer(ClaimUtil.GetUserId(User), questionIds);
             return Ok(ApiResponseDto.Success(res));
         }
 
-        /// <summary>
-        /// Lấy chi tiết câu hỏi theo ID kèm đáp án và danh mục
-        /// Đường dẫn: GET api/questions/details/{id}
-        /// </summary>
-        [HttpGet("details/{id}")]
-        public async Task<IActionResult> GetDetailsById(Guid id)
+        [HttpGet("saved")]
+        [AuthAction]
+        public async Task<IActionResult> GetSavedQuestions()
         {
-            var userId = CheckAuth();
-            var res = await _questionService.GetQuestionDetailsByIdAsync(id, userId);
-            if (res == null)
-            {
-                throw new NotFoundException("Câu hỏi không tồn tại");
-            }
+            var userId = ClaimUtil.GetUserId(User);
+            var res = await _questionService.GetSavedQuestions(userId!.Value);
             return Ok(ApiResponseDto.Success(res));
         }
 
-        /// <summary>
-        /// Lưu danh sách câu hỏi kèm đáp án và danh mục (Thêm mới/Cập nhật)
-        /// Đường dẫn: POST api/questions/save-details
-        /// </summary>
-        [HttpPost("save-details")]
-        public async Task<IActionResult> SaveDetails([FromBody] List<QuestionDetailsDto> questionsDto)
+        [HttpPost("saved")]
+        [AuthAction]
+        public async Task<IActionResult> GetSavedQuestions([FromBody] ToggleUserSavedRequest request)
         {
-            var userId = CheckAuth();
-            await _questionService.SaveQuestionDetailsAsync(questionsDto, userId);
-            return Ok(ApiResponseDto.Success());
-        }
-
-        /// <summary>
-        /// API kiểm tra đáp án của một câu hỏi (Dành cho Luyện tập/Thi)
-        /// </summary>
-        [HttpPost("check-answer")]
-        public async Task<IActionResult> CheckAnswer([FromBody] QuestionCheckDto dto)
-        {
-            var result = await _questionService.CheckAnswerAsync(dto);
-            return Ok(ApiResponseDto.Success(result));
+            var userId = ClaimUtil.GetUserId(User);
+            request.UserId = userId!.Value;
+            await _questionService.ToggleQuestion(request);
+            return Ok(ApiResponseDto.Success(request.IsSaved? "Lưu thành công":"Bỏ lưu thành công"));
         }
     }
 }

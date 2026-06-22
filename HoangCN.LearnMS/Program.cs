@@ -28,18 +28,8 @@ namespace HoangCN.LearnMS
             builder.ConfigCommon(config);
 
             // Đăng ký Core.DL cho LearnMS sử dụng database hoangcn_learn_write và hoangcn_learn_read
-            var writeConnectionString = builder.Configuration.GetConnectionString("LearnWrite");
-            var readConnectionString = builder.Configuration.GetConnectionString("LearnRead");
-
-            if (string.IsNullOrEmpty(writeConnectionString))
-            {
-                throw new InvalidOperationException("Connection string 'LearnWrite' is null or empty.");
-            }
-            if (string.IsNullOrEmpty(readConnectionString))
-            {
-                throw new InvalidOperationException("Connection string 'LearnRead' is null or empty.");
-            }
-
+            var writeConnectionString = EnvUtil.GetValue(EnvKeys.CONNNECTION_STRING_MYSQL_LEARN_WRITE);
+            var readConnectionString = EnvUtil.GetValue(EnvKeys.CONNNECTION_STRING_MYSQL_LEARN_WRITE);
             builder.Services.AddCoreDL(
                 writeConnectionString: writeConnectionString,
                 readConnectionString: readConnectionString,

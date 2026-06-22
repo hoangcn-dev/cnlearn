@@ -1,19 +1,9 @@
 using HoangCN.Core.BL.Base;
-using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Enums;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.Requests;
-using HoangCN.MainSystem.Entities;
 using HoangCN.Core.DL.Interfaces;
+using HoangCN.MainSystem.Entities;
 using HoangCN.MainSystem.Interfaces;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace HoangCN.MainSystem.Services
 {
@@ -78,7 +68,7 @@ namespace HoangCN.MainSystem.Services
                 CreatedBy = "System"
             };
 
-            await InsertAsync(new List<ResourceFile> { resourceFile });
+            await InsertEntities(new List<ResourceFile> { resourceFile });
             _logger.LogInformation("Lưu file thành công. FileId: {FileId}, Url: {Url}", fileId, resourceFile.Url);
 
             return resourceFile;
@@ -141,7 +131,7 @@ namespace HoangCN.MainSystem.Services
                 _logger.LogError(ex, "Lỗi xảy ra khi xóa file vật lý tại: {Path}", physicalPath);
             }
 
-            await DeleteAsync(new DeleteRequest { Ids = new List<Guid> { fileId } });
+            await DeleteEntities(new DeleteRequest { Ids = [fileId] });
             _logger.LogInformation("Đã xóa bản ghi ResourceFile khỏi CSDL cho FileId: {FileId}", fileId);
         }
 

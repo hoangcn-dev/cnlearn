@@ -1,4 +1,4 @@
-import { post, get } from '@/api/config/axios';
+import { post, get, put } from '@/api/config/axios';
 import { endpoints } from '@/api/config/endpoint';
 import type { User } from '@/model/user/User';
 import type { RegisterDTO, LoginDTO } from '@/model/auth';
@@ -84,13 +84,23 @@ export const getUserPaging = async (requestData: any) => {
 };
 
 /**
- * Lưu thông tin người dùng (Thêm mới hoặc Cập nhật)
+ * Thêm người dùng
  */
-export const saveUsers = async (users: User[]) => {
+export const addUsers = async (users: User[]) => {
   if (!users || users.length === 0) {
-    throw new Error("Danh sách người dùng cần lưu không được phép để trống.");
+    throw new Error("Danh sách người dùng cần thêm không được phép để trống.");
   }
   return await post(endpoints.users.save, users);
+};
+
+/**
+ * Cập nhật người dùng
+ */
+export const udpateUsers = async (users: User[]) => {
+  if (!users || users.length === 0) {
+    throw new Error("Danh sách người dùng cần cập nhật không được phép để trống.");
+  }
+  return await put(endpoints.users.save, users);
 };
 
 /**

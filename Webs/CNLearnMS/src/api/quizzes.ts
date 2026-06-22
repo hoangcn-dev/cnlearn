@@ -6,22 +6,18 @@ export const getAllQuizzes = async () => {
   return await get(endpoints.quizzes.getAll);
 };
 
-// Lưu danh sách kỳ thi/bài kiểm tra (thêm hoặc sửa)
-export const saveQuizDetails = async (quizData: any) => {
+// Thêm mới kỳ thi/bài kiểm tra
+export const addQuizDetails = async (quizData: any) => {
   const isArray = Array.isArray(quizData);
   const dataList = isArray ? quizData : [quizData];
-  
-  // Xác định xem đây là tạo mới (Insert) hay cập nhật (Update) dựa trên quizId
-  const isUpdate = dataList.some(item => {
-    const id = item.quizId || item.id;
-    return id && id !== '00000000-0000-0000-0000-000000000000';
-  });
+  return await post(endpoints.quizzes.save, dataList);
+};
 
-  if (isUpdate) {
-    return await put(endpoints.quizzes.save, dataList);
-  } else {
-    return await post(endpoints.quizzes.save, dataList);
-  }
+// Cập nhật kỳ thi/bài kiểm tra
+export const updateQuizDetails = async (quizData: any) => {
+  const isArray = Array.isArray(quizData);
+  const dataList = isArray ? quizData : [quizData];
+  return await put(endpoints.quizzes.save, dataList);
 };
 
 // Xóa kỳ thi/bài kiểm tra
