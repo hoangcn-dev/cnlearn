@@ -1,18 +1,15 @@
-using Dapper;
 using HoangCN.Core.BL.Base;
 using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Model.Requests;
 using HoangCN.Core.Common.Utils;
+using HoangCN.Core.Common.Enums;
 using HoangCN.Core.DL.Interfaces;
-using HoangCN.Core.DL.Utils;
 using HoangCN.LearnMS.DTOs;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Enums;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.Requests;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
 
 namespace HoangCN.LearnMS.Services
 {
@@ -106,52 +103,7 @@ namespace HoangCN.LearnMS.Services
 
             return qContent;
         }
-
-        /// <summary>
-        /// Lấy chi tiết một câu hỏi trong ngân hàng đề kèm theo toàn bộ đáp án của nó sử dụng Multiple Query
-        /// </summary>
-        /// <param name="questionId">Mã định danh của câu hỏi</param>
-        /// <returns>Đối tượng DTO chứa thông tin câu hỏi và danh sách đáp án liên quan</returns>
-        public async Task<BankQuestionWithAnswersDto> GetBankQuestionWithAnswers(Guid questionId)
-        {
-            var param = new DynamicParameters();
-
-            // Tạo câu sql lấy thông tin câu hỏi
-            var questionQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<Question, QuestionDto>(
-                isGetOnlyOne: true,
-                q => q.QuestionId == questionId,
-                param);
-
-            // Tạo câu sql lấy thông tin câu trả lời
-            var answerQuery = BuildSQLUtil.BuildQueryStringGetDtoByCondition<QuestionAnswer, BankAnswerDto>(
-                isGetOnlyOne: false,
-                q => q.QuestionId == questionId,
-                param);
-
-            // Thực thi cả 2 câu cùng lúc trong cung 1 connnection
-            var questionWithAnswers = await _baseReadDL.ExecuteQueryMultiple(
-                $"{questionQuery}; {answerQuery};",
-                async grid =>
-                {
-                    var question = (await grid.ReadAsync<BankQuestionWithAnswersDto>()).FirstOrDefault();
-                    if (question == null)
-                    {
-                        return null;
-                    }
-
-                    var anwsers = (await grid.ReadAsync<BankAnswerDto>()).ToList();
-                    question.Answers = anwsers;
-                    return question;
-                },
-                param);
-
-            if (questionWithAnswers == null)
-            {
-                throw new NotFoundException("Không tìm thấy câu hỏi");
-            }
-
-            return questionWithAnswers;
-        }
+       
 
         /// <summary>
         /// Lấy danh sách các câu hỏi đã lưu (yêu thích) của một học viên/người dùng cụ thể
@@ -232,6 +184,7 @@ namespace HoangCN.LearnMS.Services
         protected override async Task HandleBeforeUpdate(List<Question> entities)
         {
             await base.HandleBeforeUpdate(entities);
+            await ValidateOwnership(entities);
             GenerateSlugForQuestions(entities);
             await ValidateLeafCategories(entities);
         }
@@ -302,6 +255,52 @@ namespace HoangCN.LearnMS.Services
 
                 var violatedNames = string.Join(", ", categoryNames);
                 throw new BadRequestException($"Không thể lưu câu hỏi vào danh mục cha (danh mục chứa danh mục con): {violatedNames}. Chỉ được phép lưu câu hỏi vào danh mục cấp lá.");
+            }
+        }
+
+        /// <summary>
+        /// Tiền xử lý trước khi xóa danh sách câu hỏi
+        /// </summary>
+        /// <param name="entities">Danh sách câu hỏi cần xóa</param>
+        protected override async Task HandleBeforeDelete(List<Question> entities)
+        {
+            await base.HandleBeforeDelete(entities);
+            await ValidateOwnership(entities);
+        }
+
+        /// <summary>
+        /// Xác thực quyền sở hữu của người dùng hiện tại đối với danh sách câu hỏi.
+        /// Chỉ áp dụng đối với người dùng thường (User), Admin được bỏ qua.
+        /// </summary>
+        private async Task ValidateOwnership(List<Question> entities)
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            var roleName = ClaimUtil.GetRoleName(user);
+
+            // Admin được toàn quyền
+            if (roleName == nameof(RoleNames.Admin))
+            {
+                return;
+            }
+
+            var userId = ClaimUtil.GetUserId(user);
+            if (userId == null)
+            {
+                throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục");
+            }
+
+            var ids = entities.Select(e => e.QuestionId).ToList();
+            if (ids.Count == 0) return;
+
+            // Lấy thông tin thực tế từ database
+            var questionsInDb = await GetByCondition<Question>(q => ids.Contains(q.QuestionId) && !q.IsDeleted);
+
+            foreach (var qDb in questionsInDb)
+            {
+                if (qDb.LearnMsUserId != userId.Value)
+                {
+                    throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này trên câu hỏi của người khác");
+                }
             }
         }
 

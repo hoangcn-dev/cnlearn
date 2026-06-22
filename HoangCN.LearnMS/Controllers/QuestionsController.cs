@@ -32,9 +32,9 @@ namespace HoangCN.LearnMS.Controllers
         {
             builder.Disable(nameof(GetAll));
             builder.Disable(nameof(GetPaging));
-            builder.Protect(nameof(Insert), nameof(RoleNames.Admin));
-            builder.Protect(nameof(Update), nameof(RoleNames.Admin));
-            builder.Protect(nameof(Delete), nameof(RoleNames.Admin));
+            builder.Protect(nameof(Insert), nameof(RoleNames.Admin), nameof(RoleNames.User));
+            builder.Protect(nameof(Update), nameof(RoleNames.Admin), nameof(RoleNames.User));
+            builder.Protect(nameof(Delete), nameof(RoleNames.Admin), nameof(RoleNames.User));
         }
 
         [HttpPost("search")]
