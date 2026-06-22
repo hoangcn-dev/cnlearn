@@ -248,10 +248,10 @@ const handleWindowFocus = async () => {
           authDialogInstance.destroy()
           authDialogInstance = null
         }
-        message.success('Đã khôi phục phiên đăng nhập của bạn thành công!')
+        message.success('Đăng nhập thành công!')
       }
     } catch (err) {
-      console.warn('Lấy thông tin đăng nhập khi focus thất bại:', err)
+      console.warn('Lấy thông tin đăng nhập thất bại:', err)
     }
   }
 }

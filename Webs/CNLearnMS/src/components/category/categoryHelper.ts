@@ -1,8 +1,8 @@
 export interface QuestionCategory {
   questionCategoryId: string
-  parentId: string | null
+  parentId?: string | null
   questionCategoryName: string
-  questionCategorySlug: string
+  questionCategorySlug?: string
 }
 
 export interface CategoryNode {
@@ -19,7 +19,7 @@ export interface CategoryNode {
 export function buildCategoryTree(flatList: QuestionCategory[]): CategoryNode[] {
   const build = (parentId: string | null): CategoryNode[] => {
     return flatList
-      .filter(x => x.parentId === parentId)
+      .filter(x => (x.parentId || null) === parentId)
       .map(x => {
         const children = build(x.questionCategoryId)
         const node: CategoryNode = {
@@ -72,7 +72,7 @@ export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOpti
   
   const traverse = (parentId: string | null, level: number) => {
     const children = flatList
-      .filter(x => x.parentId === parentId)
+      .filter(x => (x.parentId || null) === parentId)
       .sort((a, b) => a.questionCategoryName.localeCompare(b.questionCategoryName))
       
     children.forEach(cat => {
@@ -80,7 +80,7 @@ export function buildIndentedOptions(flatList: QuestionCategory[]): IndentedOpti
       const localName = cat.questionCategoryName.split(' - ').pop() || cat.questionCategoryName
       const indent = '\u00A0\u00A0'.repeat(level)
       const prefix = level > 0 ? '└─ ' : ''
-      const hasChildren = flatList.some(child => child.parentId === cat.questionCategoryId)
+      const hasChildren = flatList.some(child => (child.parentId || null) === cat.questionCategoryId)
       
       options.push({
         value: cat.questionCategoryId,

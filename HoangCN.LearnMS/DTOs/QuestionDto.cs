@@ -30,6 +30,7 @@ namespace HoangCN.LearnMS.DTOs
         public string FullName { get; set; }
 
         public bool IsInBank { get; set; }
+        public string? Source { get; set; }
         public DateTime ModifiedDate { get; set; }
     }
 }

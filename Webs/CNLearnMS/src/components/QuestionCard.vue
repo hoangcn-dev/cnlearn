@@ -121,26 +121,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import FormulaRenderer from './formula-editor/FormulaRenderer.vue'
+import type { Question as BaseQuestion, QuestionAnswer } from '@/models/questions'
 
-interface Answer {
+interface Answer extends Partial<QuestionAnswer> {
   id?: string
-  questionAnswerId?: string
   stringContent: string
-  isCorrectAnswer?: boolean
   indexChar?: string
 }
 
-interface Question {
-  id?: string
-  questionId?: string
-  stringContent: string
-  explaination?: string
-  explanation?: string
-  level?: number
-  type?: number
+interface Question extends Omit<Partial<BaseQuestion>, 'answers'> {
   answers: Answer[]
   chosenAnswerIds?: string[]
   isConfirmed?: boolean
+  explanation?: string
 }
 
 interface Props {

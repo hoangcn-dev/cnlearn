@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HoangCN.LearnMS.DTOs
 {
-    public class ExamContentDto
+    public class ExamDto
     {
         public Guid ExamId { get; set; }
         public string Name { get; set; } = string.Empty;

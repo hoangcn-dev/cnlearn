@@ -250,7 +250,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
     
     list.push({
       name: partName,
-      id: match ? match.parentId : null,
+      id: match ? (match.parentId || null) : null,
       fullName: accumulatedName
     })
   }

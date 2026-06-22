@@ -155,7 +155,7 @@
           <div v-else class="d-flex flex-column gap-4">
             <div 
               v-for="(q, index) in paginatedQuestions" 
-              :key="q.id" 
+              :key="q.questionId" 
               :id="'question-card-' + (index + (currentPage - 1) * pageSize)"
               class="card card-body p-4 border border-light shadow-sm bg-light-soft position-relative rounded-4"
               style="scroll-margin-top: 90px;"
@@ -169,7 +169,7 @@
                   <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Danh mục:</span>
                     <CategorySelect
-                      v-model:value="q.categoryIds[0]"
+                      v-model:value="q.questionCategoryId"
                       :categories="categories"
                       :disable-parents="true"
                       placeholder="Chọn môn học"
@@ -255,7 +255,7 @@
               <!-- Explanation Textarea -->
               <div>
                 <label class="form-label fw-bold text-dark-blue small mb-1">Giải thích lời giải / Hướng dẫn học tập:</label>
-                <a-textarea v-model:value="q.explanation" :rows="2" placeholder="Giải thích chi tiết lời giải vì sao phương án được chọn là chính xác..." />
+                <a-textarea v-model:value="q.explaination" :rows="2" placeholder="Giải thích chi tiết lời giải vì sao phương án được chọn là chính xác..." />
               </div>
             </div>
 
@@ -428,31 +428,13 @@ import { ref, reactive, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
-import { getQuestionDetails, saveQuestions } from '@/api/questions'
+import { getQuestionDetails, getQuestionAnswers, getQuestionKeys, saveQuestions } from '@/api/questions'
 import { CategorySelect, type QuestionCategory } from '@/components/category'
+import type { Question, QuestionAnswer } from '@/models/questions'
+import { QuestionLevel, QuestionType, QuestionAccessType } from '@/models/questions'
 
 const route = useRoute()
 const router = useRouter()
-
-// Seed Types
-interface Answer {
-  questionAnswerId?: string
-  stringContent: string
-  isCorrectAnswer: boolean
-}
-
-interface Question {
-  id: string
-  slug: string
-  stringContent: string
-  explanation: string
-  level: number
-  type: number
-  accessType: number
-  categoryIds: string[]
-  answers: Answer[]
-  isMyCreated?: boolean
-}
 
 // Categories list loaded from API
 const categories = ref<QuestionCategory[]>([])
@@ -515,29 +497,32 @@ const formatId = (val?: string) => {
 
 const fetchQuestionForEdit = async (id: string) => {
   try {
-    const res = await getQuestionDetails(id)
-    if (res && res.isSuccess && res.data) {
-      const q = res.data
+    const [resDetail, resAnswers, resKeys] = await Promise.all([
+      getQuestionDetails(id),
+      getQuestionAnswers([id]),
+      getQuestionKeys([id])
+    ])
+
+    if (resDetail && resDetail.isSuccess && resDetail.data) {
+      const q = resDetail.data
+      const rawAnswers = (resAnswers && resAnswers.isSuccess && resAnswers.data) ? resAnswers.data : []
+      const correctKeysMap = (resKeys && resKeys.isSuccess && resKeys.data?.correctMap) ? resKeys.data.correctMap : {}
+      const correctIds = correctKeysMap[q.questionId] || []
+
+      const mappedAnswers = rawAnswers.map((a: any) => ({
+        questionAnswerId: a.questionAnswerId,
+        stringContent: a.stringContent || '',
+        isCorrectAnswer: correctIds.includes(a.questionAnswerId)
+      }))
+
       questionsList.value = [{
-        id: q.questionId || '',
-        slug: q.questionSlug || '',
-        stringContent: q.stringContent || '',
-        explanation: q.explaination || '',
-        level: q.level ?? 0,
-        type: q.type ?? 0,
-        accessType: q.accessType ?? 0,
-        categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
-        answers: (q.answers || []).map((a: any) => ({
-          questionAnswerId: a.questionAnswerId,
-          stringContent: a.stringContent || '',
-          isCorrectAnswer: a.isCorrectAnswer ?? false
-        })),
-        isMyCreated: q.isMyCreated ?? false
+        ...q,
+        answers: mappedAnswers
       }]
       latestSavedDraft.value = JSON.stringify(questionsList.value)
       globalAccessType.value = q.accessType ?? 0
     } else {
-      message.error(res.errorMessage || 'Không tìm thấy câu hỏi!')
+      message.error(resDetail?.errorMessage || 'Không tìm thấy câu hỏi!')
       router.push('/personal/questions')
     }
   } catch (error) {
@@ -591,20 +576,24 @@ const goBack = () => {
 // Card Editing Actions
 const addNewQuestionCard = () => {
   const defaultCategory = categories.value[0]?.questionCategoryId || ''
+  const qId = 'q_new_' + Date.now() + Math.random().toString(36).substring(2, 6)
   const newQ: Question = {
-    id: 'q_new_' + Date.now() + Math.random().toString(36).substring(2, 6),
-    slug: 'cau-hoi-moi-' + Date.now(),
+    questionId: qId,
+    questionSlug: 'cau-hoi-moi-' + Date.now(),
     stringContent: '',
-    explanation: '',
-    level: 0,
-    type: 0,
+    explaination: '',
+    attemptCount: 0,
+    level: QuestionLevel.Easy,
+    type: QuestionType.SingleChoice,
+    learnMsUserId: '',
     accessType: globalAccessType.value,
-    categoryIds: [defaultCategory],
+    isInBank: false,
+    questionCategoryId: defaultCategory,
     answers: [
-      { stringContent: '', isCorrectAnswer: true },
-      { stringContent: '', isCorrectAnswer: false },
-      { stringContent: '', isCorrectAnswer: false },
-      { stringContent: '', isCorrectAnswer: false }
+      { questionAnswerId: 'ans_new_' + qId + '_1', stringContent: '', isCorrectAnswer: true, questionId: qId, orderInList: 0 },
+      { questionAnswerId: 'ans_new_' + qId + '_2', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 1 },
+      { questionAnswerId: 'ans_new_' + qId + '_3', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 2 },
+      { questionAnswerId: 'ans_new_' + qId + '_4', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 3 }
     ]
   }
   questionsList.value.push(newQ)
@@ -622,7 +611,14 @@ const removeQuestionCard = (index: number) => {
 }
 
 const addAnswerOptionToQuestion = (q: Question) => {
-  q.answers.push({ stringContent: '', isCorrectAnswer: false })
+  const ansId = 'ans_new_' + q.questionId + '_' + (q.answers.length + 1)
+  q.answers.push({
+    questionAnswerId: ansId,
+    stringContent: '',
+    isCorrectAnswer: false,
+    questionId: q.questionId,
+    orderInList: q.answers.length
+  })
 }
 
 const removeAnswerOptionFromQuestion = (q: Question, index: number) => {
@@ -716,11 +712,11 @@ const saveAllQuestionsToBank = async () => {
 
   let indexCounter = 1
   for (const q of questionsList.value) {
-    if (!q.stringContent.trim()) {
+    if (!(q.stringContent || '').trim()) {
       message.error(`Câu số ${indexCounter} chưa điền nội dung câu hỏi!`)
       return
     }
-    if (!q.categoryIds || !q.categoryIds[0]) {
+    if (!q.questionCategoryId) {
       message.error(`Câu số ${indexCounter} chưa được chỉ định danh mục môn học!`)
       return
     }
@@ -728,7 +724,7 @@ const saveAllQuestionsToBank = async () => {
       message.error(`Câu số ${indexCounter} cần có ít nhất 2 phương án trả lời!`)
       return
     }
-    if (q.answers.some(a => !a.stringContent.trim())) {
+    if (q.answers.some(a => !(a.stringContent || '').trim())) {
       message.error(`Câu số ${indexCounter} có chứa phương án để trống nội dung!`)
       return
     }
@@ -740,20 +736,26 @@ const saveAllQuestionsToBank = async () => {
   }
 
   try {
-    const payload = questionsList.value.map(q => ({
-      questionId: formatId(q.id),
-      questionSlug: q.slug || '',
-      stringContent: q.stringContent.trim(),
-      explaination: q.explanation ? q.explanation.trim() : '',
-      level: q.level,
-      type: q.type || 0,
+    const payload: Question[] = questionsList.value.map(q => ({
+      questionId: formatId(q.questionId),
+      questionSlug: q.questionSlug || '',
+      stringContent: (q.stringContent || '').trim(),
+      explaination: q.explaination ? q.explaination.trim() : '',
+      attemptCount: q.attemptCount || 0,
+      level: q.level ?? QuestionLevel.Easy,
+      type: q.type ?? QuestionType.SingleChoice,
+      learnMsUserId: q.learnMsUserId || '',
       accessType: globalAccessType.value,
-      isMyCreated: globalAccessType.value === 0,
-      questionCategoryId: formatId(q.categoryIds[0]),
-      answers: q.answers.map((ans) => ({
+      isInBank: q.isInBank || false,
+      questionCategoryId: formatId(q.questionCategoryId),
+      source: q.source || '',
+      sourceExamId: q.sourceExamId || null,
+      answers: q.answers.map((ans, idx) => ({
         questionAnswerId: formatId(ans.questionAnswerId || (ans as any).id),
-        stringContent: ans.stringContent.trim(),
-        isCorrectAnswer: ans.isCorrectAnswer
+        stringContent: (ans.stringContent || '').trim(),
+        isCorrectAnswer: ans.isCorrectAnswer,
+        questionId: formatId(q.questionId),
+        orderInList: ans.orderInList !== undefined ? ans.orderInList : idx
       }))
     }))
 
@@ -845,32 +847,36 @@ const parseImportFile = (file: File) => {
         
         // Map dữ liệu từ JSON sang Question interface (Hỗ trợ cả camelCase và PascalCase)
         const formattedQuestions: Question[] = items.map((item: any, index: number) => {
+          const qId = item.questionId || item.QuestionId || 'import_' + Date.now() + '_' + index
+          const rawAns = Array.isArray(item.answers) ? item.answers : (Array.isArray(item.Answers) ? item.Answers : [])
+          
           return {
-            id: 'import_' + Date.now() + '_' + index,
-            slug: item.slug || item.Slug || '',
+            questionId: qId,
+            questionSlug: item.slug || item.Slug || item.questionSlug || '',
             stringContent: item.stringContent || item.StringContent || '',
-            explanation: item.explanation || item.Explanation || '',
+            explaination: item.explanation || item.Explanation || item.explaination || '',
+            attemptCount: item.attemptCount || 0,
             level: item.level !== undefined ? item.level : (item.Level !== undefined ? item.Level : 1),
             type: item.type !== undefined ? item.type : (item.Type !== undefined ? item.Type : 0),
+            learnMsUserId: item.learnMsUserId || '',
             accessType: item.accessType !== undefined ? item.accessType : (item.AccessType !== undefined ? item.AccessType : globalAccessType.value),
-            categoryIds: (() => {
-              const ids = Array.isArray(item.categoryIds) ? item.categoryIds : (Array.isArray(item.CategoryIds) ? item.CategoryIds : []);
-              // Lọc các ID thực sự tồn tại trong danh mục hệ thống
-              const validIds = ids.filter((id: any) => typeof id === 'string' && categories.value.some(c => c.questionCategoryId.toLowerCase() === id.toLowerCase()));
-              if (validIds.length > 0) {
-                return validIds;
+            isInBank: !!(item.isInBank || item.IsInBank),
+            questionCategoryId: (() => {
+              const catId = item.questionCategoryId || item.QuestionCategoryId || (Array.isArray(item.categoryIds) ? item.categoryIds[0] : (Array.isArray(item.CategoryIds) ? item.CategoryIds[0] : ''))
+              const isValid = categories.value.some(c => c.questionCategoryId.toLowerCase() === catId.toLowerCase())
+              if (isValid) {
+                return catId
               }
-              // Nếu không có ID hợp lệ nào, gán mặc định là danh mục hợp lệ đầu tiên (nút lá)
-              const firstLeaf = categories.value.find(c => !categories.value.some(child => child.parentId === c.questionCategoryId));
-              return firstLeaf ? [firstLeaf.questionCategoryId] : (categories.value[0] ? [categories.value[0].questionCategoryId] : []);
+              const firstLeaf = categories.value.find(c => !categories.value.some(child => child.parentId === c.questionCategoryId))
+              return firstLeaf ? firstLeaf.questionCategoryId : (categories.value[0]?.questionCategoryId || '')
             })(),
-            answers: Array.isArray(item.answers) ? item.answers.map((ans: any) => ({
+            answers: rawAns.map((ans: any, idx: number) => ({
+              questionAnswerId: ans.questionAnswerId || ans.QuestionAnswerId || 'ans_import_' + qId + '_' + idx,
               stringContent: ans.stringContent || ans.StringContent || '',
-              isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer)
-            })) : (Array.isArray(item.Answers) ? item.Answers.map((ans: any) => ({
-              stringContent: ans.stringContent || ans.StringContent || '',
-              isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer)
-            })) : [])
+              isCorrectAnswer: !!(ans.isCorrectAnswer || ans.IsCorrectAnswer),
+              questionId: qId,
+              orderInList: ans.orderInList !== undefined ? ans.orderInList : idx
+            }))
           }
         })
         
@@ -895,21 +901,25 @@ const parseImportFile = (file: File) => {
     // Fake logic cho Excel
     setTimeout(() => {
       parsingLoading.value = false
+      const qId = 'preview_f3_' + Date.now()
       let parsed: Question[] = [
         {
-          id: 'preview_f3_' + Date.now(),
-          slug: 'preview-slug-3',
+          questionId: qId,
+          questionSlug: 'preview-slug-3',
           stringContent: 'Kim loại nào sau đây phản ứng trực tiếp được với dung dịch H2SO4 loãng ở nhiệt độ thường?',
-          explanation: 'Fe đứng trước Hydro trong dãy hoạt động hóa học nên giải phóng H2.',
-          level: 0,
-          type: 0,
+          explaination: 'Fe đứng trước Hydro trong dãy hoạt động hóa học nên giải phóng H2.',
+          attemptCount: 0,
+          level: QuestionLevel.Easy,
+          type: QuestionType.SingleChoice,
+          learnMsUserId: '',
           accessType: globalAccessType.value,
-          categoryIds: [categories.value[2]?.questionCategoryId || ''],
+          isInBank: false,
+          questionCategoryId: categories.value[2]?.questionCategoryId || '',
           answers: [
-            { stringContent: 'Sắt (Fe)', isCorrectAnswer: true },
-            { stringContent: 'Đồng (Cu)', isCorrectAnswer: false },
-            { stringContent: 'Bạc (Ag)', isCorrectAnswer: false },
-            { stringContent: 'Vàng (Au)', isCorrectAnswer: false }
+            { questionAnswerId: 'ans_ex_' + qId + '_1', stringContent: 'Sắt (Fe)', isCorrectAnswer: true, questionId: qId, orderInList: 0 },
+            { questionAnswerId: 'ans_ex_' + qId + '_2', stringContent: 'Đồng (Cu)', isCorrectAnswer: false, questionId: qId, orderInList: 1 },
+            { questionAnswerId: 'ans_ex_' + qId + '_3', stringContent: 'Bạc (Ag)', isCorrectAnswer: false, questionId: qId, orderInList: 2 },
+            { questionAnswerId: 'ans_ex_' + qId + '_4', stringContent: 'Vàng (Au)', isCorrectAnswer: false, questionId: qId, orderInList: 3 }
           ]
         }
       ]
@@ -1005,37 +1015,45 @@ const generateQuestionsViaAi = () => {
     aiGeneratingLoading.value = false
     
     // Simulate generated list
+    const qId1 = 'ai_gen_1_' + Date.now()
+    const qId2 = 'ai_gen_2_' + Date.now()
     const aiResults: Question[] = [
       {
-        id: 'ai_gen_1_' + Date.now(),
-        slug: 'ai-gen-slug-1',
+        questionId: qId1,
+        questionSlug: 'ai-gen-slug-1',
         stringContent: `[AI] Theo yêu cầu: Khảo sát đạo hàm y = x^2 - 4x + 3. Tìm tọa độ đỉnh Parabol của đồ thị hàm số.`,
-        explanation: 'Hoành độ đỉnh x = -b/2a = 2. Tung độ y = -1. Vậy tọa độ đỉnh là I(2; -1).',
-        level: 0,
-        type: 0,
+        explaination: 'Hoành độ đỉnh x = -b/2a = 2. Tung độ y = -1. Vậy tọa độ đỉnh là I(2; -1).',
+        attemptCount: 0,
+        level: QuestionLevel.Easy,
+        type: QuestionType.SingleChoice,
+        learnMsUserId: '',
         accessType: globalAccessType.value,
-        categoryIds: [categories.value[0]?.questionCategoryId || ''],
+        isInBank: false,
+        questionCategoryId: categories.value[0]?.questionCategoryId || '',
         answers: [
-          { stringContent: 'I(2; -1)', isCorrectAnswer: true },
-          { stringContent: 'I(-2; -1)', isCorrectAnswer: false },
-          { stringContent: 'I(2; 1)', isCorrectAnswer: false },
-          { stringContent: 'I(-2; 1)', isCorrectAnswer: false }
+          { questionAnswerId: 'ans_ai_' + qId1 + '_1', stringContent: 'I(2; -1)', isCorrectAnswer: true, questionId: qId1, orderInList: 0 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_2', stringContent: 'I(-2; -1)', isCorrectAnswer: false, questionId: qId1, orderInList: 1 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_3', stringContent: 'I(2; 1)', isCorrectAnswer: false, questionId: qId1, orderInList: 2 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_4', stringContent: 'I(-2; 1)', isCorrectAnswer: false, questionId: qId1, orderInList: 3 }
         ]
       },
       {
-        id: 'ai_gen_2_' + Date.now(),
-        slug: 'ai-gen-slug-2',
+        questionId: qId2,
+        questionSlug: 'ai-gen-slug-2',
         stringContent: `[AI] Theo yêu cầu: Tìm nguyên hàm của hàm số f(x) = cos(x) trên tập R.`,
-        explanation: 'Nguyên hàm của cos(x) là sin(x) + C.',
-        level: 0,
-        type: 0,
+        explaination: 'Nguyên hàm của cos(x) là sin(x) + C.',
+        attemptCount: 0,
+        level: QuestionLevel.Easy,
+        type: QuestionType.SingleChoice,
+        learnMsUserId: '',
         accessType: globalAccessType.value,
-        categoryIds: [categories.value[0]?.questionCategoryId || ''],
+        isInBank: false,
+        questionCategoryId: categories.value[0]?.questionCategoryId || '',
         answers: [
-          { stringContent: 'sin(x) + C', isCorrectAnswer: true },
-          { stringContent: '-sin(x) + C', isCorrectAnswer: false },
-          { stringContent: 'cos(x) + C', isCorrectAnswer: false },
-          { stringContent: '-cos(x) + C', isCorrectAnswer: false }
+          { questionAnswerId: 'ans_ai_' + qId2 + '_1', stringContent: 'sin(x) + C', isCorrectAnswer: true, questionId: qId2, orderInList: 0 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_2', stringContent: '-sin(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 1 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_3', stringContent: 'cos(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 2 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_4', stringContent: '-cos(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 3 }
         ]
       }
     ]

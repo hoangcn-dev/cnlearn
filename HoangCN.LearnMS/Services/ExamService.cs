@@ -1,23 +1,8 @@
 using HoangCN.Core.BL.Base;
-using HoangCN.Core.Common.Enums;
-using HoangCN.Core.Common.Exceptions;
+using HoangCN.Core.BL.Interfaces;
 using HoangCN.Core.DL.Interfaces;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Interfaces;
-using HoangCN.LearnMS.DTOs;
-using HoangCN.Core.BL.Interfaces;
-using HoangCN.Core.Common.Base;
-using HoangCN.Core.Common.Model.DTOs;
-using HoangCN.Core.Common.Model.Requests;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Http;
-using Dapper;
 
 namespace HoangCN.LearnMS.Services
 {

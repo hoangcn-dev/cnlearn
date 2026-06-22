@@ -71,22 +71,12 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'stringContent'">
-              <div class="fw-semibold text-dark-blue text-truncate-2" style="max-width: 380px;">
+              <div class="fw-semibold text-dark-blue text-truncate-2 question-title-link" style="cursor: pointer;" @click="goToEditPage(record.questionId)">
                 {{ record.stringContent }}
               </div>
               <div class="text-secondary small mt-1">
-                Giải thích: <span class="fst-italic text-truncate-1 d-inline-block align-middle" style="max-width: 250px;">{{ record.explaination || 'Không có' }}</span>
+                <span class="fst-italic text-truncate-1 d-inline-block align-middle">{{ record.questionCategoryName || 'Chưa phân loại' }}</span>
               </div>
-            </template>
-
-            <template v-else-if="column.key === 'category'">
-              <span class="badge bg-light text-dark border">{{ record.questionCategoryName || getCategoryName(record.questionCategoryId || (record.categoryIds && record.categoryIds[0])) }}</span>
-            </template>
-
-            <template v-else-if="column.key === 'level'">
-              <span :class="getLevelBadgeClass(record.level)">
-                {{ record.level === 2 ? 'Khó' : record.level === 1 ? 'Trung bình' : 'Dễ' }}
-              </span>
             </template>
 
             <template v-else-if="column.key === 'actions'">
@@ -181,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, getCurrentInstance } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
@@ -189,7 +179,7 @@ import { CategorySelect } from '@/components/category'
 import { getQuestionsPaging, deleteQuestions, getSavedQuestions, toggleSaveQuestion } from '@/api/questions'
 import type { GetRequest, Filter } from '@/models/get-request'
 import { FilterGroupType, FilterOperator, FilterType } from '@/models/get-request'
-import type { BankQuestionWithAnswersDto } from '@/models/questions'
+import type { QuestionDto } from '@/models/questions'
 import { QuestionLevel } from '@/models/questions'
 import type { QuestionCategory } from '@/models/category'
 import { showDialog } from '@/utils/dialog'
@@ -198,7 +188,7 @@ import { scrollToTop } from '@/utils/scroll'
 const router = useRouter()
 
 const categories = ref<QuestionCategory[]>([])
-const questions = ref<BankQuestionWithAnswersDto[]>([])
+const questions = ref<QuestionDto[]>([])
 const listTab = ref<'mine'|'saved'>('mine')
 const filterModalOpen = ref(false)
 const totalItems = ref(0)
@@ -272,21 +262,8 @@ const applyFilters = () => {
 // Columns config
 const columns = [
   { title: 'Nội dung câu hỏi', dataIndex: 'stringContent', key: 'stringContent' },
-  { title: 'Danh mục', dataIndex: 'category', key: 'category', width: '260px' },
-  { title: 'Độ khó', dataIndex: 'level', key: 'level', width: '120px' },
   { title: 'Thao tác', key: 'actions', width: '90px' }
 ]
-
-const getLevelBadgeClass = (lvl: QuestionLevel) => {
-  if (lvl === QuestionLevel.Hard) return 'badge bg-danger text-white fs-9 fw-normal'
-  if (lvl === QuestionLevel.Medium) return 'badge bg-warning text-dark fs-9 fw-normal'
-  return 'badge bg-success text-white fs-9 fw-normal'
-}
-
-const getCategoryName = (catId?: string) => {
-  if (!catId) return 'Chuyên đề chung'
-  return categories.value.find(c => c.questionCategoryId?.toLowerCase() === catId.toLowerCase())?.questionCategoryName || 'Chuyên đề chung'
-}
 
 const fetchQuestions = async () => {
   loading.value = true
@@ -407,6 +384,9 @@ const viewQuestionDetail = (id: string) => {
   router.push(`/question/${id}`)
 }
 
+const instance = getCurrentInstance()
+const appContext = instance?.appContext
+
 const confirmDelete = (id: string) => {
   showDialog({
     title: 'Xác nhận xóa câu hỏi',
@@ -414,12 +394,13 @@ const confirmDelete = (id: string) => {
     okText: 'Xóa câu hỏi',
     cancelText: 'Hủy bỏ',
     buttonType: 'danger',
+    appContext,
     onOk: async () => {
       try {
         const res = await deleteQuestions([id])
         if (res && res.isSuccess) {
           message.success('Đã xóa câu hỏi thành công!')
-          fetchQuestions()
+          await fetchQuestions()
         } else {
           message.error(res.errorMessage || 'Xóa câu hỏi thất bại')
         }
@@ -548,5 +529,14 @@ onMounted(async () => {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+.question-title-link {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.question-title-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
 }
 </style>

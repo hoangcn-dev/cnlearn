@@ -26,13 +26,6 @@ namespace HoangCN.LearnMS.Interfaces
         Task<QuestionDto> GetQuestionContent(Guid? userId, Guid questionId);
 
         /// <summary>
-        /// Lấy chi tiết thông tin một câu hỏi trong ngân hàng đề thi kèm danh sách các đáp án của nó
-        /// </summary>
-        /// <param name="questionId">Mã định danh của câu hỏi</param>
-        /// <returns>Đối tượng DTO chứa thông tin câu hỏi và các đáp án liên quan</returns>
-        Task<BankQuestionWithAnswersDto> GetBankQuestionWithAnswers(Guid questionId);
-
-        /// <summary>
         /// Lấy danh sách các câu hỏi đã lưu (yêu thích) của một người dùng cụ thể
         /// </summary>
         /// <param name="userId">Mã định danh của người dùng</param>
