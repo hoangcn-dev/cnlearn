@@ -23,6 +23,8 @@ namespace HoangCN.MainSystem.Tests
         [Required]
         [StringLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        public List<TestChildFKCheck> Children { get; set; } = new();
     }
 
     public class TestChildCheck : BaseEntity
@@ -39,17 +41,32 @@ namespace HoangCN.MainSystem.Tests
         public Guid ParentId { get; set; }
     }
 
+    public class TestChildFKCheck : BaseEntity
+    {
+        [Key]
+        public Guid TestChildFKCheckId { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string Code { get; set; } = string.Empty;
+
+        [FK(TargetEntity = typeof(TestParentCheck))]
+        public Guid TestParentCheckId { get; set; }
+    }
+
     public class CheckExistTestDbContext : DbContext
     {
         public CheckExistTestDbContext(DbContextOptions<CheckExistTestDbContext> options) : base(options) { }
 
         public DbSet<TestParentCheck> TestParentChecks { get; set; }
         public DbSet<TestChildCheck> TestChildChecks { get; set; }
+        public DbSet<TestChildFKCheck> TestChildFKChecks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<TestParentCheck>().ToTable("TestParentCheck");
             modelBuilder.Entity<TestChildCheck>().ToTable("TestChildCheck");
+            modelBuilder.Entity<TestChildFKCheck>().ToTable("TestChildFKCheck");
         }
     }
 
@@ -277,6 +294,59 @@ namespace HoangCN.MainSystem.Tests
             var savedChild = await _context.TestChildChecks.FindAsync(result[0].TestChildCheckId);
             Assert.NotNull(savedChild);
             Assert.Equal(parent.TestParentCheckId, savedChild.ParentId);
+        }
+
+        #endregion
+
+        #region Kịch bản 7: Validate Thuộc tính [FK] (FK Attribute Validation)
+
+        [Fact]
+        public async Task CheckExist_ShouldThrowBadRequestException_WhenFKParentIdDoesNotExistInDb()
+        {
+            // Arrange: Thực thể con TestChildFKCheck có TestParentCheckId trỏ tới một cha không tồn tại
+            var child = new TestChildFKCheck
+            {
+                Code = "FK01",
+                TestParentCheckId = Guid.NewGuid() // ID cha giả không tồn tại
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BadRequestException>(async () =>
+            {
+                await _writeDL.SaveEntities(new List<TestChildFKCheck> { child });
+            });
+
+            Assert.Contains("không tồn tại", ex.Message);
+        }
+
+        [Fact]
+        public async Task CheckExist_ShouldPassForFKAttribute_WhenParentIsSavedInSameBatch()
+        {
+            // Arrange: Cấu hình cha và con lưu cùng một đợt (parent mới tinh, ID = Guid.Empty)
+            var parent = new TestParentCheck
+            {
+                Name = "Batch Parent"
+            };
+
+            var child = new TestChildFKCheck
+            {
+                Code = "FK02"
+            };
+            parent.Children.Add(child);
+
+            // Gọi SaveEntities cho parent (nó sẽ tự động đệ quy lưu child và sinh ID cho cha)
+            var result = await _writeDL.SaveEntities(new List<TestParentCheck> { parent });
+
+            // Assert: Lưu thành công cả cha và con
+            Assert.NotEmpty(result);
+            var parentId = result[0].TestParentCheckId;
+            var savedParent = await _context.TestParentChecks.FindAsync(parentId);
+            Assert.NotNull(savedParent);
+            Assert.Equal("Batch Parent", savedParent.Name);
+
+            var savedChild = await _context.TestChildFKChecks.FirstOrDefaultAsync(c => c.Code == "FK02");
+            Assert.NotNull(savedChild);
+            Assert.Equal(parentId, savedChild.TestParentCheckId);
         }
 
         #endregion

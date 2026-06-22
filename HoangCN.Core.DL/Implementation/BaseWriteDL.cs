@@ -1,7 +1,9 @@
 #nullable enable
 using Dapper;
+using System.Linq;
 using HoangCN.Core.Common.Base;
 using HoangCN.Core.Common.Enums;
+using HoangCN.Core.DL.Utils;
 using HoangCN.Core.Common.Exceptions;
 using HoangCN.Core.Common.Metadata;
 using HoangCN.Core.Common.Utils;
@@ -89,25 +91,31 @@ namespace HoangCN.Core.DL.Implementation
                     var allEntitiesOfType = inserts.Concat(updates).Concat(deletes).ToList();
                     if (allEntitiesOfType.Count > 0)
                     {
-                        var checkExistMethod = typeof(BaseWriteDL)
-                            .GetMethod("CheckExist", BindingFlags.NonPublic | BindingFlags.Instance)!
-                            .MakeGenericMethod(type);
-
                         var typedCheckList = Activator.CreateInstance(listType)!;
                         foreach (var entity in allEntitiesOfType)
                         {
                             addMethod.Invoke(typedCheckList, new object[] { entity });
                         }
 
-                        var checkTask = (Task)checkExistMethod.Invoke(this, new object[] { typedCheckList })!;
+                        var checkTask = (Task)DynamicQueryUtil.InvokeGenericMethod(
+                            this,
+                            typeof(BaseWriteDL),
+                            "CheckExist",
+                            new[] { type },
+                            new object[] { typedCheckList, graph },
+                            BindingFlags.NonPublic | BindingFlags.Instance)!;
                         await checkTask;
                     }
 
                     // Đưa vào Change Tracker
                     if (inserts.Count > 0)
                     {
-                        var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(type);
-                        var dbSet = setMethod.Invoke(_context, null)!;
+                        var dbSet = DynamicQueryUtil.InvokeGenericMethod(
+                            _context,
+                            typeof(DbContext),
+                            nameof(DbContext.Set),
+                            new[] { type },
+                            Array.Empty<object>())!;
 
                         var typedInsertList = Activator.CreateInstance(listType)!;
                         foreach (var entity in inserts)
@@ -161,8 +169,12 @@ namespace HoangCN.Core.DL.Implementation
                         if (trackedDeletes.Count > 0)
                         {
                             var dbSetType = typeof(DbSet<>).MakeGenericType(type);
-                            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(type);
-                            var dbSet = setMethod.Invoke(_context, null)!;
+                            var dbSet = DynamicQueryUtil.InvokeGenericMethod(
+                                _context,
+                                typeof(DbContext),
+                                nameof(DbContext.Set),
+                                new[] { type },
+                                Array.Empty<object>())!;
 
                             var typedDeleteList = Activator.CreateInstance(listType)!;
                             foreach (var entity in trackedDeletes)
@@ -248,7 +260,7 @@ namespace HoangCN.Core.DL.Implementation
         /// CheckExist: Kiểm tra sự tồn tại hoặc không trùng lặp của các bản ghi trong cơ sở dữ liệu
         /// dựa trên các thuộc tính [CheckExist]/[Key]/[FK] đã được định nghĩa trong lớp thực thể.
         /// </summary>
-        private async Task CheckExist<TEntity>(List<TEntity> entities)
+        private async Task CheckExist<TEntity>(List<TEntity> entities, FlattenedEntityGraph graph)
             where TEntity : BaseEntity
         {
             if (!entities.Any()) return;
@@ -267,7 +279,7 @@ namespace HoangCN.Core.DL.Implementation
                 var checkValues = new Dictionary<object, List<int>>();
                 for ( var i = 0; i < entities.Count; i++)
                 {
-                    if (entities[0].State == ModalState.None) continue;
+                    if (entities[i].State == ModalState.None) continue;
 
                     var value = entities[i].GetValueByPropName(prop.PropertyName);
                     if (value == null) continue;
@@ -297,11 +309,14 @@ namespace HoangCN.Core.DL.Implementation
                 if (checkValues.Count == 0) continue;
 
                 /// Bước 4: Liệt kê các thông tin chung cần thiết cho quá rình kiêm tra
+                // Kiểu thực thể sẽ kiểm tra
+                var targetEntityType = 
+                    checkExistAttr?.TargetEntity ?? 
+                    fkAttr?.TargetEntity ??
+                    metadata.EntityType;
+
                 // Bảng sẽ kiểm tra
-                var targetTableName = 
-                    checkExistAttr?.TargetEntity?.Name ?? 
-                    fkAttr?.TargetEntity?.Name ??
-                    metadata.EntityType.Name;
+                var targetTableName = targetEntityType.Name;
 
                 // Tên thuộc tính sẽ kiểm tra
                 var checkColumnName = prop.PropertyName;
@@ -309,21 +324,57 @@ namespace HoangCN.Core.DL.Implementation
                 /// Bước 5: Kiểm tra đảm bảo giá trị tồn tại 
                 if ((checkExistAttr != null && checkExistAttr.MustExist) || fkAttr != null || isFkProp)
                 {
-                    // Xác định cột tương ứng trên bảng đích (nếu trỏ sang bảng cha thì dùng khóa chính của bảng cha, ngược lại dùng tên thuộc tính hiện tại)
-                    var targetColumnName = (checkExistAttr?.TargetEntity != null || fkAttr?.TargetEntity != null) 
-                        ? $"{targetTableName}Id" 
-                        : checkColumnName;
+                    // Thu thập danh sách các thực thể cha đang được thêm mới trong cùng đợt lưu
+                    var insertedIds = new HashSet<object>();
+                    if (graph != null && graph.Inserts.TryGetValue(targetEntityType, out var inserts))
+                    {
+                        foreach (var ins in inserts)
+                        {
+                            insertedIds.Add(GetEntityId(ins));
+                        }
+                    }
 
-                    // Câu SQL truy vấn lấy danh sách giá trị ra
-                    var sql = @$"
-                        SELECT {targetColumnName} FROM {targetTableName}
-                        WHERE {targetColumnName} IN ({string.Join(", ", checkValues.Keys.Select((_, index) => $"{{{index}}}"))})";
-                    var existingValues = _context.Database.SqlQueryRaw<object>(sql, checkValues.Keys.ToArray());
+                    // Lọc bỏ những giá trị nằm trong danh sách đang thêm mới
+                    var valuesToQuery = checkValues.Keys.Where(k => !insertedIds.Contains(k)).ToList();
 
-                    if (existingValues.Count() == checkValues.Count) continue;
+                    // Đối chiếu thành công ban đầu gồm các bản ghi đang thêm mới
+                    var validValues = new HashSet<object>(insertedIds);
+
+                    if (valuesToQuery.Count > 0)
+                    {
+                        // Xác định cột tương ứng trên bảng đích (nếu trỏ sang bảng cha thì dùng khóa chính của bảng cha, ngược lại dùng tên thuộc tính hiện tại)
+                        var targetColumnName = (checkExistAttr?.TargetEntity != null || fkAttr?.TargetEntity != null) 
+                            ? $"{targetTableName}Id" 
+                            : checkColumnName;
+
+                        // Câu SQL truy vấn lấy danh sách giá trị ra
+                        var sql = @$"
+                            SELECT {targetColumnName} FROM {targetTableName}
+                            WHERE {targetColumnName} IN ({string.Join(", ", valuesToQuery.Select((_, index) => $"{{{index}}}"))})";
+                        
+                        var propType = prop.PropertyInfo.PropertyType;
+                        var targetType = Nullable.GetUnderlyingType(propType) ?? propType;
+
+                        var queryable = (IQueryable)DynamicQueryUtil.InvokeGenericMethod(
+                            null,
+                            typeof(RelationalDatabaseFacadeExtensions),
+                            nameof(RelationalDatabaseFacadeExtensions.SqlQueryRaw),
+                            new[] { targetType },
+                            new object[] { _context.Database, sql, valuesToQuery.ToArray() })!;
+
+                        foreach (var val in queryable)
+                        {
+                            if (val != null)
+                            {
+                                validValues.Add(val);
+                            }
+                        }
+                    }
+
+                    if (checkValues.Keys.All(k => validValues.Contains(k))) continue;
 
                     // Tạo thông báo lỗi
-                    var missValues = checkValues.Keys.Except(existingValues);
+                    var missValues = checkValues.Keys.Where(k => !validValues.Contains(k)).ToList();
                     var missIndexs = missValues.SelectMany(v => checkValues[v]);
                     var missMessage = entities.Count == 1?
                         $"Trường {prop.PropertyInfo.GetPropDisplayName()} của {ReflectionUtil.GetEntityDisplayName<TEntity>()} không tồn tại":
@@ -527,26 +578,26 @@ namespace HoangCN.Core.DL.Implementation
             var tableName = childType.Name;
             var sql = $"SELECT * FROM {tableName} WHERE {foreignKeyName} IN ({string.Join(",", parentIds.Select((_, i) => $"{{{i}}}"))}) AND IsDeleted = 0";
 
-            var setMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!
-                .MakeGenericMethod(childType);
-            var dbSet = setMethod.Invoke(_context, null)!;
+            var dbSet = DynamicQueryUtil.InvokeGenericMethod(
+                _context,
+                typeof(DbContext),
+                nameof(DbContext.Set),
+                new[] { childType },
+                Array.Empty<object>())!;
 
-            var fromSqlRawMethod = typeof(RelationalQueryableExtensions)
-                .GetMethods()
-                .First(m => m.Name == nameof(RelationalQueryableExtensions.FromSqlRaw) && 
-                            m.GetParameters().Length == 3 && 
-                            m.GetParameters()[2].ParameterType == typeof(object[]))
-                .MakeGenericMethod(childType);
+            var query = DynamicQueryUtil.InvokeGenericMethod(
+                null,
+                typeof(RelationalQueryableExtensions),
+                nameof(RelationalQueryableExtensions.FromSqlRaw),
+                new[] { childType },
+                new object[] { dbSet, sql, parentIds.Select(id => (object)id).ToArray() })!;
 
-            var query = fromSqlRawMethod.Invoke(null, new object[] { dbSet, sql, parentIds.Select(id => (object)id).ToArray() })!;
-
-            var toListAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods()
-                .First(m => m.Name == nameof(EntityFrameworkQueryableExtensions.ToListAsync) && 
-                            m.GetParameters().Length == 2)
-                .MakeGenericMethod(childType);
-
-            var task = (Task)toListAsyncMethod.Invoke(null, new object[] { query, default(CancellationToken) })!;
+            var task = (Task)DynamicQueryUtil.InvokeGenericMethod(
+                null,
+                typeof(EntityFrameworkQueryableExtensions),
+                nameof(EntityFrameworkQueryableExtensions.ToListAsync),
+                new[] { childType },
+                new object[] { query, default(CancellationToken) })!;
             await task;
 
             var result = task.GetType().GetProperty("Result")!.GetValue(task) as System.Collections.IEnumerable;
