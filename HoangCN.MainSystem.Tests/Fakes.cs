@@ -279,7 +279,9 @@ namespace HoangCN.MainSystem.Tests
             return Task.CompletedTask;
         }
 
-        public Task<List<TResult>> GetByCondition<TResult>(Expression<Func<Role, bool>> condition)
+        public Task<List<TResult>> GetByCondition<TResult>(
+            Expression<Func<Role, bool>> condition,
+            Expression<Func<Role, object>>? selector = null)
         {
             var func = condition.Compile();
             var matched = Roles.Where(func).Cast<TResult>().ToList();
@@ -293,7 +295,9 @@ namespace HoangCN.MainSystem.Tests
             return Task.FromResult(count);
         }
 
-        public Task<TResult?> GetFirstByCondition<TResult>(Expression<Func<Role, bool>> condition)
+        public Task<TResult?> GetFirstByCondition<TResult>(
+            Expression<Func<Role, bool>> condition,
+            Expression<Func<Role, object>>? selector = null)
         {
             var func = condition.Compile();
             var matched = Roles.Where(func).Cast<TResult>().FirstOrDefault();
@@ -303,8 +307,10 @@ namespace HoangCN.MainSystem.Tests
         public Task InsertEntities(List<Role> entities) => throw new NotImplementedException();
         public Task UpdateEntities(List<Role> entities) => throw new NotImplementedException();
         public Task DeleteEntities(DeleteRequest request) => throw new NotImplementedException();
-        public Task<ResultDto<TResult>> Get<TResult>(GetRequest request) => throw new NotImplementedException();
-        public Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<Role, bool>> condition) => throw new NotImplementedException();
+        public Task<ResultDto<TResult>> Get<TResult>(
+            GetRequest request, 
+            Expression<Func<Role, bool>>? condition = null,
+            Expression<Func<Role, object>>? selector = null) => throw new NotImplementedException();
         public Task<TResult?> GetById<TResult>(Guid id) => throw new NotImplementedException();
     }
 }

@@ -1,3 +1,4 @@
+using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,8 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [Required(ErrorMessage = "{0} không được phép để trống.")]
         [DisplayName("Danh mục")]
-        public Guid CategoryId { get; set; }
+        [FK(TargetEntity = typeof(QuestionCategory))]
+        public Guid QuestionCategoryId { get; set; }
 
         /// <summary>
         /// Thời gian làm bài (phút)
@@ -93,12 +95,12 @@ namespace HoangCN.LearnMS.Entities
         public void Configure(EntityTypeBuilder<Exam> builder)
         {
             builder.ToTable("Exam");
-            builder.HasIndex(e => e.CategoryId);
+            builder.HasIndex(e => e.QuestionCategoryId);
             builder.HasIndex(e => e.LearnMsUserId);
 
             builder.HasOne<QuestionCategory>()
                    .WithMany()
-                   .HasForeignKey(e => e.CategoryId)
+                   .HasForeignKey(e => e.QuestionCategoryId)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne<LearnMsUser>()

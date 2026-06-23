@@ -1,4 +1,5 @@
-﻿using HoangCN.Core.Common.Base;
+﻿using HoangCN.Core.Common.Attributes;
+using HoangCN.Core.Common.Base;
 using HoangCN.LearnMS.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -11,7 +12,7 @@ namespace HoangCN.LearnMS.Entities
     /// <summary>
     /// Thực thể đại diện cho các lần lưu của user
     /// </summary>
-    [Index(nameof(UserId), nameof(TargetId), IsUnique = true)]
+    [Index(nameof(LearnMsUserId), nameof(TargetId), IsUnique = true)]
     public class UserSavedMapping : BaseEntity
     {
         /// <summary>
@@ -28,15 +29,13 @@ namespace HoangCN.LearnMS.Entities
         /// <summary>
         /// Id người dùng lưu
         /// </summary>
-        public Guid UserId { get; set; }
+        [FK(TargetEntity = typeof(LearnMsUser))]
+        public Guid LearnMsUserId { get; set; }
 
         /// <summary>
         /// Kiểu nội dung lưu
         /// </summary>
         public SaveType SaveType { get; set; }
-
-        [ForeignKey(nameof(UserId))]
-        public LearnMsUser User { get; set; }
     }
 
     public class UserSavedMappingConfiguration : IEntityTypeConfiguration<UserSavedMapping>
@@ -44,9 +43,9 @@ namespace HoangCN.LearnMS.Entities
         public void Configure(EntityTypeBuilder<UserSavedMapping> builder)
         {
             builder.ToTable("UserSavedMapping");
-            builder.HasOne(us => us.User)
+            builder.HasOne<LearnMsUser>()
                    .WithMany()
-                   .HasForeignKey(us => us.UserId)
+                   .HasForeignKey(us => us.LearnMsUserId)
                    .OnDelete(DeleteBehavior.Restrict);
         }
     }

@@ -112,7 +112,7 @@
         <!-- Giải thích chi tiết -->
         <div class="explanation-section mb-4" v-if="question.explaination">
           <div class="section-label mb-2-5">GIẢI THÍCH CHI TIẾT</div>
-          <div class="explanation-box p-3 border border-indigo-accent bg-indigo-light-opacity rounded-3 text-secondary leading-relaxed fs-8.5">
+          <div class="explanation-box p-3 border border-indigo-accent bg-indigo-light-opacity rounded-3 text-secondary leading-relaxed fs-8-5">
             <FormulaRenderer :content="question.explaination" />
           </div>
         </div>
@@ -197,13 +197,10 @@ const loadQuestion = async () => {
       sourceName.value = qData.source || ''
       lastModifiedDate.value = qData.modifiedDate ? formatDate(new Date(qData.modifiedDate)) : formatDate(new Date())
 
-      // Gọi tiếp API lấy câu trả lời và keys sau khi lấy câu hỏi thành công
-      const [answersRes, keysRes] = await Promise.all([
-        getQuestionAnswers([questionId]),
-        getQuestionKeys([questionId])
-      ])
+      // Gọi tiếp API lấy keys sau khi lấy câu hỏi thành công
+      const keysRes = await getQuestionKeys([questionId])
 
-      const answersList = (answersRes && answersRes.isSuccess && answersRes.data) ? answersRes.data : []
+      const answersList = qData.answers || []
       const correctMap = (keysRes && keysRes.isSuccess && keysRes.data?.correctMap) ? keysRes.data.correctMap : {}
       correctAnswerIds.value = correctMap[questionId] || []
 
@@ -214,7 +211,6 @@ const loadQuestion = async () => {
         explaination: qData.explaination || 'Chưa có giải thích chi tiết',
         level: qData.level || 0,
         type: qData.type || 0,
-        learnMsUserId: qData.learnMsUserId || '',
         accessType: qData.accessType || 0,
         isInBank: qData.isInBank || false,
         questionCategoryId: qData.questionCategoryId || '',
@@ -277,7 +273,7 @@ onMounted(() => {
 .text-indigo { color: #4f46e5; }
 .bg-indigo-soft { background-color: rgba(99, 102, 241, 0.08); }
 .fs-8 { font-size: 0.775rem !important; }
-.fs-8.5 { font-size: 0.825rem !important; }
+.fs-8-5 { font-size: 0.825rem !important; }
 .fs-9 { font-size: 0.7rem !important; }
 .shrink-0 { flex-shrink: 0; }
 .transition-all { transition: all 0.2s ease-in-out; }

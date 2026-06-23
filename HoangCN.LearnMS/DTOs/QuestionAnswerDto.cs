@@ -7,7 +7,6 @@ namespace HoangCN.LearnMS.DTOs
     {
         public Guid QuestionAnswerId { get; set; }
         public string? StringContent { get; set; }
-        public Guid QuestionId { get; set; }
         public int OrderInList { get; set; }
     }
 }

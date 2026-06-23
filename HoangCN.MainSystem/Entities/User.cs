@@ -90,13 +90,14 @@ namespace HoangCN.MainSystem.Entities
         /// </summary>
         [DisplayName("Quyền")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
-        [CheckExist(MustExist = true, TargetEntity = typeof(Role), ErrorMessage = "Quyền không tồn tại trong hệ thống.")]
+        [FK(TargetEntity = typeof(Role))]
         public Guid RoleId { get; set; }
 
         /// <summary>
         /// Đối tượng vai trò
         /// </summary>
         [ForeignKey(nameof(RoleId))]
+        [NotMapped]
         public virtual Role Role { get; set; }
     }
 }

@@ -1,21 +1,17 @@
-using HoangCN.Core.Common.Base;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace HoangCN.LearnMS.Entities
 {
     /// <summary>
-    /// Bảng quản lý các phương án trả lời cho câu hỏi trắc nghiệm
+    /// Các phương án trả lời cho câu hỏi trắc nghiệm (được lưu trữ trực tiếp dưới dạng JSON)
     /// </summary>
-    public class QuestionAnswer : BaseEntity
+    public class QuestionAnswer
     {
         /// <summary>
-        /// Khóa chính
+        /// Định danh đáp án
         /// </summary>
-        [Key]
+        [DisplayName("Mã đáp án")]
         public Guid QuestionAnswerId { get; set; }
 
         /// <summary>
@@ -25,37 +21,15 @@ namespace HoangCN.LearnMS.Entities
         public string? StringContent { get; set; }
 
         /// <summary>
-        /// Xác định đáp án này có phải là đáp án đúng hay không
-        /// </summary>
-        [DisplayName("Đáp án đúng")]
-        [Required(ErrorMessage = "{0} không được phép để trống.")]
-        public bool IsCorrectAnswer { get; set; } = false;
-
-        /// <summary>
-        /// Mã định danh câu hỏi sở hữu (Khóa ngoại)
-        /// </summary>
-        [DisplayName("Mã câu hỏi")]
-        [Required(ErrorMessage = "{0} không được phép để trống.")]
-        public Guid QuestionId { get; set; }
-
-        /// <summary>
         /// Thứ tự sắp xếp của đáp án trong câu hỏi
         /// </summary>
         [DisplayName("Thứ tự hiển thị")]
         public int OrderInList { get; set; } = 0;
-    }
 
-    public class QuestionAnswerConfiguration : IEntityTypeConfiguration<QuestionAnswer>
-    {
-        public void Configure(EntityTypeBuilder<QuestionAnswer> builder)
-        {
-            builder.ToTable("QuestionAnswer");
-            builder.HasIndex(qa => qa.QuestionId);
-
-            builder.HasOne<Question>()
-                   .WithMany()
-                   .HasForeignKey(qa => qa.QuestionId)
-                   .OnDelete(DeleteBehavior.Cascade);
-        }
+        /// <summary>
+        /// Cho biết đây có phải đáp án đúng hay không (dùng để map dữ liệu đầu vào)
+        /// </summary>
+        [DisplayName("Độ chính xác")]
+        public bool IsCorrectAnswer { get; set; } = false;
     }
 }

@@ -134,3 +134,36 @@ Chúng ta sẽ bổ sung các test cases trong `HoangCN.MainSystem.Tests` sử d
 - **Test case 1**: Thêm mới cha cùng danh sách con -> Đảm bảo con tự động được gán khóa ngoại trỏ tới cha và trạng thái của con tự chuyển sang `Insert`.
 - **Test case 2**: Cập nhật cha và thay đổi danh sách con (thêm mới con A, cập nhật con B, bỏ con C ra khỏi danh sách) -> Đảm bảo con A được `Insert`, con B được `Update` (chỉ cập nhật cột thay đổi), và con C bị tự động `Delete` (xóa mồ côi) khỏi DB.
 - **Test case 3**: Xác thực số lần gọi SaveChanges -> Đảm bảo đúng **1 lần duy nhất** `SaveChangesAsync()` được kích hoạt cho toàn bộ cây phụ thuộc phức tạp.
+
+---
+
+# Kế hoạch Sửa lỗi: Sửa lỗi 'Sequence contains no elements' trong CheckExist tại BaseWriteDL
+
+## I. Phân tích lỗi và Nguyên nhân
+- **Vị trí lỗi**: Hàm [CheckExist](file:///D:/projects/hoangcn/HoangCN.Core.DL/Implementation/BaseWriteDL.cs#L251) trong lớp [BaseWriteDL](file:///D:/projects/hoangcn/HoangCN.Core.DL/Implementation/BaseWriteDL.cs) tại dòng 321:
+  `var existingValues = _context.Database.SqlQueryRaw<object>(sql, checkValues.Keys.ToArray());`
+- **Nguyên nhân**:
+  - `SqlQueryRaw<TResult>` yêu cầu kiểu `TResult` là một kiểu vô hướng (scalar) được cấu hình ánh xạ của EF Core (như `Guid`, `string`, `int`), hoặc một kiểu DTO class có chứa các thuộc tính (properties) phù hợp với các cột được SELECT trong câu truy vấn.
+  - Khi truyền vào generic `object`, EF Core không thể coi nó là một kiểu vô hướng và xem nó như một DTO class.
+  - Do lớp `System.Object` không có bất kỳ thuộc tính hay trường dữ liệu nào, trình biên dịch EF Core khi tạo liên kết (binding) cho câu truy vấn sẽ tìm kiếm danh sách các thuộc tính để bind và nhận về kết quả rỗng.
+  - Sau đó, việc cố gắng gọi các phương thức như `.First()` hoặc `.Single()` trên tập hợp liên kết rỗng này ở mức nội bộ của EF Core sẽ ném ra ngoại lệ `System.InvalidOperationException: Sequence contains no elements`.
+
+## II. Phương án Khắc phục
+1. **Sử dụng Reflection để gọi SqlQueryRaw động**:
+   - Ở thời điểm biên dịch, chúng ta không biết thuộc tính kiểm tra (ví dụ: `QuestionId` hay `UserCode`) có kiểu là gì. Nhưng ở thời điểm runtime, chúng ta hoàn toàn xác định được thông qua `prop.PropertyInfo.PropertyType`.
+   - Chúng ta sẽ lấy kiểu thực tế của thuộc tính (xử lý cả trường hợp kiểu `Nullable<T>` bằng cách lấy kiểu cơ sở thông qua `Nullable.GetUnderlyingType`).
+   - Sử dụng Reflection để xác định phương thức generic `SqlQueryRaw<TResult>` từ `RelationalDatabaseFacadeExtensions`, sau đó `MakeGenericMethod` với kiểu đích thực tế.
+   - Invoke phương thức để nhận về `IQueryable` động, duyệt qua kết quả và lưu vào một danh sách `List<object>` để phục vụ so sánh dữ liệu ngoại lệ sau đó.
+2. **Ưu điểm**:
+   - Đảm bảo EF Core nhận dạng đúng kiểu dữ liệu cột trong câu lệnh SELECT (ví dụ `Guid` hoặc `string`).
+   - Giữ nguyên cấu trúc giao dịch (transaction) và kết nối hiện tại của DbContext, không cần mở thêm kết nối CSDL thủ công hoặc sử dụng thư viện bên ngoài.
+
+## III. Các Bước Triển khai
+- **Bước 1**: Sửa đổi mã nguồn hàm `CheckExist` trong [BaseWriteDL.cs](file:///D:/projects/hoangcn/HoangCN.Core.DL/Implementation/BaseWriteDL.cs):
+  - Lấy kiểu thực tế của thuộc tính và gọi `SqlQueryRaw<T>` bằng Reflection.
+  - Chuyển đổi tập hợp kết quả thành `List<object>`.
+  - Thực hiện các so sánh logic kiểm tra sự tồn tại (`Except`, `Count`).
+- **Bước 2**: Chạy lại bộ unit-test `dotnet test` để đảm bảo lỗi được khắc phục và không gây ảnh hưởng đến các nghiệp vụ/test case khác.
+// Plan updated for the 'Sequence contains no elements' bug fix.
+
+

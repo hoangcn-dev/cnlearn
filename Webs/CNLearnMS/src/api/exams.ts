@@ -1,5 +1,6 @@
-import { get, post } from "./config/axios";
+import { get, post, put } from "./config/axios";
 import { endpoints } from "./config/endpoint";
+import type { Exam } from "@/models/exams";
 
 // Lấy danh sách đề thi (tất cả)
 export const getAllExams = async () => {
@@ -11,14 +12,27 @@ export const getExamsPaging = async (request: any) => {
   return await post(endpoints.exams.paging, request);
 };
 
+// Lấy chi tiết đề thi (DTO)
+export const getExamDetails = async (examId: string) => {
+  return await get(`${endpoints.exams.getAll}/${examId}`);
+};
+
 // Lấy danh sách câu hỏi thuộc đề thi
 export const getExamQuestions = async (examId: string) => {
   return await get(`${endpoints.exams.questions}/${examId}/questions`);
 };
 
-// Lưu đề thi và danh sách câu hỏi đi kèm
-export const saveExamDetails = async (examData: any) => {
-  return await post(endpoints.exams.saveDetails, examData);
+// Lấy danh sách đáp án đúng của đề thi
+export const getExamKeys = async (examId: string) => {
+  return await get(`${endpoints.exams.questions}/${examId}/keys`);
+};
+
+export const saveExam = async (exam: Exam, isEdit: boolean = false) => {
+// Lưu đề thi sử dụng CRUD API
+  if (isEdit) {
+    return await put(endpoints.exams.save, [exam]);
+  }
+  return await post(endpoints.exams.save, [exam]);
 };
 
 // Xóa đề thi

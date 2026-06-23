@@ -72,10 +72,10 @@ namespace HoangCN.Core.Common.Metadata
                     var propType = prop.PropertyType;
                     var underlyingType = Nullable.GetUnderlyingType(propType) ?? propType;
                     var isDbPrimitive = underlyingType.IsValueType || underlyingType == typeof(string) || underlyingType == typeof(byte[]);
-                    if (!isDbPrimitive)
-                    {
-                        isNotMapped = true; // Loại trừ các class điều hướng hoặc list phức tạp
-                    }
+                    //if (!isDbPrimitive)
+                    //{
+                    //    isNotMapped = true; // Loại trừ các class điều hướng hoặc list phức tạp
+                    //}
 
                     var displayName = prop.GetCustomAttribute<DisplayNameAttribute>(true)?.DisplayName 
                                       ?? prop.GetCustomAttribute<DisplayAttribute>(true)?.GetName() 

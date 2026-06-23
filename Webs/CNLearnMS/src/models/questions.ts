@@ -40,7 +40,7 @@ export interface Question {
   attemptCount: number
   level: QuestionLevel
   type: QuestionType
-  learnMsUserId: string
+  // learnMsUserId: string
   accessType: QuestionAccessType
   isInBank: boolean
   questionCategoryId: string
@@ -53,7 +53,6 @@ export interface QuestionAnswer {
   questionAnswerId: string
   stringContent?: string
   isCorrectAnswer: boolean
-  questionId: string
   orderInList: number
 }
 

@@ -10,6 +10,7 @@ using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Enums;
 using HoangCN.LearnMS.Interfaces;
 using HoangCN.LearnMS.Requests;
+using System.Text.Json;
 
 namespace HoangCN.LearnMS.Services
 {
@@ -18,74 +19,80 @@ namespace HoangCN.LearnMS.Services
     /// </summary>
     public class QuestionService : BaseBL<Question>, IQuestionService
     {
-        private readonly IBaseBL<QuestionCategory> _categoryService;
+        private readonly ICategoryService _categoryService;
         private readonly IBaseBL<UserSavedMapping> _saveService;
-        private readonly IBaseBL<QuestionAnswer> _answerService;
         private readonly ILogger<QuestionService> _logger;
 
         /// <summary>
         /// Khởi tạo QuestionService với các dependency cần thiết
         /// </summary>
-        /// <param name="baseReadDL">Lớp truy cập dữ liệu đọc (Dapper)</param>
-        /// <param name="baseWriteDL">Lớp truy cập dữ liệu ghi (EF Core)</param>
-        /// <param name="categoryService">Dịch vụ quản lý danh mục câu hỏi</param>
-        /// <param name="logger">Lớp ghi log hệ thống</param>
-        /// <param name="httpContextAccessor">Truy cập HttpContext của request hiện tại</param>
-        /// <param name="saveService">Dịch vụ lưu trữ câu hỏi yêu thích của user</param>
-        /// <param name="answerService">Dịch vụ quản lý đáp án câu hỏi</param>
         public QuestionService(
             IBaseReadDL baseReadDL,
             IBaseWriteDL baseWriteDL,
-            IBaseBL<QuestionCategory> categoryService,
+            ICategoryService categoryService,
             ILogger<QuestionService> logger,
             IHttpContextAccessor httpContextAccessor,
-            IBaseBL<UserSavedMapping> saveService,
-            IBaseBL<QuestionAnswer> answerService) : base(baseReadDL, baseWriteDL, httpContextAccessor)
+            IBaseBL<UserSavedMapping> saveService) : base(baseReadDL, baseWriteDL, httpContextAccessor)
         {
             _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _saveService = saveService;
-            _answerService = answerService;
+        }
+
+        public async Task<bool> ValidateOwnership(Guid userId, List<Guid> questionIds)
+        {
+            var validCount = await CountByCondition(q =>
+                questionIds.Contains(q.QuestionId) && q.LearnMsUserId == userId);
+
+            return validCount == questionIds.Count;
         }
 
         public async Task<QuestionCorrectAnswerMappingDto> GetQuestionCorrectAnswer(Guid? userId, List<Guid> questionIds)
         {
             // Chỉ lấy được đáp án câu hỏi khi nó tồn tại và public | hoặc chỉ có tác giả nếu đang private
-            var validQuestions = await GetByCondition<QuestionIdDto>(q =>
+            var validQuestions = await GetByCondition<dynamic>(q =>
                 questionIds.Contains(q.QuestionId) &&
                 (q.AccessType == QuestionAccessType.Public ||
-                q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId));
+                q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId),
+                selector: q => new { q.QuestionId, q.CorrectKeys });
 
-            var validQuestionIds = validQuestions.Select(q => q.QuestionId).ToList();
-
-            var answers = await _answerService.GetByCondition<QuestionAnswerDto>(a =>
-                validQuestionIds.Contains(a.QuestionId) &&
-                a.IsCorrectAnswer);
+            var correctMap = new Dictionary<Guid, List<Guid>>();
+            foreach (var q in validQuestions)
+            {
+                correctMap[q.QuestionId] = JsonSerializer.Deserialize<List<Guid>>(q.CorrectKeys);
+            }
 
             return new QuestionCorrectAnswerMappingDto
             {
-                CorrectMap = answers
-                    .GroupBy(a => a.QuestionId)
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.Select(a => a.QuestionAnswerId).ToList()
-                    )
+                CorrectMap = correctMap
             }; 
         }
 
         public async Task<List<QuestionAnswerDto>> GetAnswersContent(Guid? userId, List<Guid> questionIds)
         {
             // Chỉ lấy được câu hỏi khi nó tồn tại và public | hoặc chỉ có tác giả nếu đang private
-            var validQuestions = await GetByCondition<QuestionIdDto>(q =>
+            var validQuestions = await GetByCondition<Question>(q =>
                 questionIds.Contains(q.QuestionId) &&
                 (q.AccessType == QuestionAccessType.Public ||
                 q.AccessType == QuestionAccessType.Private && q.LearnMsUserId == userId));
 
-            var validQuestionIds = validQuestions.Select(q => q.QuestionId).ToList();
-
-            var answers = await _answerService.GetByCondition<QuestionAnswerDto>(a => 
-                validQuestionIds.Contains(a.QuestionId));
-            return answers;
+            var result = new List<QuestionAnswerDto>();
+            foreach (var q in validQuestions)
+            {
+                if (q.Answers != null)
+                {
+                    foreach (var ans in q.Answers)
+                    {
+                        result.Add(new QuestionAnswerDto
+                        {
+                            QuestionAnswerId = ans.QuestionAnswerId,
+                            StringContent = ans.StringContent,
+                            OrderInList = ans.OrderInList
+                        });
+                    }
+                }
+            }
+            return result;
         }
 
         public async Task<QuestionDto> GetQuestionContent(Guid? userId, Guid questionId)
@@ -113,7 +120,7 @@ namespace HoangCN.LearnMS.Services
         public async Task<List<SavedDto>> GetSavedQuestions(Guid userId)
         {
             var saveQuestions = await _saveService.GetByCondition<SavedDto>(
-                s => s.UserId == userId && s.SaveType == SaveType.Question);
+                s => s.LearnMsUserId == userId && s.SaveType == SaveType.Question);
             return saveQuestions;
         }
 
@@ -124,7 +131,7 @@ namespace HoangCN.LearnMS.Services
         public async Task ToggleQuestion(ToggleUserSavedRequest request)
         {
             var mapping = await _saveService.GetFirstByCondition<UserSavedMapping>(
-                s => s.UserId == request.UserId &&
+                s => s.LearnMsUserId == request.UserId &&
                 s.TargetId == request.TargetId);
 
             // Tránh trường hợp lưu lần 2
@@ -151,7 +158,7 @@ namespace HoangCN.LearnMS.Services
                 await _saveService.InsertEntities([new () {
                     TargetId = request.TargetId,
                     SaveType = SaveType.Question,
-                    UserId = request.UserId
+                    LearnMsUserId = request.UserId
                 }]);
             }
             else
@@ -172,8 +179,9 @@ namespace HoangCN.LearnMS.Services
         protected override async Task HandleBeforeInsert(List<Question> entities)
         {
             await base.HandleBeforeInsert(entities);
-            GenerateSlugForQuestions(entities);
-            await ValidateLeafCategories(entities);
+            ProcessCorrectKeysAndAnswerIds(entities);
+            await GenerateSlugForQuestions(entities);
+            await _categoryService.ValidateLeafCategories(entities.Select(e => e.QuestionCategoryId).ToList());
             AssignAuthor(entities);
         }
 
@@ -184,9 +192,44 @@ namespace HoangCN.LearnMS.Services
         protected override async Task HandleBeforeUpdate(List<Question> entities)
         {
             await base.HandleBeforeUpdate(entities);
-            await ValidateOwnership(entities);
-            GenerateSlugForQuestions(entities);
-            await ValidateLeafCategories(entities);
+            await ValidateOwnership(
+                    ClaimUtil.GetUserId(_httpContextAccessor.HttpContext?.User)!.Value,
+                    entities.Select(q => q.QuestionId).ToList());
+            AssignAuthor(entities);
+            ProcessCorrectKeysAndAnswerIds(entities);
+            await GenerateSlugForQuestions(entities);
+            await _categoryService.ValidateLeafCategories(entities.Select(e => e.QuestionCategoryId).ToList());
+        }
+
+        /// <summary>
+        /// Xử lý sinh Guid cho từng đáp án và gán danh sách CorrectKeys
+        /// </summary>
+        private void ProcessCorrectKeysAndAnswerIds(List<Question> entities)
+        {
+            foreach (var question in entities)
+            {
+                if (question.Answers != null && question.Answers.Count > 0)
+                {
+                    foreach (var ans in question.Answers)
+                    {
+                        if (ans.QuestionAnswerId == Guid.Empty)
+                        {
+                            ans.QuestionAnswerId = Guid.NewGuid();
+                        }
+                    }
+
+                    var correctAnsIds = question.Answers
+                        .Where(a => a.IsCorrectAnswer)
+                        .Select(a => a.QuestionAnswerId)
+                        .ToList();
+
+                    question.CorrectKeys = correctAnsIds;
+                }
+                else
+                {
+                    question.CorrectKeys = [];
+                }
+            }
         }
 
         /// <summary>
@@ -225,82 +268,20 @@ namespace HoangCN.LearnMS.Services
         }
 
         /// <summary>
-        /// Kiểm tra và đảm bảo các câu hỏi chỉ được lưu vào danh mục cấp lá (không chứa danh mục con)
-        /// </summary>
-        /// <param name="entities">Danh sách câu hỏi cần kiểm tra danh mục</param>
-        private async Task ValidateLeafCategories(List<Question> entities)
-        {
-            var categoryIds = entities
-                .Select(q => q.QuestionCategoryId)
-                .Where(id => id != Guid.Empty)
-                .Distinct()
-                .ToList();
-
-            if (categoryIds.Count == 0) return;
-
-            var nullableCategoryIds = categoryIds.Select(id => (Guid?)id).ToList();
-
-            // Tìm xem có danh mục con bất kỳ nào có ParentId nằm trong danh sách categoryIds đang xét hay không
-            var childCategories = await _categoryService.GetByCondition<QuestionCategory>(c => nullableCategoryIds.Contains(c.ParentId) && !c.IsDeleted);
-
-            if (childCategories.Count > 0)
-            {
-                var violatedCategoryIds = childCategories
-                    .Select(c => c.ParentId!.Value)
-                    .Distinct()
-                    .ToList();
-
-                var parentCategories = await _categoryService.GetByCondition<QuestionCategory>(c => violatedCategoryIds.Contains(c.QuestionCategoryId));
-                var categoryNames = parentCategories.Select(c => c.QuestionCategoryName).ToList();
-
-                var violatedNames = string.Join(", ", categoryNames);
-                throw new BadRequestException($"Không thể lưu câu hỏi vào danh mục cha (danh mục chứa danh mục con): {violatedNames}. Chỉ được phép lưu câu hỏi vào danh mục cấp lá.");
-            }
-        }
-
-        /// <summary>
         /// Tiền xử lý trước khi xóa danh sách câu hỏi
         /// </summary>
         /// <param name="entities">Danh sách câu hỏi cần xóa</param>
         protected override async Task HandleBeforeDelete(List<Question> entities)
         {
             await base.HandleBeforeDelete(entities);
-            await ValidateOwnership(entities);
-        }
 
-        /// <summary>
-        /// Xác thực quyền sở hữu của người dùng hiện tại đối với danh sách câu hỏi.
-        /// Chỉ áp dụng đối với người dùng thường (User), Admin được bỏ qua.
-        /// </summary>
-        private async Task ValidateOwnership(List<Question> entities)
-        {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var roleName = ClaimUtil.GetRoleName(user);
-
-            // Admin được toàn quyền
-            if (roleName == nameof(RoleNames.Admin))
+            // Nếu là admin thì bỏ qua
+            var role = ClaimUtil.GetRoleName(_httpContextAccessor.HttpContext?.User);
+            if (role != RoleNames.Admin.ToString())
             {
-                return;
-            }
-
-            var userId = ClaimUtil.GetUserId(user);
-            if (userId == null)
-            {
-                throw new UnauthorizedException("Vui lòng đăng nhập để tiếp tục");
-            }
-
-            var ids = entities.Select(e => e.QuestionId).ToList();
-            if (ids.Count == 0) return;
-
-            // Lấy thông tin thực tế từ database
-            var questionsInDb = await GetByCondition<Question>(q => ids.Contains(q.QuestionId) && !q.IsDeleted);
-
-            foreach (var qDb in questionsInDb)
-            {
-                if (qDb.LearnMsUserId != userId.Value)
-                {
-                    throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này trên câu hỏi của người khác");
-                }
+                await ValidateOwnership(
+                    ClaimUtil.GetUserId(_httpContextAccessor.HttpContext?.User)!.Value,
+                    entities.Select(q => q.QuestionId).ToList());
             }
         }
 
@@ -313,6 +294,7 @@ namespace HoangCN.LearnMS.Services
     internal class QuestionIdDto
     {
         public Guid QuestionId { get; set; }
+        public Guid ExamQuestionId { get; set; }
     }
 }
 

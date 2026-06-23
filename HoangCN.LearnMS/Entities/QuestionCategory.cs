@@ -1,3 +1,4 @@
+using HoangCN.Core.Common.Attributes;
 using HoangCN.Core.Common.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -37,6 +38,7 @@ namespace HoangCN.LearnMS.Entities
         /// Mã danh mục cha (để phân cấp danh mục)
         /// </summary>
         [DisplayName("Danh mục cha")]
+        [FK(TargetEntity = typeof(QuestionCategory))]
         public Guid? ParentId { get; set; }
     }
 

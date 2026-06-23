@@ -151,11 +151,15 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Lấy danh sách đối tượng sử dụng Dapper (Read DB)
         /// </summary>
-        public async Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null)
+        public async Task<ResultDto<TResult>> Get<TResult>(
+            GetRequest request, 
+            Expression<Func<TEntity, bool>>? condition = null,
+            Expression<Func<TEntity, object>>? selector = null)
         {
             var parameters = new DynamicParameters();
             var mainTableName = typeof(TEntity).Name;
-            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
+            var selectedCols = selector != null ? ExpressionToSelectColumnsTranslator.Translate(selector) : null;
+            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>(selectedCols);
             var whereClause = BuildSQLUtil.BuildWhereClaude<TEntity, TResult>(
                 request, 
                 parameters,
@@ -214,10 +218,13 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Lấy danh sách đối tượng theo biểu thức lambda chỉ định
         /// </summary>
-        public async Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
+        public async Task<List<TResult>> GetByCondition<TResult>(
+            Expression<Func<TEntity, bool>> condition,
+            Expression<Func<TEntity, object>>? selector = null)
         {
             var parameters = new DynamicParameters();
-            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
+            var selectedCols = selector != null ? ExpressionToSelectColumnsTranslator.Translate(selector) : null;
+            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>(selectedCols);
             
             var extraGroup = ExpressionToFilterTranslator.Translate(condition);
             var request = new GetRequest { IsPaging = false };
@@ -246,10 +253,13 @@ namespace HoangCN.Core.BL.Base
         /// <summary>
         /// Lấy một đối tượng duy nhất theo điều kiện chỉ định sử dụng Dapper tối ưu hóa
         /// </summary>
-        public async Task<TResult?> GetFirstByCondition<TResult>(Expression<Func<TEntity, bool>> condition)
+        public async Task<TResult?> GetFirstByCondition<TResult>(
+            Expression<Func<TEntity, bool>> condition,
+            Expression<Func<TEntity, object>>? selector = null)
         {
             var parameters = new DynamicParameters();
-            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>();
+            var selectedCols = selector != null ? ExpressionToSelectColumnsTranslator.Translate(selector) : null;
+            var selectFromSql = BuildSQLUtil.BuildSelectClaude<TEntity, TResult>(selectedCols);
             
             var extraGroup = ExpressionToFilterTranslator.Translate(condition);
             var request = new GetRequest { IsPaging = false };

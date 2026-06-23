@@ -32,7 +32,7 @@ export const endpoints = {
     getAll: "/api/exams",
     paging: "/api/exams/paging",
     questions: "/api/exams",
-    saveDetails: "/api/exams/save-details",
+    save: "/api/exams",
     delete: "/api/exams/delete",
     questionCounts: "/api/exams/question-counts"
   },

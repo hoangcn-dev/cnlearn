@@ -38,6 +38,14 @@ namespace HoangCN.LearnMS.Interfaces
         /// <param name="request">Yêu cầu chứa thông tin UserId, TargetId (Id câu hỏi) và trạng thái lưu</param>
         /// <returns>Tác vụ xử lý bất đồng bộ</returns>
         Task ToggleQuestion(ToggleUserSavedRequest request);
+
+        /// <summary>
+        /// Xác thực quyền sở hữu user đối với các câu hỏi
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="questionIds"></param>
+        /// <returns></returns>
+        Task<bool> ValidateOwnership(Guid userId, List<Guid> questionIds);
     }
 }
 

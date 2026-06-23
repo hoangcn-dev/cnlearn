@@ -545,46 +545,93 @@ namespace HoangCN.Core.DL.Utils
         /// <summary>
         /// Hàm hỗ trợ build phần chọn trường trả về SELECT ... FROM ... JOIN
         /// </summary>
-        public static string BuildSelectClaude<TEntity, TResult>() where TEntity : BaseEntity
+        public static string BuildSelectClaude<TEntity, TResult>(List<string>? selectedProperties = null) where TEntity : BaseEntity
         {
             var metadata = EntityMetadataCache.GetMetadata(typeof(TEntity));
-            var resultMetadata = EntityMetadataCache.GetMetadata(typeof(TResult));
-
             var mainTableName = metadata.EntityType.Name;
             var mainColumns = metadata.ColumnNames;
-            var resultProps = resultMetadata.Properties;
 
             var selectColumns = new List<string>();
 
-            foreach (var prop in resultProps)
+            if (selectedProperties != null && selectedProperties.Count > 0)
             {
-                if (prop.IsNotMapped) continue;
+                var resultMetadata = EntityMetadataCache.GetMetadata(typeof(TResult));
+                var resultProps = resultMetadata.Properties;
 
-                var foreignAttr = prop.ForeignTableAttr;
-                if (foreignAttr != null)
+                foreach (var propName in selectedProperties)
                 {
-                    var foreignType = foreignAttr.EntityType;
-                    if (foreignType != null)
-                    {
-                        var foreignTableName = foreignType.Name;
-                        var propName = prop.PropertyName;
-                        var columnNameInDb = !string.IsNullOrEmpty(foreignAttr.ColumnName) ? foreignAttr.ColumnName : propName;
-
-                        var foreignMetadata = EntityMetadataCache.GetMetadata(foreignType);
-                        var foreignColumns = foreignMetadata.ColumnNames;
-                        
-                        if (foreignColumns.Contains(columnNameInDb))
-                        {
-                            selectColumns.Add($"`{foreignTableName}`.`{columnNameInDb}` AS `{propName}`");
-                        }
-                    }
-                }
-                else
-                {
-                    var propName = prop.PropertyName;
                     if (mainColumns.Contains(propName))
                     {
-                        selectColumns.Add($"`{mainTableName}`.`{propName}` AS `{propName}`");
+                        var jsonDataPropName = propName + "JsonData";
+                        var hasJsonDataInResult = resultProps.Any(p => p.PropertyName.Equals(jsonDataPropName, StringComparison.OrdinalIgnoreCase) && !p.IsNotMapped);
+
+                        if (hasJsonDataInResult)
+                        {
+                            selectColumns.Add($"`{mainTableName}`.`{jsonDataPropName}` AS `{jsonDataPropName}`");
+                        }
+                        else
+                        {
+                            var hasPropInResult = resultProps.Any(p => p.PropertyName.Equals(propName, StringComparison.OrdinalIgnoreCase) && !p.IsNotMapped);
+                            if (hasPropInResult || typeof(TResult) == typeof(object) || typeof(TResult).Name == "ExpandoObject")
+                            {
+                                var entityProp = metadata.Properties.FirstOrDefault(p => p.PropertyName.Equals(propName, StringComparison.OrdinalIgnoreCase));
+                                var isComplexType = entityProp != null && 
+                                                     !(entityProp.PropertyInfo.PropertyType.IsValueType || 
+                                                       entityProp.PropertyInfo.PropertyType == typeof(string) || 
+                                                       entityProp.PropertyInfo.PropertyType == typeof(byte[]));
+
+                                if (isComplexType)
+                                {
+                                    selectColumns.Add($"`{mainTableName}`.`{jsonDataPropName}` AS `{propName}`");
+                                }
+                                else
+                                {
+                                    selectColumns.Add($"`{mainTableName}`.`{propName}` AS `{propName}`");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new BadRequestException($"Trường '{propName}' không tồn tại hoặc không được ánh xạ trong thực thể {mainTableName}");
+                    }
+                }
+            }
+            else
+            {
+                var resultMetadata = EntityMetadataCache.GetMetadata(typeof(TResult));
+                var resultProps = resultMetadata.Properties;
+
+                foreach (var prop in resultProps)
+                {
+                    if (prop.IsNotMapped) continue;
+
+                    var foreignAttr = prop.ForeignTableAttr;
+                    if (foreignAttr != null)
+                    {
+                        var foreignType = foreignAttr.EntityType;
+                        if (foreignType != null)
+                        {
+                            var foreignTableName = foreignType.Name;
+                            var propName = prop.PropertyName;
+                            var columnNameInDb = !string.IsNullOrEmpty(foreignAttr.ColumnName) ? foreignAttr.ColumnName : propName;
+
+                            var foreignMetadata = EntityMetadataCache.GetMetadata(foreignType);
+                            var foreignColumns = foreignMetadata.ColumnNames;
+                            
+                            if (foreignColumns.Contains(columnNameInDb))
+                            {
+                                selectColumns.Add($"`{foreignTableName}`.`{columnNameInDb}` AS `{propName}`");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var propName = prop.PropertyName;
+                        if (mainColumns.Contains(propName) || propName.EndsWith("JsonData") && mainColumns.Contains(propName[.. (propName.Length-8)]))
+                        {
+                            selectColumns.Add($"`{mainTableName}`.`{propName}` AS `{propName}`");
+                        }
                     }
                 }
             }

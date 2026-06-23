@@ -1,6 +1,9 @@
 using HoangCN.Core.Common.Attributes;
 using HoangCN.LearnMS.Entities;
 using HoangCN.LearnMS.Enums;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HoangCN.LearnMS.DTOs
 {
@@ -32,5 +35,12 @@ namespace HoangCN.LearnMS.DTOs
         public bool IsInBank { get; set; }
         public string? Source { get; set; }
         public DateTime ModifiedDate { get; set; }
+
+        [JsonIgnore]
+        public string AnswersJsonData { get; set; }
+
+        [NotMapped]
+        public List<QuestionAnswerDto> Answers => !string.IsNullOrEmpty(AnswersJsonData)?
+            JsonSerializer.Deserialize<List<QuestionAnswerDto>>(AnswersJsonData)! : [];
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HoangCN.Core.Common.Enums;
 using HoangCN.Core.BL.Attributes.AuthAction;
+using HoangCN.LearnMS.Interfaces;
 
 namespace HoangCN.LearnMS.Controllers
 {
@@ -15,8 +16,12 @@ namespace HoangCN.LearnMS.Controllers
     [ApiController]
     public class CategoriesController : CRUDController<QuestionCategory>
     {
-        public CategoriesController(IBaseBL<QuestionCategory> questionCategoryService) : base(questionCategoryService)
+        private readonly ICategoryService _categoryService;
+
+        public CategoriesController(
+            ICategoryService categoryService) : base(categoryService)
         {
+            _categoryService = categoryService;
         }
 
         protected override void ConfigurePolicies(AuthActionPolicyBuilder builder)

@@ -4,19 +4,14 @@
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><router-link to="/">Trang chủ</router-link></li>
-        <li class="breadcrumb-item"><router-link to="/personal/exams">Quản lý đề & kỳ thi</router-link></li>
+        <li class="breadcrumb-item"><router-link to="/personal/exams">Quản lý đề thi</router-link></li>
         <li class="breadcrumb-item active" aria-current="page">
-          <template v-if="route.params.id">
-            {{ isQuizMode ? 'Chỉnh sửa bài kiểm tra / kỳ thi' : 'Chỉnh sửa đề thi' }}
-          </template>
-          <template v-else>
-            {{ isQuizMode ? 'Tạo bài kiểm tra / Kỳ thi mới' : 'Biên soạn đề thi mới' }}
-          </template>
+          {{ isEditMode ? 'Chỉnh sửa đề thi' : 'Biên soạn đề thi mới' }}
         </li>
       </ol>
     </nav>
 
-    <!-- Header & Back Button -->
+    <!-- Header & Action Buttons -->
     <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 px-3 py-1.5 rounded-3" @click="goBack">
@@ -24,15 +19,9 @@
           Quay lại
         </button>
         <h1 class="fs-4 fw-bold text-dark-blue mb-0 ms-2">
-          <span v-if="route.params.id">
-            {{ isQuizMode ? 'Chỉnh sửa bài kiểm tra / kỳ thi' : 'Chỉnh sửa đề thi' }}
-          </span>
-          <span v-else>
-            {{ isQuizMode ? 'Cấu hình & Thiết lập bài kiểm tra mới' : 'Biên soạn thông tin đề thi mới' }}
-          </span>
+          {{ isEditMode ? 'Chỉnh sửa đề thi' : 'Biên soạn thông tin đề thi mới' }}
         </h1>
       </div>
-      <!-- Nút lưu phía trên cùng -->
       <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary btn-sm px-4 py-2 rounded-3" @click="goBack">
           Hủy bỏ
@@ -46,35 +35,22 @@
       </div>
     </div>
 
-    <!-- Toggle Mode Selector at Top -->
-    <div class="card border-0 rounded-4 shadow-sm bg-white p-3 mb-4">
-      <div class="d-flex align-items-center gap-3">
-        <span class="fw-bold text-dark-blue small">Hình thức khởi tạo:</span>
-        <a-radio-group v-model:value="creationType" button-style="solid">
-          <a-radio-button value="exam">📝 Đề thi (Chỉ soạn câu hỏi)</a-radio-button>
-          <a-radio-button value="quiz">⏰ Bài kiểm tra / Kỳ thi (Có lịch trình & chống gian lận)</a-radio-button>
-        </a-radio-group>
-      </div>
-    </div>
-
     <div class="row g-4">
-      <!-- Cấu hình thông tin cơ bản & bảo mật (Phần trên) -->
+      <!-- Exam Configuration Card -->
       <div class="col-12">
         <div class="card border-0 rounded-4 shadow-sm bg-white p-4">
           <h5 class="fw-bold text-dark-blue mb-3 pb-2 border-bottom">⚙️ Cấu hình thông tin</h5>
           
           <a-form layout="vertical">
             <div class="row g-3">
-              <!-- Cột trái: Thông tin cơ bản -->
-              <div :class="isQuizMode ? 'col-lg-6' : 'col-lg-7'">
-                <!-- Tên đề/bài thi -->
-                <a-form-item :label="isQuizMode ? 'Tên bài kiểm tra / Kỳ thi:' : 'Tên đề thi:'" required class="mb-2">
+              <!-- Left Column: Basic Info -->
+              <div class="col-lg-7">
+                <a-form-item label="Tên đề thi:" required class="mb-2">
                   <a-input v-model:value="formData.name" placeholder="Ví dụ: Đề kiểm tra học kỳ 1 môn Tin học lớp 12" />
                 </a-form-item>
 
                 <div class="row g-2 mb-2">
                   <div class="col-md-6">
-                    <!-- Danh mục môn học -->
                     <a-form-item label="Danh mục môn học:" required class="mb-0">
                       <a-select v-model:value="formData.categoryId" placeholder="Chọn danh mục môn học">
                         <a-select-option v-for="cat in categories" :key="cat.id" :value="cat.id" :disabled="cat.hasChildren">
@@ -84,75 +60,26 @@
                     </a-form-item>
                   </div>
                   <div class="col-md-6">
-                    <!-- Thời gian làm bài -->
                     <a-form-item label="Thời gian làm bài (phút):" required class="mb-0">
                       <a-input-number v-model:value="formData.duration" :min="1" :max="360" style="width: 100%" />
                     </a-form-item>
                   </div>
                 </div>
 
-                <!-- Mô tả -->
                 <a-form-item label="Mô tả chi tiết (nếu có):" class="mb-0">
-                  <a-textarea v-model:value="formData.description" :rows="2" placeholder="Mô tả nội dung, quy định phòng thi..." />
+                  <a-textarea v-model:value="formData.description" :rows="2" placeholder="Mô tả nội dung đề thi..." />
                 </a-form-item>
               </div>
 
-              <!-- Cột phải: Thiết lập Bảo mật (Quiz) hoặc Tiện ích truy cập (Exam) -->
-              <div :class="isQuizMode ? 'col-lg-6' : 'col-lg-5'">
-                <!-- DÀNH RIÊNG CHO CHẾ ĐỘ BÀI KIỂM TRA (QUIZ) -->
-                <div v-if="isQuizMode" class="bg-light-soft p-3 rounded-4 h-100 border border-light d-flex flex-column justify-content-between">
-                  <h6 class="fw-bold text-dark-blue mb-2 pb-1 border-bottom" style="font-size: 0.85rem;">🛠️ Thiết lập Kỳ thi & Bảo mật</h6>
-                  
-                  <div class="row g-2 flex-grow-1">
-                    <div class="col-md-6">
-                      <!-- Đối tượng tham gia -->
-                      <a-form-item label="Đối tượng tham gia (Tạm khóa):" class="mb-2">
-                        <a-input v-model:value="formData.targetGroup" placeholder="Tính năng đang tạm khóa..." size="small" disabled />
-                      </a-form-item>
-
-                      <!-- Thời gian bắt đầu -->
-                      <a-form-item label="Thời gian bắt đầu:" class="mb-0">
-                        <a-radio-group v-model:value="formData.startType" class="w-100 mb-1" size="small">
-                          <a-radio value="now">Ngay lập tức</a-radio>
-                          <a-radio value="custom">Chọn lịch</a-radio>
-                        </a-radio-group>
-                        <div v-if="formData.startType === 'custom'">
-                          <input type="datetime-local" class="form-control form-control-xs py-1" v-model="formData.startDate" style="font-size: 0.8rem;" />
-                        </div>
-                      </a-form-item>
-                    </div>
-
-                    <div class="col-md-6 border-start ps-3">
-                      <!-- Cơ chế chống gian lận -->
-                      <div class="mb-2">
-                        <label class="form-label small fw-bold text-dark-blue mb-1" style="font-size: 0.75rem;">Chống gian lận:</label>
-                        <div class="d-flex flex-column gap-1 ms-1">
-                          <a-checkbox v-model:checked="formData.antiCheat.lockBrowser"><span style="font-size: 0.75rem;">Khóa màn hình</span></a-checkbox>
-                          <a-checkbox v-model:checked="formData.antiCheat.shuffleQuestions"><span style="font-size: 0.75rem;">Đảo đề thi</span></a-checkbox>
-                          <a-checkbox v-model:checked="formData.antiCheat.disableCopyPaste"><span style="font-size: 0.75rem;">Cấm copy/paste</span></a-checkbox>
-                          <a-checkbox v-model:checked="formData.antiCheat.fullscreen"><span style="font-size: 0.75rem;">Yêu cầu toàn màn hình</span></a-checkbox>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Tiện ích phụ -->
-                  <div class="d-flex flex-wrap gap-x-3 gap-y-1 mt-2 pt-2 border-top align-items-center" style="font-size: 0.75rem;">
-                    <a-checkbox v-model:checked="formData.contributeToBank"><span style="font-size: 0.75rem;">Đóng góp ngân hàng</span></a-checkbox>
-                    <a-checkbox v-model:checked="formData.allowLateJoin"><span style="font-size: 0.75rem;">Bù giờ vào muộn</span></a-checkbox>
-                    <a-checkbox v-model:checked="formData.allowLateSubmit"><span style="font-size: 0.75rem;">Nhận nộp muộn</span></a-checkbox>
-                    <a-checkbox v-model:checked="formData.publicLeaderboard"><span style="font-size: 0.75rem;">BXH công khai</span></a-checkbox>
-                  </div>
-                </div>
-
-                <!-- DÀNH CHO CHẾ ĐỘ ĐỀ THI (EXAM) -->
-                <div v-else class="bg-light-soft p-3 rounded-4 h-100 border border-light d-flex flex-column justify-content-center">
+              <!-- Right Column: Access Rules -->
+              <div class="col-lg-5">
+                <div class="bg-light-soft p-3 rounded-4 h-100 border border-light d-flex flex-column justify-content-center">
                   <h6 class="fw-bold text-dark-blue mb-3 pb-1 border-bottom" style="font-size: 0.85rem;">⚙️ Thiết lập truy cập & Lưu trữ</h6>
                   
                   <a-form-item label="Phạm vi truy cập đề thi:" class="mb-3">
                     <a-radio-group v-model:value="formData.accessType">
-                      <a-radio :value="1">Công khai (Mọi người đều có thể tìm thấy)</a-radio>
-                      <a-radio :value="0">Riêng tư (Chỉ của riêng bạn)</a-radio>
+                      <a-radio :value="0">🌐 Công khai (Mọi người đều có thể tìm thấy)</a-radio>
+                      <a-radio :value="1">🔒 Riêng tư (Chỉ của riêng bạn)</a-radio>
                     </a-radio-group>
                   </a-form-item>
 
@@ -168,7 +95,7 @@
         </div>
       </div>
 
-      <!-- Danh sách câu hỏi (Phần dưới) -->
+      <!-- Questions List Card -->
       <div class="col-12">
         <div class="card border-0 rounded-4 shadow-sm bg-white p-4">
           <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
@@ -183,35 +110,29 @@
             </button>
           </div>
 
-          <!-- 4 Nút thêm câu hỏi -->
+          <!-- Add question buttons -->
           <div class="row g-2 mb-4">
-            <div class="col-sm-3 col-6">
+            <div class="col-sm-4 col-6">
               <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="autoAddModalOpen = true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                 <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Thêm tự động</span>
               </button>
             </div>
-            <div class="col-sm-3 col-6">
+            <div class="col-sm-4 col-6">
               <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="openBankModal">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                 <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Chọn từ ngân hàng</span>
               </button>
             </div>
-            <div class="col-sm-3 col-6">
-              <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="showPdfMaintenanceToast">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Phân tích từ PDF</span>
-              </button>
-            </div>
-            <div class="col-sm-3 col-6">
+            <div class="col-sm-4 col-12">
               <button class="btn btn-outline-indigo w-100 py-2 rounded-3 d-flex flex-column align-items-center justify-content-center gap-2 btn-sm hover-up text-indigo" @click="openImportExamModal">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Thêm từ đề</span>
+                <span class="fw-bold text-nowrap" style="font-size: 0.73rem;">Thêm từ đề thi khác</span>
               </button>
             </div>
           </div>
 
-          <!-- Đi nhanh đến câu hỏi / Xem trước các câu hỏi đã chọn -->
+          <!-- Fast navigation / Clear actions -->
           <div class="flex-grow-1 d-flex flex-column overflow-hidden">
             <div class="d-flex align-items-center justify-content-between mb-3 bg-light-soft p-2 rounded-3" v-if="questionsList.length > 0">
               <div class="d-flex align-items-center gap-2">
@@ -229,11 +150,11 @@
                 </a-select>
               </div>
               <button class="btn btn-link btn-xs text-danger text-decoration-none fw-bold" @click="questionsList = []">
-                Xóa tất cả
+                Xóa tất cả câu hỏi
               </button>
             </div>
 
-            <!-- Empty questions list state -->
+            <!-- Empty State -->
             <div v-if="questionsList.length === 0" class="flex-grow-1 d-flex flex-column align-items-center justify-content-center text-center p-5 text-muted border border-dashed rounded-4 bg-light-soft">
               <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-3 text-secondary"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
               <p class="fw-bold text-dark-blue mb-1">Chưa có câu hỏi nào trong đề thi!</p>
@@ -246,22 +167,21 @@
             <div v-else class="d-flex flex-column gap-3">
               <div 
                 v-for="(q, index) in questionsList" 
-                :key="q.id" 
+                :key="q.questionId" 
                 :id="'selected-question-card-' + index"
                 class="card card-body p-3 border border-light bg-light-soft position-relative rounded-3 shadow-none mb-0"
               >
-                <!-- Row controls -->
+                <!-- Row Controls -->
                 <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom flex-wrap gap-2">
                   <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-indigo-soft text-dark-blue fw-bold px-3 py-1 rounded-pill fs-8">Câu {{ index + 1 }}</span>
                     <span :class="getLevelBadgeClass(q.level)">{{ getLevelText(q.level) }}</span>
-                    <span class="text-muted fs-8">{{ getCategoryName(q.categoryIds[0]) }}</span>
+                    <span class="text-muted fs-8">{{ getCategoryName(q.questionCategoryId) }}</span>
                   </div>
 
-                  <!-- Reorder buttons, Edit & Delete icon -->
                   <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-xs btn-outline-indigo d-flex align-items-center justify-content-center rounded-circle" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" @click="openEditQuestionModal(q, index)" title="Chỉnh sửa câu hỏi">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path></svg>
                     </button>
                     <button class="btn btn-xs btn-outline-secondary d-flex align-items-center justify-content-center rounded-circle" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" :disabled="index === 0" @click="moveQuestionUp(index)" title="Di chuyển lên">
                       <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
@@ -269,7 +189,7 @@
                     <button class="btn btn-xs btn-outline-secondary d-flex align-items-center justify-content-center rounded-circle" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" :disabled="index === questionsList.length - 1" @click="moveQuestionDown(index)" title="Di chuyển xuống">
                       <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </button>
-                    <button class="btn btn-xs btn-outline-danger d-flex align-items-center justify-content-center rounded-circle ms-1" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" @click="removeSelectedQuestion(index)" title="Xóa câu hỏi khỏi đề">
+                    <button class="btn btn-xs btn-outline-danger d-flex align-items-center justify-content-center rounded-circle ms-1" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" @click="removeSelectedQuestion(index)" title="Xóa khỏi đề">
                       <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                   </div>
@@ -319,12 +239,10 @@
       width="420px"
     >
       <div class="py-2">
-        <!-- Số lượng câu hỏi -->
         <div class="mb-3">
           <label class="form-label small fw-bold">Số lượng câu muốn thêm:</label>
           <a-input-number v-model:value="autoAddForm.totalCount" :min="1" :max="100" style="width: 100%" />
         </div>
-        <!-- Chọn môn học/danh mục -->
         <div class="mb-3">
           <label class="form-label small fw-bold">Chủ đề câu hỏi:</label>
           <a-select v-model:value="autoAddForm.categoryId" placeholder="Chọn chủ đề" style="width: 100%">
@@ -333,9 +251,8 @@
             </a-select-option>
           </a-select>
         </div>
-        <!-- Phân bổ độ khó -->
         <div class="mb-3 bg-light-soft p-3 rounded-3">
-          <label class="form-label small fw-bold text-dark-blue mb-2">Phân bổ độ khó (Tổng số câu):</label>
+          <label class="form-label small fw-bold text-dark-blue mb-2">Phân bổ độ khó:</label>
           <div class="row g-2">
             <div class="col-4">
               <label class="small text-muted mb-1">Dễ:</label>
@@ -351,9 +268,8 @@
             </div>
           </div>
         </div>
-        <!-- Đảo đáp án -->
         <div class="mb-1">
-          <a-checkbox v-model:checked="autoAddForm.shuffleOptions">🔀 Tự động đảo thứ tự các đáp án (A, B, C, D)</a-checkbox>
+          <a-checkbox v-model:checked="autoAddForm.shuffleOptions">🔀 Tự động đảo thứ tự các đáp án</a-checkbox>
         </div>
       </div>
     </a-modal>
@@ -368,7 +284,6 @@
       width="800px"
     >
       <div class="py-2">
-        <!-- Search & Filter Bar -->
         <div class="row g-2 mb-3">
           <div class="col-md-7">
             <a-input v-model:value="bankFilter.search" placeholder="Tìm kiếm từ khóa câu hỏi..." allow-clear>
@@ -386,7 +301,6 @@
           </div>
         </div>
 
-        <!-- Table list of matching questions -->
         <div class="table-responsive rounded-3 border bg-white mb-3" style="max-height: 380px; overflow-y: auto;">
           <table class="table table-hover align-middle mb-0 small-font">
             <thead class="table-light">
@@ -403,12 +317,12 @@
               <tr v-if="filteredBankQuestions.length === 0">
                 <td colspan="4" class="text-center text-muted py-4">Không tìm thấy câu hỏi phù hợp trong ngân hàng.</td>
               </tr>
-              <tr v-for="q in paginatedBankQuestions" :key="q.id" class="hover-pointer" @click.stop="toggleSelectBankQuestion(q.id)">
+              <tr v-for="q in paginatedBankQuestions" :key="q.questionId" class="hover-pointer" @click="toggleSelectBankQuestion(q.questionId)">
                 <td class="text-center" @click.stop>
-                  <a-checkbox :checked="selectedBankQuestionIds.includes(q.id)" @change="toggleSelectBankQuestion(q.id)" />
+                  <a-checkbox :checked="selectedBankQuestionIds.includes(q.questionId)" @change="toggleSelectBankQuestion(q.questionId)" />
                 </td>
                 <td class="text-truncate-2" style="max-width: 380px;">{{ q.stringContent }}</td>
-                <td class="text-muted text-truncate" style="max-width: 120px;">{{ getCategoryName(q.categoryIds[0]) }}</td>
+                <td class="text-muted text-truncate" style="max-width: 120px;">{{ getCategoryName(q.questionCategoryId) }}</td>
                 <td class="text-center">
                   <span :class="getLevelBadgeClass(q.level)">{{ getLevelText(q.level) }}</span>
                 </td>
@@ -417,7 +331,6 @@
           </table>
         </div>
 
-        <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" v-if="filteredBankQuestions.length > 0">
           <span class="text-muted small">Đã chọn: {{ selectedBankQuestionIds.length }} / {{ filteredBankQuestions.length }} câu hỏi</span>
           <a-pagination 
@@ -430,131 +343,7 @@
       </div>
     </a-modal>
 
-    <!-- MODAL 3: PHÂN TÍCH TỪ PDF/WORD (SPLIT SCREEN) -->
-    <a-modal
-      v-model:open="pdfModalOpen"
-      title="Phân tích & Tách câu hỏi tự động từ file tài liệu PDF / Word"
-      :footer="null"
-      width="96%"
-      :z-index="1100"
-      style="top: 20px; margin-bottom: 0;"
-      :body-style="{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }"
-    >
-      <input type="file" ref="fileInput" class="d-none" @change="handleFileUpload" />
-      <div class="row g-3 flex-grow-1 overflow-hidden h-100 py-2">
-
-        <!-- Split Left: File Upload & PDF Document Preview -->
-        <div class="col-md-5 d-flex flex-column h-100 border-end pe-3 overflow-hidden">
-          <!-- Big drag drop uploader, shown only when no file is uploaded yet -->
-          <div v-if="!uploadedFileName" class="card card-body p-4 border border-dashed rounded-4 bg-light-soft text-center justify-content-center align-items-center flex-shrink-0 mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo mb-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            <h6 class="fw-bold text-dark-blue mb-1" style="font-size: 0.85rem;">Kéo thả file đề thi PDF hoặc Word vào đây</h6>
-            <p class="text-secondary small mb-3">Hỗ trợ các định dạng .pdf, .docx, .doc, .txt tối đa 25MB</p>
-            <button class="btn btn-indigo text-white btn-sm px-4 py-2 rounded-3" @click="fileInput?.click()">
-              Chọn file từ máy tính
-            </button>
-          </div>
-
-          <!-- Small collapsed upload banner when file is active, freeing space for document preview -->
-          <div v-else class="card card-body p-2 px-3 border rounded-3 bg-light-soft d-flex flex-row align-items-center justify-content-between flex-shrink-0 mb-3">
-            <div class="d-flex align-items-center gap-2 text-truncate">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-success flex-shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-              <span class="small fw-bold text-dark-blue text-truncate" style="max-width: 180px;">📄 {{ uploadedFileName }}</span>
-            </div>
-            <button class="btn btn-link btn-xs text-indigo p-0 text-decoration-none fw-bold small flex-shrink-0" @click="fileInput?.click()">
-              Đổi file khác
-            </button>
-          </div>
-
-          <!-- PDF Previewer Mockup -->
-          <div class="flex-grow-1 overflow-y-auto bg-secondary bg-opacity-10 rounded-3 p-3 border d-flex flex-column align-items-center gap-3">
-            <div v-if="!uploadedFileName" class="m-auto text-muted text-center py-5">
-              <p class="mb-0 small">Chưa có file nào được tải lên.</p>
-              <p class="small text-secondary fst-italic">Hệ thống sẽ giả lập nội dung đề thi gốc sau khi tải file.</p>
-            </div>
-            <template v-else>
-              <div class="w-100 d-flex justify-content-between align-items-center bg-white border p-2 rounded shadow-sm mb-2 flex-shrink-0">
-                <span class="fw-bold text-truncate text-dark-blue small">📄 {{ uploadedFileName }}</span>
-                <span class="badge bg-success text-white">Trạng thái: Đã tải</span>
-              </div>
-              <!-- Simulated Document Pages -->
-              <div class="bg-white p-3 border w-100 shadow-sm rounded-3 position-relative mockup-document-page">
-                <span class="position-absolute top-0 end-0 m-2 badge bg-secondary">Trang 1 / 1</span>
-                <h6 class="fw-bold text-center border-bottom pb-2">ĐỀ THI KHẢO SÁT CHẤT LƯỢNG MÔN TIN HỌC</h6>
-                <p class="small mb-2 fw-semibold">Câu 1: Ngôn ngữ lập trình nào dưới đây được sử dụng để xây dựng dự án CNLearnMS frontend?</p>
-                <p class="small text-muted ms-3">A. Java<br/>B. Python<br/>C. VueJS & TypeScript<br/>D. C++</p>
-                
-                <p class="small mb-2 fw-semibold">Câu 2: Độ phức tạp thời gian trung bình của thuật toán Quick Sort là gì?</p>
-                <p class="small text-muted ms-3">A. O(N)<br/>B. O(N log N)<br/>C. O(N^2)<br/>D. O(log N)</p>
-
-                <p class="small mb-2 fw-semibold">Câu 3: Giao thức HTTP hoạt động mặc định ở cổng nào?</p>
-                <p class="small text-muted ms-3">A. Cổng 80<br/>B. Cổng 443<br/>C. Cổng 8080<br/>D. Cổng 21</p>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- Split Right: Extracted & Editable Questions List -->
-        <div class="col-md-7 d-flex flex-column h-100 overflow-hidden">
-          <div class="d-flex gap-2 align-items-center mb-2 flex-shrink-0">
-            <h6 class="fw-bold text-dark-blue flex-fill mb-0">Preview ({{ pdfQuestions.length }} câu)</h6>
-            <button class="btn btn-indigo btn-sm" :disabled="!uploadedFileName" @click="addNewPdfQuestion">
-              + Thêm câu trống
-            </button>
-            <button class="btn btn-indigo btn-sm" @click="pdfModalOpen = false">Đóng</button>
-            <button class="btn btn-indigo text-white btn-sm fw-bold" :disabled="pdfQuestions.length === 0" @click="savePdfQuestions">
-              Nạp câu hỏi vào đề
-            </button>
-          </div>
-
-          <!-- Editable List scrollable -->
-          <div class="flex-grow-1 overflow-y-auto px-1 d-flex flex-column gap-3 mb-3 border rounded-3 p-3 bg-light-soft">
-            <div v-if="pdfQuestions.length === 0" class="m-auto text-muted text-center py-5">
-              <p class="small mb-0">Tải file tài liệu lên để tự động bóc tách thành các câu hỏi trắc nghiệm có thể sửa đổi.</p>
-            </div>
-            
-            <div 
-              v-for="(q, idx) in pdfQuestions" 
-              :key="idx" 
-              class="card card-body p-3 border border-light bg-white rounded-3 mb-0 shadow-sm position-relative"
-            >
-              <button class="btn btn-xs btn-outline-danger d-flex align-items-center justify-content-center position-absolute top-0 end-0 m-3 rounded-circle" style="width: 24px; height: 24px; padding: 0; min-width: 24px; min-height: 24px;" @click="pdfQuestions.splice(idx, 1)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="badge bg-indigo-soft text-dark-blue fw-bold px-3 py-1 rounded">Câu {{ idx + 1 }}</span>
-                <!-- Level Select -->
-                <a-select v-model:value="q.level" style="width: 110px" size="small">
-                  <a-select-option :value="0">Dễ</a-select-option>
-                  <a-select-option :value="1">Trung bình</a-select-option>
-                  <a-select-option :value="2">Khó</a-select-option>
-                </a-select>
-              </div>
-
-              <!-- Question Input -->
-              <div class="mb-3">
-                <label class="form-label small text-muted mb-1">Nội dung câu hỏi:</label>
-                <a-textarea v-model:value="q.stringContent" :rows="1" :auto-size="{ minRows: 1, maxRows: 3 }" placeholder="Nhập câu hỏi..." />
-              </div>
-
-              <!-- Options -->
-              <div class="d-flex flex-column gap-2">
-                <div v-for="(ans, aIdx) in q.answers" :key="aIdx" class="d-flex align-items-center gap-2">
-                  <a-checkbox v-model:checked="ans.isCorrectAnswer" />
-                  <span class="small fw-bold text-secondary">{{ String.fromCharCode(65 + aIdx) }}:</span>
-                  <a-input v-model:value="ans.stringContent" size="small" placeholder="Nội dung đáp án..." />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          
-        </div>
-      </div>
-    </a-modal>
-
-    <!-- MODAL 4: THÊM TỪ ĐỀ -->
+    <!-- MODAL 4: THÊM TỪ ĐỀ THI KHÁC -->
     <a-modal
       v-model:open="importExamModalOpen"
       title="Nhập câu hỏi từ đề thi đã có sẵn"
@@ -564,7 +353,6 @@
       width="550px"
     >
       <div class="py-2">
-        <!-- Search bar -->
         <div class="mb-3">
           <label class="form-label small fw-bold">Tìm kiếm đề thi gốc:</label>
           <a-input v-model:value="importExamFilter.search" placeholder="Nhập từ khóa tìm tên đề thi..." allow-clear>
@@ -574,27 +362,42 @@
           </a-input>
         </div>
 
-        <!-- Scrollable list of exams -->
-        <div class="border rounded bg-white p-2 mb-3" style="max-height: 250px; overflow-y: auto;">
-          <div v-if="filteredExamsList.length === 0" class="text-center text-muted py-4 small">
-            Không tìm thấy đề thi phù hợp.
+        <div class="border rounded bg-white p-2 mb-2" style="max-height: 250px; overflow-y: auto;">
+          <div v-if="importExamLoading" class="text-center py-4 text-indigo">
+            <div class="spinner-border spinner-border-sm text-indigo mb-1" role="status"></div>
+            <div class="fs-8">Đang tải danh sách đề thi...</div>
           </div>
-          <div 
-            v-for="ex in filteredExamsList" 
-            :key="ex.id" 
-            class="d-flex justify-content-between align-items-center p-2 rounded mb-1 hover-pointer"
-            :class="selectedImportExamId === ex.id ? 'bg-indigo-soft border-indigo' : 'border border-light'"
-            @click="selectedImportExamId = ex.id"
-          >
-            <div>
-              <p class="fw-bold text-dark-blue mb-0 small">{{ ex.name }}</p>
-              <span class="text-muted fs-8">{{ getCategoryName(ex.categoryId) }} | {{ ex.questions?.length || 0 }} câu hỏi</span>
+          <template v-else>
+            <div v-if="importExamsList.length === 0" class="text-center text-muted py-4 small">
+              Không tìm thấy đề thi phù hợp.
             </div>
-            <a-radio :checked="selectedImportExamId === ex.id" @change="selectedImportExamId = ex.id" />
-          </div>
+            <div 
+              v-for="ex in importExamsList" 
+              :key="ex.examId" 
+              class="d-flex justify-content-between align-items-center p-2 rounded mb-1 hover-pointer"
+              :class="selectedImportExamId === ex.examId ? 'bg-indigo-soft border-indigo' : 'border border-light'"
+              @click="selectedImportExamId = ex.examId"
+            >
+              <div>
+                <p class="fw-bold text-dark-blue mb-0 small">{{ ex.name }}</p>
+                <span class="text-muted fs-8">{{ ex.questionCategoryName || 'Chuyên đề chung' }} | {{ ex.durationMin }} phút</span>
+              </div>
+              <a-radio :checked="selectedImportExamId === ex.examId" @change="selectedImportExamId = ex.examId" />
+            </div>
+          </template>
         </div>
 
-        <!-- Options -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3" v-if="importExamsList.length > 0">
+          <span class="text-muted small">Tổng số đề thi: {{ importExamTotalItems }}</span>
+          <a-pagination 
+            v-model:current="importExamRequest.page" 
+            :total="importExamTotalItems" 
+            :page-size="importExamRequest.size" 
+            size="small" 
+            @change="fetchImportExams"
+          />
+        </div>
+
         <div class="mb-1">
           <a-checkbox v-model:checked="importExamFilter.shuffleOptions">🔀 Đảo thứ tự các đáp án khi import câu hỏi</a-checkbox>
         </div>
@@ -611,17 +414,15 @@
       width="600px"
     >
       <div class="py-2">
-        <!-- Nội dung câu hỏi -->
         <div class="mb-3">
           <label class="form-label small fw-bold">Nội dung câu hỏi:</label>
           <a-textarea v-model:value="singleQuestionForm.stringContent" :rows="3" placeholder="Nhập câu hỏi..." />
         </div>
 
-        <!-- Chuyên đề -->
         <div class="row g-2 mb-3">
           <div class="col-md-6">
             <label class="form-label small fw-bold">Chuyên đề:</label>
-            <a-select v-model:value="singleQuestionForm.categoryIds[0]" style="width: 100%">
+            <a-select v-model:value="singleQuestionForm.questionCategoryId" style="width: 100%">
               <a-select-option v-for="cat in categories" :key="cat.id" :value="cat.id" :disabled="cat.hasChildren">
                 {{ cat.name }}
               </a-select-option>
@@ -637,9 +438,8 @@
           </div>
         </div>
 
-        <!-- Các đáp án -->
         <div class="mb-2">
-          <label class="form-label small fw-bold mb-1">Các phương án trả lời (Tick vào ô vuông để chọn đáp án đúng):</label>
+          <label class="form-label small fw-bold mb-1">Các phương án trả lời (Tích vào ô chọn để đánh dấu đáp án đúng):</label>
           <div class="d-flex flex-column gap-2">
             <div v-for="(ans, idx) in singleQuestionForm.answers" :key="idx" class="d-flex align-items-center gap-2">
               <a-checkbox v-model:checked="ans.isCorrectAnswer" />
@@ -649,10 +449,9 @@
           </div>
         </div>
 
-        <!-- Giải thích -->
         <div class="mt-3">
           <label class="form-label small fw-bold">Giải thích đáp án (nếu có):</label>
-          <a-textarea v-model:value="singleQuestionForm.explanation" :rows="2" placeholder="Giải thích vì sao đáp án này đúng..." />
+          <a-textarea v-model:value="singleQuestionForm.explaination" :rows="2" placeholder="Giải thích vì sao đáp án này đúng..." />
         </div>
       </div>
     </a-modal>
@@ -660,65 +459,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { getAllCate } from '@/api/categories'
-import { getQuestionsPaging, saveQuestions } from '@/api/questions'
-import { getAllExams, getExamQuestions, saveExamDetails } from '@/api/exams'
-import { getAllQuizzes, addQuizDetails, updateQuizDetails } from '@/api/quizzes'
+import { getQuestionsPaging, getQuestionKeys } from '@/api/questions'
+import { getExamDetails, getExamsPaging, getExamQuestions, getExamKeys, saveExam } from '@/api/exams'
+
+import type { Exam, ExamQuestion, ExamDto } from '@/models/exams'
+import type { Question, QuestionAnswer } from '@/models/questions'
 
 const route = useRoute()
 const router = useRouter()
 
-// Structures interfaces
-interface Answer {
-  questionAnswerId?: string
-  stringContent: string
-  isCorrectAnswer: boolean
-}
-
-interface Question {
-  id: string
-  slug: string
-  stringContent: string
-  explanation: string
-  level: number
-  type: number
-  accessType: number
-  categoryIds: string[]
-  answers: Answer[]
-}
-
-interface Exam {
-  id: string
-  name: string
-  description: string
-  categoryId: string
-  duration: number
-  accessType: number // 0: Private, 1: Public
-  questions: Question[]
-  isMyCreated?: boolean
-  creationMode?: string
-  isDraft?: boolean
-}
-
-interface Quiz {
-  id: string
-  title: string
-  targetGroup: string
-  sourceType: 'exam' | 'direct'
-  examId?: string
-  startDate: string
-  endDate: string
-  directRule?: {
-    categoryId: string
-    totalQuestions: number
-    duration: number
-  }
-  isMyCreated?: boolean
-  isDraft?: boolean
-}
+const isEditMode = computed(() => !!route.params.id)
 
 interface Category {
   id: string
@@ -726,49 +480,37 @@ interface Category {
   hasChildren?: boolean
 }
 
-// Reference Data
+// Data lists
 const categories = ref<Category[]>([])
-
 const bankQuestions = ref<Question[]>([])
-const examsList = ref<Exam[]>([])
-const quizzesList = ref<Quiz[]>([])
 
-// Creation config type
-const creationType = ref<'exam' | 'quiz'>('exam')
-const isQuizMode = computed(() => creationType.value === 'quiz')
+// Import from exam dialog state
+const importExamsList = ref<ExamDto[]>([])
+const importExamTotalItems = ref(0)
+const importExamLoading = ref(false)
+const importExamRequest = ref({
+  page: 1,
+  size: 5,
+  isPaging: true,
+  key: "",
+  filters: [] as any[],
+  filterGroupType: 1 // FilterGroupType.And
+})
 
-// Form values
+// Form state
 const formData = reactive({
   name: '',
   categoryId: undefined as string | undefined,
   duration: 45,
-  accessType: 1,
+  accessType: 1, // Default: Private (Riêng tư = 1)
   description: '',
-  contributeToBank: true,
-
-  // Quiz details
-  targetGroup: 'Lớp 12A1',
-  startType: 'now' as 'now' | 'custom',
-  startDate: '',
-  antiCheat: {
-    lockBrowser: true,
-    shuffleQuestions: true,
-    disableCopyPaste: true,
-    webcam: false,
-    ipLimit: false,
-    fullscreen: true
-  },
-  allowLateJoin: true,
-  allowLateSubmit: false,
-  publicLeaderboard: true,
-  sendEmailReport: true
+  contributeToBank: true
 })
 
-// Current Exam Questions list
-const questionsList = ref<Question[]>([])
+const questionsList = ref<(Question & { examQuestionId?: string })[]>([])
 const selectedGotoIndex = ref<number | undefined>(undefined)
 
-// Auto Add state
+// Auto-add questions state
 const autoAddModalOpen = ref(false)
 const autoAddForm = reactive({
   totalCount: 10,
@@ -779,7 +521,7 @@ const autoAddForm = reactive({
   shuffleOptions: true
 })
 
-// Choose from Bank state
+// Bank select state
 const bankModalOpen = ref(false)
 const selectedBankQuestionIds = ref<string[]>([])
 const bankFilter = reactive({
@@ -789,17 +531,7 @@ const bankFilter = reactive({
   pageSize: 8
 })
 
-// PDF Split View panel state
-const pdfModalOpen = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
-const uploadedFileName = ref('')
-const pdfQuestions = ref<Array<{
-  stringContent: string
-  level: number
-  answers: Answer[]
-}>>([])
-
-// Import from Exam state
+// Import from exam state
 const importExamModalOpen = ref(false)
 const selectedImportExamId = ref<string | undefined>(undefined)
 const importExamFilter = reactive({
@@ -807,20 +539,22 @@ const importExamFilter = reactive({
   shuffleOptions: true
 })
 
-// Single Question manual editor state
+// Single question editor state
 const singleQuestionModalOpen = ref(false)
 const singleQuestionModalMode = ref<'create' | 'edit'>('create')
 const singleQuestionModalIndex = ref<number | null>(null)
 
 const singleQuestionForm = reactive<Question>({
-  id: '',
-  slug: '',
+  questionId: '',
+  questionSlug: '',
   stringContent: '',
-  explanation: '',
+  explaination: '',
+  attemptCount: 0,
   level: 0,
   type: 0,
   accessType: 1,
-  categoryIds: [],
+  isInBank: false,
+  questionCategoryId: '',
   answers: []
 })
 
@@ -831,12 +565,32 @@ const fetchCategories = async () => {
       const items = res.data.items || []
       categories.value = items.map((cat: any) => ({
         id: cat.questionCategoryId,
-        name: cat.name,
+        name: cat.questionCategoryName,
         hasChildren: items.some((c: any) => c.parentId === cat.questionCategoryId)
       }))
     }
   } catch (error) {
     console.error('Lỗi tải danh mục:', error)
+  }
+}
+
+// Fetch correct answers keys and set correctness for specified question IDs
+const fetchAndFillAnswers = async (questionIds: string[]) => {
+  if (!questionIds || questionIds.length === 0) return
+  try {
+    const resKeys = await getQuestionKeys(questionIds)
+    const correctKeysMap = (resKeys && resKeys.isSuccess && resKeys.data?.correctMap) ? resKeys.data.correctMap : {}
+    
+    questionsList.value.forEach(q => {
+      if (questionIds.includes(q.questionId)) {
+        const correctIds = correctKeysMap[q.questionId] || []
+        q.answers.forEach((ans: any) => {
+          ans.isCorrectAnswer = correctIds.includes(ans.questionAnswerId)
+        })
+      }
+    })
+  } catch (error) {
+    console.error('Lỗi khi tải đáp án đúng cho câu hỏi:', error)
   }
 }
 
@@ -849,17 +603,20 @@ const fetchBankQuestions = async () => {
     })
     if (res && res.isSuccess && res.data) {
       bankQuestions.value = (res.data.items || []).map((item: any) => ({
-        id: item.id,
-        slug: item.slug || '',
+        questionId: item.questionId || item.id,
+        questionSlug: item.slug || '',
         stringContent: item.stringContent || '',
-        explanation: item.explanation || '',
+        explaination: item.explanation || item.explaination || '',
         level: item.level || 0,
         type: item.type || 0,
         accessType: item.accessType || 1,
-        categoryIds: item.questionCategoryId ? [item.questionCategoryId] : [],
-        answers: (item.answers || []).map((ans: any) => ({
-          stringContent: ans.stringContent || '',
-          isCorrectAnswer: ans.isCorrectAnswer || false
+        questionCategoryId: item.questionCategoryId,
+        answers: (item.answers || []).map((a: any, aIdx: number) => ({
+          questionAnswerId: a.questionAnswerId || '',
+          stringContent: a.stringContent || '',
+          isCorrectAnswer: false,
+          questionId: item.questionId || item.id,
+          orderInList: a.orderInList || (aIdx + 1)
         }))
       }))
     }
@@ -868,157 +625,32 @@ const fetchBankQuestions = async () => {
   }
 }
 
-const fetchExamsList = async () => {
+const fetchImportExams = async () => {
+  importExamLoading.value = true
   try {
-    const res = await getAllExams()
+    const res = await getExamsPaging(importExamRequest.value)
     if (res && res.isSuccess && res.data) {
-      examsList.value = (res.data.items || []).map((exam: any) => ({
-        id: exam.examId,
-        name: exam.name,
-        description: exam.description || '',
-        categoryId: exam.categoryId,
-        duration: exam.duration,
-        accessType: exam.accessType,
-        questions: [], // loaded dynamically when needed
-        isMyCreated: true
-      }))
+      importExamsList.value = res.data.items || []
+      importExamTotalItems.value = res.data.total || 0
     }
   } catch (error) {
-    console.error('Lỗi tải danh sách đề thi:', error)
+    console.error('Lỗi tải danh sách đề thi để import:', error)
+    message.error('Không thể tải danh sách đề thi.')
+  } finally {
+    importExamLoading.value = false
   }
 }
 
-// Lifecycle
-onMounted(async () => {
-  // Query mode override
-  const typeParam = route.query.type
-  if (typeParam === 'quiz' || typeParam === 'exam') {
-    creationType.value = typeParam
-  }
-
-  // Load categories from API
-  await fetchCategories()
-
-  const fetchQuizzesList = async () => {
-    try {
-      const res = await getAllQuizzes()
-      if (res && res.isSuccess && res.data) {
-        quizzesList.value = (res.data.items || []).map((q: any) => ({
-          id: q.quizId,
-          title: q.title,
-          targetGroup: q.targetGroup || '',
-          sourceType: q.sourceType,
-          examId: q.examId,
-          startDate: q.startDate || '',
-          endDate: q.endDate || '',
-          isDraft: q.isDraft,
-          isMyCreated: true
-        }))
-      }
-    } catch (error) {
-      console.error('Lỗi tải danh sách bài kiểm tra:', error)
-    }
-  }
-
-  // Load bank questions, exams, and quizzes from API
-  await Promise.all([
-    fetchBankQuestions(),
-    fetchExamsList(),
-    fetchQuizzesList()
-  ])
-
-  // Pre-select category if none
-  if (categories.value.length > 0 && categories.value[0]) {
-    formData.categoryId = categories.value[0].id
-    autoAddForm.categoryId = categories.value[0].id
-  }
-
-  // Load for editing/updating mode
-  const editId = route.params.id as string | undefined
-  if (editId) {
-    // 1. Try to find in examsList
-    const existingExam = examsList.value.find(e => e.id === editId)
-    if (existingExam) {
-      creationType.value = 'exam'
-      formData.name = existingExam.name
-      formData.description = existingExam.description
-      formData.categoryId = existingExam.categoryId
-      formData.duration = existingExam.duration
-      formData.accessType = existingExam.accessType
-      
-      // Load questions of this exam from API
-      try {
-        const resQuestions = await getExamQuestions(editId)
-        if (resQuestions && resQuestions.isSuccess && resQuestions.data) {
-          questionsList.value = resQuestions.data.map((q: any) => ({
-            id: q.id,
-            slug: q.slug || '',
-            stringContent: q.stringContent || '',
-            explanation: q.explanation || '',
-            level: q.level || 0,
-            type: q.type || 0,
-            accessType: q.accessType || 1,
-            categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
-            answers: (q.answers || []).map((ans: any) => ({
-              stringContent: ans.stringContent || '',
-              isCorrectAnswer: ans.isCorrectAnswer || false
-            }))
-          }))
-        }
-      } catch (error) {
-        console.error('Lỗi tải câu hỏi của đề thi cần chỉnh sửa:', error)
-      }
-    } else {
-      // 2. Try to find in quizzesList
-      const existingQuiz = quizzesList.value.find(q => q.id === editId)
-      if (existingQuiz) {
-        creationType.value = 'quiz'
-        formData.name = existingQuiz.title.replace(' [Bản nháp]', '').replace(' (Kỳ thi/Lớp học)', '')
-        formData.targetGroup = existingQuiz.targetGroup
-        formData.startDate = existingQuiz.startDate
-        formData.startType = existingQuiz.startDate ? 'custom' : 'now'
-        
-        // Load associated exam data
-        if (existingQuiz.examId) {
-          const associatedExam = examsList.value.find(e => e.id === existingQuiz.examId)
-          if (associatedExam) {
-            formData.description = associatedExam.description
-            formData.categoryId = associatedExam.categoryId
-            formData.duration = associatedExam.duration
-            formData.accessType = associatedExam.accessType
-            
-            // Load questions of this exam from API
-            try {
-              const resQuestions = await getExamQuestions(existingQuiz.examId)
-              if (resQuestions && resQuestions.isSuccess && resQuestions.data) {
-                questionsList.value = resQuestions.data.map((q: any) => ({
-                  id: q.id,
-                  slug: q.slug || '',
-                  stringContent: q.stringContent || '',
-                  explanation: q.explanation || '',
-                  level: q.level || 0,
-                  type: q.type || 0,
-                  accessType: q.accessType || 1,
-                  categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
-                  answers: (q.answers || []).map((ans: any) => ({
-                    stringContent: ans.stringContent || '',
-                    isCorrectAnswer: ans.isCorrectAnswer || false
-                  }))
-                }))
-              }
-            } catch (error) {
-              console.error('Lỗi tải câu hỏi của đề thi thuộc bài thi:', error)
-            }
-          }
-        }
-      } else {
-        message.error('Không tìm thấy dữ liệu đề thi/kỳ thi cần chỉnh sửa!')
-      }
-    }
-  }
+let importExamSearchTimeout: any = null
+watch(() => importExamFilter.search, (newVal) => {
+  if (importExamSearchTimeout) clearTimeout(importExamSearchTimeout)
+  importExamSearchTimeout = setTimeout(() => {
+    importExamRequest.value.key = newVal || ""
+    importExamRequest.value.page = 1
+    fetchImportExams()
+  }, 400)
 })
 
-// Helpers
 const goBack = () => {
   router.push('/personal/exams')
 }
@@ -1049,7 +681,6 @@ const scrollToQuestion = (idx: number) => {
   }
 }
 
-// Question positioning
 const moveQuestionUp = (idx: number) => {
   if (idx <= 0 || idx >= questionsList.value.length) return
   const temp = questionsList.value[idx]
@@ -1073,24 +704,22 @@ const removeSelectedQuestion = (idx: number) => {
   message.success('Đã gỡ câu hỏi khỏi đề!')
 }
 
-// Utility: Shuffle choices of questions helper
 const shuffleChoices = (q: Question) => {
   const choices = [...q.answers]
   for (let i = choices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     const temp = choices[i]
     if (temp && choices[j]) {
-      choices[i] = choices[j] as Answer
+      choices[i] = choices[j] as QuestionAnswer
       choices[j] = temp
     }
   }
   q.answers = choices
 }
 
-// Action: Handle Auto Add questions
 const handleAutoAdd = () => {
   const matching = bankQuestions.value.filter(q => {
-    if (autoAddForm.categoryId && !q.categoryIds.includes(autoAddForm.categoryId)) return false
+    if (autoAddForm.categoryId && q.questionCategoryId !== autoAddForm.categoryId) return false
     return true
   })
 
@@ -1099,12 +728,10 @@ const handleAutoAdd = () => {
     return
   }
 
-  // Group by level
   const easy = matching.filter(q => q.level === 0)
   const medium = matching.filter(q => q.level === 1)
   const hard = matching.filter(q => q.level === 2)
 
-  // Shuffle arrays helper
   const draw = (arr: Question[], count: number) => {
     const list = [...arr]
     const result: Question[] = []
@@ -1124,10 +751,9 @@ const handleAutoAdd = () => {
     ...draw(hard, autoAddForm.hardCount)
   ]
 
-  // If we drew less due to lacking pool size, just top it up from matching
   if (selected.length < autoAddForm.totalCount) {
     const remainingCount = autoAddForm.totalCount - selected.length
-    const unused = matching.filter(q => !selected.some(s => s.id === q.id))
+    const unused = matching.filter(q => !selected.some(s => s.questionId === q.questionId))
     selected.push(...draw(unused, remainingCount))
   }
 
@@ -1136,36 +762,39 @@ const handleAutoAdd = () => {
     return
   }
 
-  // Shuffle answers if checked
   if (autoAddForm.shuffleOptions) {
     selected.forEach(q => shuffleChoices(q))
   }
 
-  // Append to current list, avoid duplicates
   let addedCount = 0
+  const newlyAddedIds: string[] = []
   selected.forEach(q => {
-    if (!questionsList.value.some(el => el.id === q.id)) {
-      questionsList.value.push(JSON.parse(JSON.stringify(q))) // deep copy
+    if (!questionsList.value.some(el => el.questionId === q.questionId)) {
+      questionsList.value.push(JSON.parse(JSON.stringify(q)))
+      newlyAddedIds.push(q.questionId)
       addedCount++
     }
   })
+
+  if (newlyAddedIds.length > 0) {
+    fetchAndFillAnswers(newlyAddedIds)
+  }
 
   message.success(`Đã chọn ngẫu nhiên và thêm ${addedCount} câu hỏi mới vào đề!`)
   autoAddModalOpen.value = false
 }
 
-// Action: Choose from Bank
 const openBankModal = () => {
-  selectedBankQuestionIds.value = questionsList.value.map(q => q.id)
-  bankFilter.categoryId = undefined // Bỏ pre-filter để hiển thị toàn bộ câu hỏi
+  selectedBankQuestionIds.value = questionsList.value.map(q => q.questionId)
+  bankFilter.categoryId = undefined
   bankFilter.page = 1
   bankModalOpen.value = true
 }
 
 const filteredBankQuestions = computed(() => {
   return bankQuestions.value.filter(q => {
-    if (bankFilter.search && !q.stringContent.toLowerCase().includes(bankFilter.search.toLowerCase())) return false
-    if (bankFilter.categoryId && !q.categoryIds.includes(bankFilter.categoryId)) return false
+    if (bankFilter.search && !(q.stringContent || '').toLowerCase().includes(bankFilter.search.toLowerCase())) return false
+    if (bankFilter.categoryId && q.questionCategoryId !== bankFilter.categoryId) return false
     return true
   })
 })
@@ -1176,13 +805,13 @@ const paginatedBankQuestions = computed(() => {
 })
 
 const isAllBankSelected = computed(() => {
-  const pageIds = paginatedBankQuestions.value.map(q => q.id)
+  const pageIds = paginatedBankQuestions.value.map(q => q.questionId)
   if (pageIds.length === 0) return false
   return pageIds.every(id => selectedBankQuestionIds.value.includes(id))
 })
 
 const toggleSelectAllBank = () => {
-  const pageIds = paginatedBankQuestions.value.map(q => q.id)
+  const pageIds = paginatedBankQuestions.value.map(q => q.questionId)
   if (isAllBankSelected.value) {
     selectedBankQuestionIds.value = selectedBankQuestionIds.value.filter(id => !pageIds.includes(id))
   } else {
@@ -1204,125 +833,40 @@ const toggleSelectBankQuestion = (id: string) => {
 }
 
 const handleBankAdd = () => {
-  // Clear and rebuild based on selection
   const added: Question[] = []
   selectedBankQuestionIds.value.forEach(id => {
-    const orig = bankQuestions.value.find(q => q.id === id)
+    const orig = bankQuestions.value.find(q => q.questionId === id)
     if (orig) {
       added.push(JSON.parse(JSON.stringify(orig)))
     }
   })
 
-  // Append new ones that aren't duplicate
   let addedCount = 0
+  const newlyAddedIds: string[] = []
   added.forEach(q => {
-    if (!questionsList.value.some(el => el.id === q.id)) {
+    if (!questionsList.value.some(el => el.questionId === q.questionId)) {
       questionsList.value.push(q)
+      newlyAddedIds.push(q.questionId)
       addedCount++
     }
   })
+
+  if (newlyAddedIds.length > 0) {
+    fetchAndFillAnswers(newlyAddedIds)
+  }
 
   message.success(`Đã thêm ${addedCount} câu hỏi từ ngân hàng!`)
   bankModalOpen.value = false
 }
 
-// Action: PDF Analysis
-const handleFileUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    const file = target.files[0]
-    if (file) {
-      uploadedFileName.value = file.name
-      message.loading('Đang phân tích cấu trúc tài liệu PDF/Word...', 1.5)
-
-      // Simulate extracting 3 mock questions after a delay
-      setTimeout(() => {
-        pdfQuestions.value = [
-          {
-            stringContent: 'Ngôn ngữ lập trình nào dưới đây được sử dụng để xây dựng dự án CNLearnMS frontend?',
-            level: 0,
-            answers: [
-              { stringContent: 'Java', isCorrectAnswer: false },
-              { stringContent: 'Python', isCorrectAnswer: false },
-              { stringContent: 'VueJS & TypeScript', isCorrectAnswer: true },
-              { stringContent: 'C++', isCorrectAnswer: false }
-            ]
-          },
-          {
-            stringContent: 'Độ phức tạp thời gian trung bình của thuật toán sắp xếp nhanh (Quick Sort) là gì?',
-            level: 1,
-            answers: [
-              { stringContent: 'O(N)', isCorrectAnswer: false },
-              { stringContent: 'O(N log N)', isCorrectAnswer: true },
-              { stringContent: 'O(N^2)', isCorrectAnswer: false },
-              { stringContent: 'O(log N)', isCorrectAnswer: false }
-            ]
-          },
-          {
-            stringContent: 'Giao thức HTTP hoạt động mặc định ở cổng truyền thông nào?',
-            level: 0,
-            answers: [
-              { stringContent: 'Cổng 80', isCorrectAnswer: true },
-              { stringContent: 'Cổng 443', isCorrectAnswer: false },
-              { stringContent: 'Cổng 8080', isCorrectAnswer: false },
-              { stringContent: 'Cổng 21', isCorrectAnswer: false }
-            ]
-          }
-        ]
-        message.success('Đã bóc tách thành công 3 câu hỏi từ file!')
-      }, 1500)
-    }
-  }
-}
-
-const addNewPdfQuestion = () => {
-  pdfQuestions.value.push({
-    stringContent: 'Nội dung câu hỏi mới...',
-    level: 0,
-    answers: [
-      { stringContent: 'Phương án A', isCorrectAnswer: false },
-      { stringContent: 'Phương án B', isCorrectAnswer: false },
-      { stringContent: 'Phương án C', isCorrectAnswer: false },
-      { stringContent: 'Phương án D', isCorrectAnswer: false }
-    ]
-  })
-}
-
-const savePdfQuestions = () => {
-  let count = 0
-  pdfQuestions.value.forEach(q => {
-    const newQ: Question = {
-      id: 'pdf_q_' + Date.now() + Math.random().toString(36).substr(2, 5),
-      slug: 'pdf-imported',
-      stringContent: q.stringContent,
-      explanation: 'Câu hỏi được bóc tách từ file tài liệu của tôi.',
-      level: q.level,
-      type: 0,
-      accessType: formData.accessType,
-      categoryIds: [formData.categoryId || 'c07a92a2-a69f-4143-8589-da11688d7d07'],
-      answers: q.answers
-    }
-    questionsList.value.push(newQ)
-    count++
-  })
-
-  message.success(`Đã nạp ${count} câu hỏi bóc tách vào danh sách đề thi!`)
-  pdfModalOpen.value = false
-  // Clean
-  pdfQuestions.value = []
-  uploadedFileName.value = ''
-}
-
-// Action: Import from Exam
 const openImportExamModal = () => {
   selectedImportExamId.value = undefined
+  importExamFilter.search = ''
+  importExamRequest.value.key = ''
+  importExamRequest.value.page = 1
   importExamModalOpen.value = true
+  fetchImportExams()
 }
-
-const filteredExamsList = computed(() => {
-  if (!importExamFilter.search) return examsList.value
-  return examsList.value.filter(e => e.name.toLowerCase().includes(importExamFilter.search.toLowerCase()))
-})
 
 const handleImportExam = async () => {
   if (!selectedImportExamId.value) {
@@ -1339,21 +883,35 @@ const handleImportExam = async () => {
         return
       }
 
+      const [resKeys] = await Promise.all([
+        getExamKeys(selectedImportExamId.value)
+      ])
+
+      const correctKeysMap = (resKeys && resKeys.isSuccess && resKeys.data?.correctMap) ? resKeys.data.correctMap : {}
+
       let count = 0
       examQuestions.forEach((q: any) => {
+        const targetQuestionId = 'imported_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
+        const rawAnswers = q.answers || []
+        const correctIds = correctKeysMap[q.examQuestionId] || []
+
         const normalizedQ: Question = {
-          id: 'imported_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-          slug: q.slug || '',
+          questionId: targetQuestionId,
+          questionSlug: q.questionSlug || '',
           stringContent: q.stringContent || '',
-          explanation: q.explanation || q.explaination || '',
+          explaination: q.explaination || q.explanation || '',
+          attemptCount: q.attemptCount || 0,
           level: q.level || 0,
           type: q.type || 0,
           accessType: q.accessType || 1,
-          categoryIds: q.questionCategoryId ? [q.questionCategoryId] : [],
-          answers: (q.answers || q.Answers || []).map((ans: any) => ({
+          isInBank: q.isInBank || false,
+          questionCategoryId: q.questionCategoryId || '',
+          answers: rawAnswers.map((ans: any, aIdx: number) => ({
             questionAnswerId: '',
             stringContent: ans.stringContent || '',
-            isCorrectAnswer: ans.isCorrectAnswer || false
+            isCorrectAnswer: correctIds.includes(ans.questionAnswerId),
+            questionId: targetQuestionId,
+            orderInList: aIdx + 1
           }))
         }
         
@@ -1365,7 +923,7 @@ const handleImportExam = async () => {
         count++
       })
 
-      message.success(`Đã sao chép và chèn ${count} câu hỏi vào đề hiện tại!`);
+      message.success(`Đã sao chép và chèn ${count} câu hỏi vào đề hiện tại!`)
       importExamModalOpen.value = false
     } else {
       message.error('Không thể tải danh sách câu hỏi của đề thi này.')
@@ -1376,21 +934,22 @@ const handleImportExam = async () => {
   }
 }
 
-// Single Question manual editor helper functions
 const resetSingleQuestionForm = () => {
-  singleQuestionForm.id = ''
-  singleQuestionForm.slug = ''
+  singleQuestionForm.questionId = ''
+  singleQuestionForm.questionSlug = ''
   singleQuestionForm.stringContent = ''
-  singleQuestionForm.explanation = ''
+  singleQuestionForm.explaination = ''
+  singleQuestionForm.attemptCount = 0
   singleQuestionForm.level = 0
   singleQuestionForm.type = 0
   singleQuestionForm.accessType = 1
-  singleQuestionForm.categoryIds = [formData.categoryId || categories.value[0]?.id || '']
+  singleQuestionForm.isInBank = false
+  singleQuestionForm.questionCategoryId = formData.categoryId || categories.value[0]?.id || ''
   singleQuestionForm.answers = [
-    { stringContent: '', isCorrectAnswer: false },
-    { stringContent: '', isCorrectAnswer: false },
-    { stringContent: '', isCorrectAnswer: false },
-    { stringContent: '', isCorrectAnswer: false }
+    { questionAnswerId: '', stringContent: '', isCorrectAnswer: false, orderInList: 1 },
+    { questionAnswerId: '', stringContent: '', isCorrectAnswer: false, orderInList: 2 },
+    { questionAnswerId: '', stringContent: '', isCorrectAnswer: false, orderInList: 3 },
+    { questionAnswerId: '', stringContent: '', isCorrectAnswer: false, orderInList: 4 }
   ]
 }
 
@@ -1405,33 +964,35 @@ const openEditQuestionModal = (q: Question, idx: number) => {
   singleQuestionModalMode.value = 'edit'
   singleQuestionModalIndex.value = idx
   
-  // Clone values
-  singleQuestionForm.id = q.id
-  singleQuestionForm.slug = q.slug
-  singleQuestionForm.stringContent = q.stringContent
-  singleQuestionForm.explanation = q.explanation || ''
+  singleQuestionForm.questionId = q.questionId
+  singleQuestionForm.questionSlug = q.questionSlug || ''
+  singleQuestionForm.stringContent = q.stringContent || ''
+  singleQuestionForm.explaination = q.explaination || ''
   singleQuestionForm.level = q.level
   singleQuestionForm.type = q.type
   singleQuestionForm.accessType = q.accessType
-  singleQuestionForm.categoryIds = [...q.categoryIds]
-  singleQuestionForm.answers = JSON.parse(JSON.stringify(q.answers))
+  singleQuestionForm.questionCategoryId = q.questionCategoryId
+  singleQuestionForm.answers = JSON.parse(JSON.stringify(q.answers || []))
   
-  // Ensure we have 4 options
   while (singleQuestionForm.answers.length < 4) {
-    singleQuestionForm.answers.push({ stringContent: '', isCorrectAnswer: false })
+    singleQuestionForm.answers.push({
+      questionAnswerId: '',
+      stringContent: '',
+      isCorrectAnswer: false,
+      orderInList: singleQuestionForm.answers.length + 1
+    })
   }
   
   singleQuestionModalOpen.value = true
 }
 
 const saveSingleQuestion = () => {
-  if (!singleQuestionForm.stringContent.trim()) {
+  if (!singleQuestionForm.stringContent || !singleQuestionForm.stringContent.trim()) {
     message.error('Vui lòng nhập nội dung câu hỏi!')
     return
   }
 
-  // Validate answers
-  const filledAnswers = singleQuestionForm.answers.filter(a => a.stringContent.trim())
+  const filledAnswers = singleQuestionForm.answers.filter(a => a.stringContent && a.stringContent.trim())
   if (filledAnswers.length < 2) {
     message.error('Câu hỏi phải có ít nhất 2 đáp án!')
     return
@@ -1443,40 +1004,42 @@ const saveSingleQuestion = () => {
     return
   }
 
-  // Build the Question object
-  const cleanAnswers = singleQuestionForm.answers.map(a => ({
-    stringContent: a.stringContent.trim(),
-    isCorrectAnswer: a.isCorrectAnswer
-  }))
+  const cleanAnswers = singleQuestionForm.answers
+    .filter(a => a.stringContent && a.stringContent.trim())
+    .map((a, aIdx) => ({
+      questionAnswerId: a.questionAnswerId || '00000000-0000-0000-0000-000000000000',
+      stringContent: a.stringContent!.trim(),
+      isCorrectAnswer: a.isCorrectAnswer,
+      questionId: singleQuestionForm.questionId || '',
+      orderInList: aIdx + 1
+    }))
 
   if (singleQuestionModalMode.value === 'create') {
     const newQ: Question = {
-      id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-      slug: 'manual-draft',
+      questionId: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      questionSlug: 'manual-draft',
       stringContent: singleQuestionForm.stringContent.trim(),
-      explanation: singleQuestionForm.explanation.trim() || 'Giải thích chi tiết của câu hỏi.',
+      explaination: singleQuestionForm.explaination ? singleQuestionForm.explaination.trim() : 'Giải thích chi tiết của câu hỏi.',
+      attemptCount: 0,
       level: singleQuestionForm.level,
       type: singleQuestionForm.type,
       accessType: singleQuestionForm.accessType,
-      categoryIds: [...singleQuestionForm.categoryIds],
+      isInBank: false,
+      questionCategoryId: singleQuestionForm.questionCategoryId,
       answers: cleanAnswers
     }
     questionsList.value.push(newQ)
     message.success('Đã thêm câu hỏi mới vào đề!')
   } else {
-    // Edit mode
     const idx = singleQuestionModalIndex.value
     if (idx !== null && questionsList.value[idx]) {
       const existingQ = questionsList.value[idx] as Question
-      
-      // Update values inline
       existingQ.stringContent = singleQuestionForm.stringContent.trim()
-      existingQ.explanation = singleQuestionForm.explanation.trim()
+      existingQ.explaination = singleQuestionForm.explaination ? singleQuestionForm.explaination.trim() : ''
       existingQ.level = singleQuestionForm.level
-      existingQ.categoryIds = [...singleQuestionForm.categoryIds]
+      existingQ.questionCategoryId = singleQuestionForm.questionCategoryId
       existingQ.answers = cleanAnswers
-      // Reset ID to temporary ID so that it duplicates rather than overwriting bank questions
-      existingQ.id = 'manual_edited_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
+      existingQ.questionId = 'manual_edited_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)
       message.success('Đã cập nhật câu hỏi!')
     }
   }
@@ -1496,18 +1059,13 @@ const generateUUID = (): string => {
 }
 
 const ensureGuid = (id: string): string => {
-  const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
   return isGuid ? id : '00000000-0000-0000-0000-000000000000'
 }
 
-const showPdfMaintenanceToast = () => {
-  message.info('Tính năng "Phân tích đề từ PDF/Word" đang được phát triển và bảo trì. Vui lòng quay lại sau!')
-}
-
-// Global Save Form Action
 const saveForm = async (isDraft = false) => {
   if (!formData.name.trim()) {
-    message.error('Vui lòng nhập tên đề/kỳ thi!')
+    message.error('Vui lòng nhập tên đề thi!')
     return
   }
 
@@ -1521,211 +1079,60 @@ const saveForm = async (isDraft = false) => {
     return
   }
 
-  // Generate actual GUID for new questions/answers so they are stable and unique during batching
-  questionsList.value.forEach(q => {
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(q.id)
-    if (!isGuid || q.id === '00000000-0000-0000-0000-000000000000') {
-      q.id = generateUUID()
-    }
-    q.answers.forEach(ans => {
-      const isAnsGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ans.questionAnswerId || '')
-      if (!isAnsGuid || ans.questionAnswerId === '00000000-0000-0000-0000-000000000000') {
-        ans.questionAnswerId = generateUUID()
-      }
-    })
-  })
-
   const editId = route.params.id as string | undefined
-  let targetExamId = editId
-
-  if (editId && isQuizMode.value) {
-    const quizIndex = quizzesList.value.findIndex(q => q.id === editId)
-    if (quizIndex !== -1) {
-      const existingQuiz = quizzesList.value[quizIndex]
-      if (existingQuiz) {
-        targetExamId = existingQuiz.examId || ''
-      }
-    }
-  }
-
   let parsedExamId: string | undefined = undefined
-  if (targetExamId) {
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetExamId)
+  if (editId) {
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editId)
     if (isGuid) {
-      parsedExamId = targetExamId
+      parsedExamId = editId
     }
   }
 
-  const payload = {
-    examId: parsedExamId,
+  const payload: Exam = {
+  
+    examId: parsedExamId || '00000000-0000-0000-0000-000000000000',
     name: formData.name.trim(),
-    description: formData.description.trim() || 'Đề thi tự soạn cá nhân.',
-    categoryId: formData.categoryId || categories.value[0]?.id || '',
-    duration: formData.duration,
+    description: formData.description.trim(),
+    questionCategoryId: formData.categoryId || '',
+    durationMin: formData.duration,
     accessType: formData.accessType,
     isDraft: isDraft,
     contributeToBank: formData.contributeToBank,
-    questions: questionsList.value.map(q => ({
-      id: ensureGuid(q.id),
-      slug: q.slug || '',
-      stringContent: q.stringContent.trim(),
-      explanation: q.explanation || '',
-      level: q.level,
-      type: q.type,
-      accessType: q.accessType,
-      questionCategoryId: ensureGuid((q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds[0] : (formData.categoryId || categories.value[0]?.id || '')) || ''),
-      categoryIds: q.categoryIds && q.categoryIds.length > 0 ? q.categoryIds : [formData.categoryId || categories.value[0]?.id || ''],
-      answers: q.answers.map(ans => ({
-        questionAnswerId: ensureGuid(ans.questionAnswerId || ''),
-        stringContent: ans.stringContent.trim(),
-        isCorrectAnswer: ans.isCorrectAnswer
-      }))
-    }))
+    learnMsUserId: '00000000-0000-0000-0000-000000000000',
+    questions: questionsList.value.map((q, idx) => {
+      const targetExamQuestionId = (parsedExamId && q.examQuestionId) ? q.examQuestionId : '00000000-0000-0000-0000-000000000000'
+      
+      return {
+        examQuestionId: targetExamQuestionId,
+        stringContent: q.stringContent || '',
+        orderInExam: idx + 1,
+        explaination: q.explaination || 'Giải thích chi tiết của câu hỏi.',
+        level: q.level,
+        type: q.type,
+        answers: (q.answers || []).map((ans, aIdx) => ({
+          questionAnswerId: ensureGuid(ans.questionAnswerId || ''),
+          stringContent: ans.stringContent || '',
+          isCorrectAnswer: ans.isCorrectAnswer,
+          orderInList: aIdx + 1
+        }))
+      }
+    })
   }
 
-  const totalQuestions = payload.questions.length
   let hideLoading: any = null
-
-  if (totalQuestions > 0) {
-    const batchSize = 20
-    const totalBatches = Math.ceil(totalQuestions / batchSize)
-    
-    // Save questions in batches sequentially to prevent overloading
-    for (let i = 0; i < totalBatches; i++) {
-      const start = i * batchSize
-      const end = Math.min(start + batchSize, totalQuestions)
-      const batchQuestions = payload.questions.slice(start, end)
-      
-      const percent = Math.round((end / totalQuestions) * 100)
-      const loadingMsg = `Đang lưu câu hỏi: ${end}/${totalQuestions} (${percent}%)`
-      
-      if (hideLoading) {
-        hideLoading()
-      }
-      hideLoading = message.loading(loadingMsg, 0)
-      
-      try {
-        const qres = await saveQuestions(batchQuestions)
-        if (!qres || !qres.isSuccess) {
-          if (hideLoading) hideLoading()
-          message.error(qres?.errorMessage || `Lỗi khi lưu lô câu hỏi thứ ${i + 1}.`)
-          return
-        }
-      } catch (err) {
-        if (hideLoading) hideLoading()
-        console.error('Lỗi lưu câu hỏi theo lô:', err)
-        message.error(`Đã xảy ra lỗi khi kết nối máy chủ để lưu lô câu hỏi thứ ${i + 1}.`)
-        return
-      }
-    }
-  }
-
-  // Once all batches are saved successfully, show the finalizing message and save the exam
-  if (hideLoading) {
-    hideLoading()
-  }
-  hideLoading = message.loading('Đang hoàn tất đề thi...', 0)
+  hideLoading = message.loading('Đang lưu đề thi...', 0)
 
   try {
-    const res = await saveExamDetails(payload)
+    const res = await saveExam(payload, !!parsedExamId)
     if (hideLoading) {
       hideLoading()
     }
-    if (res && res.isSuccess && res.data) {
-      const savedExamId = res.data.examId
-
+    if (res && res.isSuccess) {
       if (editId) {
-        // Editing mode: find and update
-        if (isQuizMode.value) {
-          const now = new Date()
-          const startDateVal = formData.startType === 'now' 
-            ? now.toISOString() 
-            : (formData.startDate ? new Date(formData.startDate).toISOString() : now.toISOString())
-          
-          const end = new Date(new Date(startDateVal).getTime() + 7 * 24 * 60 * 60000)
-          const endDateVal = end.toISOString()
-
-          const quizPayload = {
-            quizId: ensureGuid(editId),
-            title: formData.name.trim() + (isDraft ? ' [Bản nháp]' : ' (Kỳ thi/Lớp học)'),
-            targetGroup: formData.targetGroup.trim(),
-            sourceType: 'exam',
-            examId: ensureGuid(savedExamId),
-            startDate: startDateVal,
-            endDate: endDateVal,
-            isDraft: isDraft,
-            lockBrowser: formData.antiCheat.lockBrowser,
-            shuffleQuestions: formData.antiCheat.shuffleQuestions,
-            disableCopyPaste: formData.antiCheat.disableCopyPaste,
-            fullscreen: formData.antiCheat.fullscreen,
-            webcam: formData.antiCheat.webcam,
-            ipLimit: formData.antiCheat.ipLimit,
-            allowLateJoin: formData.allowLateJoin,
-            allowLateSubmit: formData.allowLateSubmit,
-            publicLeaderboard: formData.publicLeaderboard,
-            sendEmailReport: formData.sendEmailReport
-          }
-
-          const qres = await updateQuizDetails(quizPayload)
-          if (!qres || !qres.isSuccess) {
-            message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
-            return
-          }
-        }
-
         message.success(isDraft ? 'Đã cập nhật bản nháp thành công!' : 'Đã cập nhật dữ liệu thành công!')
       } else {
-        // Creation mode:
-        if (isQuizMode.value) {
-          const now = new Date()
-          const startDateVal = formData.startType === 'now' 
-            ? now.toISOString() 
-            : (formData.startDate ? new Date(formData.startDate).toISOString() : now.toISOString())
-          
-          const end = new Date(new Date(startDateVal).getTime() + 7 * 24 * 60 * 60000)
-          const endDateVal = end.toISOString()
-
-          const quizPayload = {
-            quizId: ensureGuid(''),
-            title: formData.name.trim() + (isDraft ? ' [Bản nháp]' : ' (Kỳ thi/Lớp học)'),
-            targetGroup: formData.targetGroup.trim(),
-            sourceType: 'exam',
-            examId: ensureGuid(savedExamId),
-            startDate: startDateVal,
-            endDate: endDateVal,
-            isDraft: isDraft,
-            lockBrowser: formData.antiCheat.lockBrowser,
-            shuffleQuestions: formData.antiCheat.shuffleQuestions,
-            disableCopyPaste: formData.antiCheat.disableCopyPaste,
-            fullscreen: formData.antiCheat.fullscreen,
-            webcam: formData.antiCheat.webcam,
-            ipLimit: formData.antiCheat.ipLimit,
-            allowLateJoin: formData.allowLateJoin,
-            allowLateSubmit: formData.allowLateSubmit,
-            publicLeaderboard: formData.publicLeaderboard,
-            sendEmailReport: formData.sendEmailReport
-          }
-
-          const qres = await addQuizDetails(quizPayload)
-          if (!qres || !qres.isSuccess) {
-            message.error(qres?.errorMessage || 'Lỗi khi lưu bài kiểm tra.')
-            return
-          }
-          
-          if (isDraft) {
-            message.success(`Đã lưu bản nháp kỳ thi "${quizPayload.title}" thành công!`)
-          } else {
-            message.success(`Đã lưu và lên lịch tổ chức kỳ thi "${quizPayload.title}" thành công!`)
-          }
-        } else {
-          if (isDraft) {
-            message.success(`Đã lưu bản nháp đề thi "${formData.name.trim()}" thành công!`)
-          } else {
-            message.success(`Đã tạo đề thi "${formData.name.trim()}" thành công!`)
-          }
-        }
+        message.success(isDraft ? `Đã lưu bản nháp đề thi "${formData.name.trim()}" thành công!` : `Đã tạo đề thi "${formData.name.trim()}" thành công!`)
       }
-
       router.push('/personal/exams')
     } else {
       message.error(res.errorMessage || 'Lỗi khi lưu đề thi.')
@@ -1738,6 +1145,75 @@ const saveForm = async (isDraft = false) => {
     message.error('Đã xảy ra lỗi khi kết nối máy chủ để lưu đề thi.')
   }
 }
+
+onMounted(async () => {
+  await fetchCategories()
+  await fetchBankQuestions()
+
+  if (categories.value.length > 0 && categories.value[0]) {
+    formData.categoryId = categories.value[0].id
+    autoAddForm.categoryId = categories.value[0].id
+  }
+
+  const editId = route.params.id as string | undefined
+  if (editId) {
+    try {
+      const res = await getExamDetails(editId)
+      if (res && res.isSuccess && res.data) {
+        const existingExam = res.data
+        formData.name = existingExam.name
+        formData.description = existingExam.description || ''
+        formData.categoryId = existingExam.questionCategoryId
+        formData.duration = existingExam.durationMin
+        formData.accessType = existingExam.accessType
+        
+        try {
+          const [resQuestions, resKeys] = await Promise.all([
+            getExamQuestions(editId),
+            getExamKeys(editId)
+          ])
+          if (resQuestions && resQuestions.isSuccess && resQuestions.data) {
+            const correctKeysMap = (resKeys && resKeys.isSuccess && resKeys.data?.correctMap) ? resKeys.data.correctMap : {}
+            
+            questionsList.value = resQuestions.data.map((q: any) => {
+              const qId = q.examQuestionId
+              const rawAnswers = q.answers || []
+              const correctIds = correctKeysMap[qId] || []
+              
+              const mappedAnswers = rawAnswers.map((a: any, aIdx: number) => ({
+                questionAnswerId: a.questionAnswerId || '',
+                stringContent: a.stringContent || '',
+                isCorrectAnswer: correctIds.includes(a.questionAnswerId),
+                questionId: qId,
+                orderInList: a.orderInList || (aIdx + 1)
+              }))
+
+              return {
+                questionId: qId,
+                examQuestionId: qId,
+                questionSlug: q.questionSlug || '',
+                stringContent: q.stringContent || '',
+                explaination: q.explaination || '',
+                level: q.level || 0,
+                type: q.type || 0,
+                accessType: q.accessType || 1,
+                questionCategoryId: q.questionCategoryId || '',
+                answers: mappedAnswers
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Lỗi tải câu hỏi của đề thi cần chỉnh sửa:', error)
+        }
+      } else {
+        message.error('Không tìm thấy dữ liệu đề thi cần chỉnh sửa!')
+      }
+    } catch (error) {
+      console.error('Lỗi tải thông tin đề thi cần chỉnh sửa:', error)
+      message.error('Đã xảy ra lỗi khi tải thông tin đề thi.')
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -1802,17 +1278,5 @@ const saveForm = async (isDraft = false) => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.mockup-document-page {
-  font-family: 'Times New Roman', Times, serif;
-  min-height: 297mm;
-  padding: 20mm;
-}
-
-@media(max-width: 576px) {
-  .mockup-document-page {
-    padding: 10mm;
-  }
 }
 </style>

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HoangCN.LearnMS.Migrations
 {
     /// <inheritdoc />
-    public partial class ReInit2 : Migration
+    public partial class Reinit3 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -67,7 +67,7 @@ namespace HoangCN.LearnMS.Migrations
                 {
                     UserSavedMappingId = table.Column<Guid>(type: "char(36)", nullable: false),
                     TargetId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    UserId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    LearnMsUserId = table.Column<Guid>(type: "char(36)", nullable: false),
                     SaveType = table.Column<int>(type: "int", nullable: false),
                     CreatedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
@@ -79,8 +79,8 @@ namespace HoangCN.LearnMS.Migrations
                 {
                     table.PrimaryKey("PK_UserSavedMapping", x => x.UserSavedMappingId);
                     table.ForeignKey(
-                        name: "FK_UserSavedMapping_LearnMsUser_UserId",
-                        column: x => x.UserId,
+                        name: "FK_UserSavedMapping_LearnMsUser_LearnMsUserId",
+                        column: x => x.LearnMsUserId,
                         principalTable: "LearnMsUser",
                         principalColumn: "LearnMsUserId",
                         onDelete: ReferentialAction.Restrict);
@@ -94,13 +94,13 @@ namespace HoangCN.LearnMS.Migrations
                     ExamId = table.Column<Guid>(type: "char(36)", nullable: false),
                     Name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
                     Description = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: true),
-                    CategoryId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    Duration = table.Column<int>(type: "int", nullable: false),
+                    QuestionCategoryId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    DurationMin = table.Column<int>(type: "int", nullable: false),
                     AccessType = table.Column<int>(type: "int", nullable: false),
                     IsDraft = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    UserId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    DraftData = table.Column<string>(type: "longtext", nullable: true),
+                    LearnMsUserId = table.Column<Guid>(type: "char(36)", nullable: false),
                     ContributeToBank = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    IsQuizSource = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     ModifiedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
@@ -111,14 +111,14 @@ namespace HoangCN.LearnMS.Migrations
                 {
                     table.PrimaryKey("PK_Exam", x => x.ExamId);
                     table.ForeignKey(
-                        name: "FK_Exam_LearnMsUser_UserId",
-                        column: x => x.UserId,
+                        name: "FK_Exam_LearnMsUser_LearnMsUserId",
+                        column: x => x.LearnMsUserId,
                         principalTable: "LearnMsUser",
                         principalColumn: "LearnMsUserId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Exam_QuestionCategory_CategoryId",
-                        column: x => x.CategoryId,
+                        name: "FK_Exam_QuestionCategory_QuestionCategoryId",
+                        column: x => x.QuestionCategoryId,
                         principalTable: "QuestionCategory",
                         principalColumn: "QuestionCategoryId",
                         onDelete: ReferentialAction.Restrict);
@@ -140,6 +140,7 @@ namespace HoangCN.LearnMS.Migrations
                     AccessType = table.Column<int>(type: "int", nullable: false),
                     IsInBank = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     QuestionCategoryId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Source = table.Column<string>(type: "longtext", nullable: true),
                     CreatedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     ModifiedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
@@ -161,6 +162,36 @@ namespace HoangCN.LearnMS.Migrations
                         principalTable: "QuestionCategory",
                         principalColumn: "QuestionCategoryId",
                         onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ExamQuestion",
+                columns: table => new
+                {
+                    ExamQuestionId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    StringContent = table.Column<string>(type: "longtext", nullable: true),
+                    OrderInExam = table.Column<int>(type: "int", nullable: false),
+                    Explaination = table.Column<string>(type: "longtext", nullable: true),
+                    Level = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    ExamId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    QuestionCategoryId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    CreatedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    ModifiedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
+                    ModifiedDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExamQuestion", x => x.ExamQuestionId);
+                    table.ForeignKey(
+                        name: "FK_ExamQuestion_Exam_ExamId",
+                        column: x => x.ExamId,
+                        principalTable: "Exam",
+                        principalColumn: "ExamId",
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -212,38 +243,6 @@ namespace HoangCN.LearnMS.Migrations
                         column: x => x.UserId,
                         principalTable: "LearnMsUser",
                         principalColumn: "LearnMsUserId",
-                        onDelete: ReferentialAction.Restrict);
-                })
-                .Annotation("MySQL:Charset", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "ExamQuestion",
-                columns: table => new
-                {
-                    ExamQuestionId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    ExamId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    QuestionId = table.Column<Guid>(type: "char(36)", nullable: false),
-                    SortOrder = table.Column<int>(type: "int", nullable: false),
-                    CreatedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    ModifiedBy = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
-                    ModifiedDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ExamQuestion", x => x.ExamQuestionId);
-                    table.ForeignKey(
-                        name: "FK_ExamQuestion_Exam_ExamId",
-                        column: x => x.ExamId,
-                        principalTable: "Exam",
-                        principalColumn: "ExamId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ExamQuestion_Question_QuestionId",
-                        column: x => x.QuestionId,
-                        principalTable: "Question",
-                        principalColumn: "QuestionId",
                         onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -470,14 +469,14 @@ namespace HoangCN.LearnMS.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Exam_CategoryId",
+                name: "IX_Exam_LearnMsUserId",
                 table: "Exam",
-                column: "CategoryId");
+                column: "LearnMsUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Exam_UserId",
+                name: "IX_Exam_QuestionCategoryId",
                 table: "Exam",
-                column: "UserId");
+                column: "QuestionCategoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ExamAttempt_ExamId",
@@ -510,15 +509,9 @@ namespace HoangCN.LearnMS.Migrations
                 column: "SessionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ExamQuestion_ExamId_QuestionId",
+                name: "IX_ExamQuestion_ExamId",
                 table: "ExamQuestion",
-                columns: new[] { "ExamId", "QuestionId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ExamQuestion_QuestionId",
-                table: "ExamQuestion",
-                column: "QuestionId");
+                column: "ExamId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ExamSession_CandidateId_QuizId",
@@ -590,9 +583,9 @@ namespace HoangCN.LearnMS.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserSavedMapping_UserId_TargetId",
+                name: "IX_UserSavedMapping_LearnMsUserId_TargetId",
                 table: "UserSavedMapping",
-                columns: new[] { "UserId", "TargetId" },
+                columns: new[] { "LearnMsUserId", "TargetId" },
                 unique: true);
         }
 

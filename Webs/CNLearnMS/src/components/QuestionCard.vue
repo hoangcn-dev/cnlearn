@@ -28,7 +28,7 @@
     <!-- Question Content -->
     <div class="p-3">
       <div class="question-text mb-3 text-dark-blue fw-semibold leading-relaxed">
-        <FormulaRenderer :content="question.stringContent" />
+        <FormulaRenderer :content="question.stringContent || ''" />
       </div>
 
       <!-- Options Container -->

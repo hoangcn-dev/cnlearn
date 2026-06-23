@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace HoangCN.LearnMS.Entities
 {
@@ -85,7 +86,7 @@ namespace HoangCN.LearnMS.Entities
         /// </summary>
         [DisplayName("Danh mục")]
         [Required(ErrorMessage = "{0} không được phép để trống.")]
-        [CheckExist(MustExist = true, TargetEntity = typeof(QuestionCategory), ErrorMessage = "Danh mục không tồn tại trong hệ thống.")]
+        [FK(TargetEntity = typeof(QuestionCategory))]
         public Guid QuestionCategoryId { get; set; }
 
         /// <summary>
@@ -95,16 +96,16 @@ namespace HoangCN.LearnMS.Entities
         public string? Source { get; set; }
 
         /// <summary>
-        /// Nguồn
+        /// Danh sách đáp án đi kèm câu hỏi (Được serialize thành JSON dưới DB)
         /// </summary>
-        [DisplayName("Đề thi nguồn chứa câu hỏi")]
-        public Guid? SourceExamId { get; set; }
+        [DisplayName("Danh sách đáp án")]
+        public List<QuestionAnswer> Answers { get; set; } = [];
 
         /// <summary>
-        /// Danh sách đáp án đi kèm câu hỏi (Không map trực tiếp xuống DB)
+        /// Danh sách ID các đáp án đúng
         /// </summary>
-        [NotMapped]
-        public List<QuestionAnswer> Answers { get; set; } = [];
+        [DisplayName("Mã đáp án đúng")]
+        public List<Guid>? CorrectKeys { get; set; }
     }
 
     public class QuestionConfiguration : IEntityTypeConfiguration<Question>
@@ -125,6 +126,24 @@ namespace HoangCN.LearnMS.Entities
                    .WithMany()
                    .HasForeignKey(q => q.LearnMsUserId)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            // Cấu hình Value Converter cho Answers
+            builder.Property(q => q.Answers)
+                   .HasColumnName(nameof(Question.Answers) + "JsonData")
+                   .HasConversion(
+                       v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                       v => JsonSerializer.Deserialize<List<QuestionAnswer>>(v, (JsonSerializerOptions)null) ?? new List<QuestionAnswer>()
+                   )
+                   .HasColumnType("longtext");
+
+            // Cấu hình Value Converter cho CorrectKeys
+            builder.Property(q => q.CorrectKeys)
+                   .HasColumnName(nameof(Question.CorrectKeys) + "JsonData")
+                   .HasConversion(
+                       v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                       v => string.IsNullOrEmpty(v) ? new List<Guid>() : JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions)null) ?? new List<Guid>()
+                   )
+                   .HasColumnType("longtext");
         }
     }
 }

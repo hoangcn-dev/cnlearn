@@ -3,6 +3,7 @@ using System;
 using HoangCN.Core.DL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HoangCN.LearnMS.Migrations
 {
     [DbContext(typeof(DynamicDbContext))]
-    partial class DynamicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622145250_RemoveCateFromExamQues")]
+    partial class RemoveCateFromExamQues
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -244,15 +247,6 @@ namespace HoangCN.LearnMS.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("Answers")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("AnswersJsonData");
-
-                    b.Property<string>("CorrectKeys")
-                        .HasColumnType("longtext")
-                        .HasColumnName("CorrectKeysJsonData");
-
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -412,17 +406,8 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<int>("AccessType")
                         .HasColumnType("int");
 
-                    b.Property<string>("Answers")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("AnswersJsonData");
-
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int");
-
-                    b.Property<string>("CorrectKeys")
-                        .HasColumnType("longtext")
-                        .HasColumnName("CorrectKeysJsonData");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -480,6 +465,90 @@ namespace HoangCN.LearnMS.Migrations
                         .IsUnique();
 
                     b.ToTable("Question", (string)null);
+                });
+
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswer", b =>
+                {
+                    b.Property<Guid>("QuestionAnswerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsCorrectAnswer")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OrderInList")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("StringContent")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("QuestionAnswerId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("QuestionAnswer", (string)null);
+                });
+
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswerMedia", b =>
+                {
+                    b.Property<Guid>("FileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OrderInList")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("QuestionAnswerId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("FileId");
+
+                    b.HasIndex("QuestionAnswerId");
+
+                    b.ToTable("QuestionAnswerMedia", (string)null);
                 });
 
             modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionCategory", b =>
@@ -811,6 +880,24 @@ namespace HoangCN.LearnMS.Migrations
                         .WithMany()
                         .HasForeignKey("QuestionCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswer", b =>
+                {
+                    b.HasOne("HoangCN.LearnMS.Entities.Question", null)
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswerMedia", b =>
+                {
+                    b.HasOne("HoangCN.LearnMS.Entities.QuestionAnswer", null)
+                        .WithMany()
+                        .HasForeignKey("QuestionAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

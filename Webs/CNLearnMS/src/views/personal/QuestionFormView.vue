@@ -497,15 +497,14 @@ const formatId = (val?: string) => {
 
 const fetchQuestionForEdit = async (id: string) => {
   try {
-    const [resDetail, resAnswers, resKeys] = await Promise.all([
+    const [resDetail, resKeys] = await Promise.all([
       getQuestionDetails(id),
-      getQuestionAnswers([id]),
       getQuestionKeys([id])
     ])
 
     if (resDetail && resDetail.isSuccess && resDetail.data) {
       const q = resDetail.data
-      const rawAnswers = (resAnswers && resAnswers.isSuccess && resAnswers.data) ? resAnswers.data : []
+      const rawAnswers = q.answers || []
       const correctKeysMap = (resKeys && resKeys.isSuccess && resKeys.data?.correctMap) ? resKeys.data.correctMap : {}
       const correctIds = correctKeysMap[q.questionId] || []
 
@@ -585,15 +584,14 @@ const addNewQuestionCard = () => {
     attemptCount: 0,
     level: QuestionLevel.Easy,
     type: QuestionType.SingleChoice,
-    learnMsUserId: '',
     accessType: globalAccessType.value,
     isInBank: false,
     questionCategoryId: defaultCategory,
     answers: [
-      { questionAnswerId: 'ans_new_' + qId + '_1', stringContent: '', isCorrectAnswer: true, questionId: qId, orderInList: 0 },
-      { questionAnswerId: 'ans_new_' + qId + '_2', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 1 },
-      { questionAnswerId: 'ans_new_' + qId + '_3', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 2 },
-      { questionAnswerId: 'ans_new_' + qId + '_4', stringContent: '', isCorrectAnswer: false, questionId: qId, orderInList: 3 }
+      { questionAnswerId: 'ans_new_' + qId + '_1', stringContent: '', isCorrectAnswer: true, orderInList: 0 },
+      { questionAnswerId: 'ans_new_' + qId + '_2', stringContent: '', isCorrectAnswer: false, orderInList: 1 },
+      { questionAnswerId: 'ans_new_' + qId + '_3', stringContent: '', isCorrectAnswer: false, orderInList: 2 },
+      { questionAnswerId: 'ans_new_' + qId + '_4', stringContent: '', isCorrectAnswer: false, orderInList: 3 }
     ]
   }
   questionsList.value.push(newQ)
@@ -616,7 +614,6 @@ const addAnswerOptionToQuestion = (q: Question) => {
     questionAnswerId: ansId,
     stringContent: '',
     isCorrectAnswer: false,
-    questionId: q.questionId,
     orderInList: q.answers.length
   })
 }
@@ -744,7 +741,6 @@ const saveAllQuestionsToBank = async () => {
       attemptCount: q.attemptCount || 0,
       level: q.level ?? QuestionLevel.Easy,
       type: q.type ?? QuestionType.SingleChoice,
-      learnMsUserId: q.learnMsUserId || '',
       accessType: globalAccessType.value,
       isInBank: q.isInBank || false,
       questionCategoryId: formatId(q.questionCategoryId),
@@ -858,7 +854,6 @@ const parseImportFile = (file: File) => {
             attemptCount: item.attemptCount || 0,
             level: item.level !== undefined ? item.level : (item.Level !== undefined ? item.Level : 1),
             type: item.type !== undefined ? item.type : (item.Type !== undefined ? item.Type : 0),
-            learnMsUserId: item.learnMsUserId || '',
             accessType: item.accessType !== undefined ? item.accessType : (item.AccessType !== undefined ? item.AccessType : globalAccessType.value),
             isInBank: !!(item.isInBank || item.IsInBank),
             questionCategoryId: (() => {
@@ -911,15 +906,14 @@ const parseImportFile = (file: File) => {
           attemptCount: 0,
           level: QuestionLevel.Easy,
           type: QuestionType.SingleChoice,
-          learnMsUserId: '',
           accessType: globalAccessType.value,
           isInBank: false,
           questionCategoryId: categories.value[2]?.questionCategoryId || '',
           answers: [
-            { questionAnswerId: 'ans_ex_' + qId + '_1', stringContent: 'Sắt (Fe)', isCorrectAnswer: true, questionId: qId, orderInList: 0 },
-            { questionAnswerId: 'ans_ex_' + qId + '_2', stringContent: 'Đồng (Cu)', isCorrectAnswer: false, questionId: qId, orderInList: 1 },
-            { questionAnswerId: 'ans_ex_' + qId + '_3', stringContent: 'Bạc (Ag)', isCorrectAnswer: false, questionId: qId, orderInList: 2 },
-            { questionAnswerId: 'ans_ex_' + qId + '_4', stringContent: 'Vàng (Au)', isCorrectAnswer: false, questionId: qId, orderInList: 3 }
+            { questionAnswerId: 'ans_ex_' + qId + '_1', stringContent: 'Sắt (Fe)', isCorrectAnswer: true, orderInList: 0 },
+            { questionAnswerId: 'ans_ex_' + qId + '_2', stringContent: 'Đồng (Cu)', isCorrectAnswer: false, orderInList: 1 },
+            { questionAnswerId: 'ans_ex_' + qId + '_3', stringContent: 'Bạc (Ag)', isCorrectAnswer: false, orderInList: 2 },
+            { questionAnswerId: 'ans_ex_' + qId + '_4', stringContent: 'Vàng (Au)', isCorrectAnswer: false, orderInList: 3 }
           ]
         }
       ]
@@ -1026,15 +1020,14 @@ const generateQuestionsViaAi = () => {
         attemptCount: 0,
         level: QuestionLevel.Easy,
         type: QuestionType.SingleChoice,
-        learnMsUserId: '',
         accessType: globalAccessType.value,
         isInBank: false,
         questionCategoryId: categories.value[0]?.questionCategoryId || '',
         answers: [
-          { questionAnswerId: 'ans_ai_' + qId1 + '_1', stringContent: 'I(2; -1)', isCorrectAnswer: true, questionId: qId1, orderInList: 0 },
-          { questionAnswerId: 'ans_ai_' + qId1 + '_2', stringContent: 'I(-2; -1)', isCorrectAnswer: false, questionId: qId1, orderInList: 1 },
-          { questionAnswerId: 'ans_ai_' + qId1 + '_3', stringContent: 'I(2; 1)', isCorrectAnswer: false, questionId: qId1, orderInList: 2 },
-          { questionAnswerId: 'ans_ai_' + qId1 + '_4', stringContent: 'I(-2; 1)', isCorrectAnswer: false, questionId: qId1, orderInList: 3 }
+          { questionAnswerId: 'ans_ai_' + qId1 + '_1', stringContent: 'I(2; -1)', isCorrectAnswer: true, orderInList: 0 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_2', stringContent: 'I(-2; -1)', isCorrectAnswer: false, orderInList: 1 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_3', stringContent: 'I(2; 1)', isCorrectAnswer: false, orderInList: 2 },
+          { questionAnswerId: 'ans_ai_' + qId1 + '_4', stringContent: 'I(-2; 1)', isCorrectAnswer: false, orderInList: 3 }
         ]
       },
       {
@@ -1045,15 +1038,14 @@ const generateQuestionsViaAi = () => {
         attemptCount: 0,
         level: QuestionLevel.Easy,
         type: QuestionType.SingleChoice,
-        learnMsUserId: '',
         accessType: globalAccessType.value,
         isInBank: false,
         questionCategoryId: categories.value[0]?.questionCategoryId || '',
         answers: [
-          { questionAnswerId: 'ans_ai_' + qId2 + '_1', stringContent: 'sin(x) + C', isCorrectAnswer: true, questionId: qId2, orderInList: 0 },
-          { questionAnswerId: 'ans_ai_' + qId2 + '_2', stringContent: '-sin(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 1 },
-          { questionAnswerId: 'ans_ai_' + qId2 + '_3', stringContent: 'cos(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 2 },
-          { questionAnswerId: 'ans_ai_' + qId2 + '_4', stringContent: '-cos(x) + C', isCorrectAnswer: false, questionId: qId2, orderInList: 3 }
+          { questionAnswerId: 'ans_ai_' + qId2 + '_1', stringContent: 'sin(x) + C', isCorrectAnswer: true, orderInList: 0 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_2', stringContent: '-sin(x) + C', isCorrectAnswer: false, orderInList: 1 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_3', stringContent: 'cos(x) + C', isCorrectAnswer: false, orderInList: 2 },
+          { questionAnswerId: 'ans_ai_' + qId2 + '_4', stringContent: '-cos(x) + C', isCorrectAnswer: false, orderInList: 3 }
         ]
       }
     ]

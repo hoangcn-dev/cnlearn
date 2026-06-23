@@ -28,22 +28,24 @@ namespace HoangCN.Core.BL.Interfaces
         /// <summary>
         /// Lấy danh sách thực thể phân trang, sắp xếp và lọc động
         /// </summary>
-        Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>>? condition = null);
-
-        ///// <summary>
-        ///// Lấy danh sách thực thể phân trang, sắp xếp và lọc động kèm điều kiện lambda chỉ định
-        ///// </summary>
-        //Task<ResultDto<TResult>> Get<TResult>(GetRequest request, Expression<Func<TEntity, bool>> condition);
+        Task<ResultDto<TResult>> Get<TResult>(
+            GetRequest request, 
+            Expression<Func<TEntity, bool>>? condition = null,
+            Expression<Func<TEntity, object>>? selector = null);
 
         /// <summary>
         /// Lấy danh sách thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)
         /// </summary>
-        Task<List<TResult>> GetByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
+        Task<List<TResult>> GetByCondition<TResult>(
+            Expression<Func<TEntity, bool>> condition,
+            Expression<Func<TEntity, object>>? selector = null);
 
         /// <summary>
         /// Lấy một đối tượng duy nhất theo điều kiện chỉ định sử dụng Dapper tối ưu hóa
         /// </summary>
-        Task<TResult?> GetFirstByCondition<TResult>(Expression<Func<TEntity, bool>> condition);
+        Task<TResult?> GetFirstByCondition<TResult>(
+            Expression<Func<TEntity, bool>> condition,
+            Expression<Func<TEntity, object>>? selector = null);
 
         /// <summary>
         /// Đếm thực thể theo điều kiện chỉ định (chỉ dùng cho nội bộ)

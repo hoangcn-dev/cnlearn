@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HoangCN.LearnMS.Migrations
 {
     [DbContext(typeof(DynamicDbContext))]
-    [Migration("20260621120243_ReInit2")]
-    partial class ReInit2
+    [Migration("20260622233416_ChangeToJsonColumnType")]
+    partial class ChangeToJsonColumnType
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,9 +31,6 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<int>("AccessType")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("CategoryId")
-                        .HasColumnType("char(36)");
-
                     b.Property<bool>("ContributeToBank")
                         .HasColumnType("tinyint(1)");
 
@@ -49,7 +46,10 @@ namespace HoangCN.LearnMS.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
-                    b.Property<int>("Duration")
+                    b.Property<string>("DraftData")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("DurationMin")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
@@ -58,8 +58,8 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<bool>("IsDraft")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("IsQuizSource")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<Guid>("LearnMsUserId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(100)
@@ -73,14 +73,14 @@ namespace HoangCN.LearnMS.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("QuestionCategoryId")
                         .HasColumnType("char(36)");
 
                     b.HasKey("ExamId");
 
-                    b.HasIndex("CategoryId");
+                    b.HasIndex("LearnMsUserId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("QuestionCategoryId");
 
                     b.ToTable("Exam", (string)null);
                 });
@@ -247,6 +247,13 @@ namespace HoangCN.LearnMS.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Answers")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("CorrectKeys")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -258,8 +265,14 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<Guid>("ExamId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Explaination")
+                        .HasColumnType("longtext");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
 
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(100)
@@ -268,18 +281,18 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid>("QuestionId")
-                        .HasColumnType("char(36)");
+                    b.Property<int>("OrderInExam")
+                        .HasColumnType("int");
 
-                    b.Property<int>("SortOrder")
+                    b.Property<string>("StringContent")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Type")
                         .HasColumnType("int");
 
                     b.HasKey("ExamQuestionId");
 
-                    b.HasIndex("QuestionId");
-
-                    b.HasIndex("ExamId", "QuestionId")
-                        .IsUnique();
+                    b.HasIndex("ExamId");
 
                     b.ToTable("ExamQuestion", (string)null);
                 });
@@ -400,8 +413,15 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<int>("AccessType")
                         .HasColumnType("int");
 
+                    b.Property<string>("Answers")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<int>("AttemptCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("CorrectKeys")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
@@ -440,6 +460,9 @@ namespace HoangCN.LearnMS.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("Source")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("StringContent")
                         .HasColumnType("longtext");
 
@@ -456,90 +479,6 @@ namespace HoangCN.LearnMS.Migrations
                         .IsUnique();
 
                     b.ToTable("Question", (string)null);
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswer", b =>
-                {
-                    b.Property<Guid>("QuestionAnswerId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsCorrectAnswer")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("OrderInList")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("QuestionId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("StringContent")
-                        .HasColumnType("longtext");
-
-                    b.HasKey("QuestionAnswerId");
-
-                    b.HasIndex("QuestionId");
-
-                    b.ToTable("QuestionAnswer", (string)null);
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswerMedia", b =>
-                {
-                    b.Property<Guid>("FileId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Label")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("OrderInList")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("QuestionAnswerId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("FileId");
-
-                    b.HasIndex("QuestionAnswerId");
-
-                    b.ToTable("QuestionAnswerMedia", (string)null);
                 });
 
             modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionCategory", b =>
@@ -753,6 +692,9 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<Guid>("LearnMsUserId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -766,12 +708,9 @@ namespace HoangCN.LearnMS.Migrations
                     b.Property<Guid>("TargetId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("char(36)");
-
                     b.HasKey("UserSavedMappingId");
 
-                    b.HasIndex("UserId", "TargetId")
+                    b.HasIndex("LearnMsUserId", "TargetId")
                         .IsUnique();
 
                     b.ToTable("UserSavedMapping", (string)null);
@@ -779,15 +718,15 @@ namespace HoangCN.LearnMS.Migrations
 
             modelBuilder.Entity("HoangCN.LearnMS.Entities.Exam", b =>
                 {
-                    b.HasOne("HoangCN.LearnMS.Entities.QuestionCategory", null)
+                    b.HasOne("HoangCN.LearnMS.Entities.LearnMsUser", null)
                         .WithMany()
-                        .HasForeignKey("CategoryId")
+                        .HasForeignKey("LearnMsUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("HoangCN.LearnMS.Entities.LearnMsUser", null)
+                    b.HasOne("HoangCN.LearnMS.Entities.QuestionCategory", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("QuestionCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -842,12 +781,6 @@ namespace HoangCN.LearnMS.Migrations
                         .HasForeignKey("ExamId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("HoangCN.LearnMS.Entities.Question", null)
-                        .WithMany()
-                        .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("HoangCN.LearnMS.Entities.ExamSession", b =>
@@ -877,24 +810,6 @@ namespace HoangCN.LearnMS.Migrations
                         .WithMany()
                         .HasForeignKey("QuestionCategoryId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswer", b =>
-                {
-                    b.HasOne("HoangCN.LearnMS.Entities.Question", null)
-                        .WithMany()
-                        .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("HoangCN.LearnMS.Entities.QuestionAnswerMedia", b =>
-                {
-                    b.HasOne("HoangCN.LearnMS.Entities.QuestionAnswer", null)
-                        .WithMany()
-                        .HasForeignKey("QuestionAnswerId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -933,7 +848,7 @@ namespace HoangCN.LearnMS.Migrations
                 {
                     b.HasOne("HoangCN.LearnMS.Entities.LearnMsUser", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("LearnMsUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
